@@ -15,7 +15,15 @@
     "url": "http://github.com/miruken/MirukenJS"
   },
   "jspm": {
-    "dependencies": {},
+    "registry": "npm",
+    "main": "miruken-callback",
+    "format": "amd",
+    "directories": {
+        "dist": "dist/amd"
+    },     
+    "dependencies": {
+      "miruken-core": "^0.0.1"
+    },
     "devDependencies": {
       "babel": "npm:babel-core@^5.8.24",
       "babel-runtime": "npm:babel-runtime@^5.8.24",
@@ -28,7 +36,8 @@
   "dependencies": {
     "chai": "^1.10.0",
     "grunt-cli": "latest",
-    "grunt-env": "latest"
+    "grunt-env": "latest",
+    "miruken-core": "^0.0.1"      
   },
   "devDependencies": {
     "babel-plugin-syntax-flow": "^6.5.0",
@@ -50,7 +59,7 @@
     "karma": "^0.12.31",
     "karma-babel-preprocessor": "^6.0.1",
     "karma-chai": "^0.1.0",
-    "karma-chrome-launcher": "^0.1.7",
+    "karma-chrome-launcher": "^0.1.12",
     "karma-coverage": "^0.5.5",
     "karma-jspm": "^2.0.2",
     "karma-mocha": "^0.1.10",

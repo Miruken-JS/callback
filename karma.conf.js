@@ -9,16 +9,38 @@ module.exports = function(config) {
         
         frameworks: ['jspm', 'mocha', 'chai'],
 
+        plugins: ['karma-jspm', 'karma-mocha', 'karma-chai',
+                  'karma-babel-preprocessor', 'karma-coverage',
+                  'karma-chrome-launcher'],
+
+        systemjs: {
+            configFile: 'config.js',
+
+            files: [paths.tests],
+            serveFiles: [paths.source],
+
+            // SystemJS configuration specifically for tests, added after your config file.
+            // Good for adding test libraries and mock modules
+            config: {
+                paths: {
+                    'babel': 'node_modules/babel-core/lib/api/browser.js',
+                    'systemjs': 'node_modules/systemjs/dist/system.js',
+                },
+                transpiler: 'babel'
+            }
+        },
+        
         jspm: {
             loadFiles: [paths.tests],
-            serveFiles: [paths.source]
-        },  
-        files: [
-            'node_modules/miruken-core/dist/miruken-core.js'
-        ],
+            serveFiles: [paths.source],
+            //paths: {
+            //    "miruken-core": "node_modules/miruken-core/dist/miruken-core.js"
+            //}
+        },
+        
+        files: [],
         
         preprocessors: {
-            ['node_modules/miruken-core/dist/miruken-core.js']: ['babel'],            
             [paths.tests]: ['babel'],
             [paths.source]: ['babel']
         },
@@ -27,8 +49,7 @@ module.exports = function(config) {
             options: {
                 sourceMap: 'inline',
                 presets: [ 'es2015'],
-                plugins: [
-                ]
+                plugins: []
             }
         },
 
