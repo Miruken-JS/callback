@@ -1,7 +1,92 @@
 import {
-    False, True, Undefined, Base, Abstract,
-    extend, typeOf, Variance
+    False, True, Undefined, Base, Abstract, extend,
+    typeOf, assignID, Variance, MetaMacro, Metadata,
+    $isClass, $isString, $isFunction, $isNothing,
+    $isProtocol, $classOf, Modifier, IndexedList,
+    $eq, $use, $copy, $lift
 } from 'miruken-core';
+
+const _definitions = {};
+
+/**
+ * Definition for handling callbacks contravariantly.
+ * @method $handle
+ * @for miruken.callback.$
+ */
+export const $handle = $define('$handle', Variance.Contravariant);
+/**
+ * Definition for providing callbacks covariantly.
+ * @method $provide  
+ * @for miruken.callback.$
+ */        
+export const $provide = $define('$provide', Variance.Covariant);
+/**
+ * Definition for matching callbacks invariantly.
+ * @method $lookup  
+ * @for miruken.callback.$
+ */                
+export const $lookup = $define('$lookup', Variance.Invariant);
+/**
+ * return value to indicate a callback was not handled.
+ * @property {Object} $NOT_HANDLED
+ * @for miruken.callback.$
+ */                
+export const $NOT_HANDLED = Object.freeze({});
+
+/**
+ * Metamacro to process callback handler definitions.
+ * <pre>
+ *    const Bank = Base.extend(**$callbacks**, {
+ *        $handle: [
+ *            Deposit, function (deposit, composer) {
+ *                // perform the deposit
+ *            }
+ *        ]
+ *    })
+ * </pre>
+ * would register a handler in the Bank class for Deposit callbacks.
+ * @class $callbacks
+ * @extends miruken.MetaMacro
+ */
+export const $callbacks = MetaMacro.extend({
+    execute(step, metadata, target, definition) {
+        if ($isNothing(definition)) {
+            return;
+        }
+        const source = target,
+              type   = metadata.type;
+        if (target === type.prototype) {
+            target = type;
+        }
+        for (let tag in _definitions) {
+            const list = this.extractProperty(tag, source, definition);
+            if (!list || list.length == 0) {
+                continue;
+            }
+            const define = _definitions[tag];
+            for (let idx = 0; idx < list.length; ++idx) {
+                const constraint = list[idx];
+                if (++idx >= list.length) {
+                    throw new Error(
+                        `Incomplete ${tag} definition: missing handler for constraint ${constraint}.`);
+                }
+                define(target, constraint, list[idx]);
+            }
+        }
+    },
+    /**
+     * Determines if the macro should be inherited
+     * @method shouldInherit
+     * @returns {boolean} true
+     */                        
+    shouldInherit: True,
+    /**
+     * Determines if the macro should be applied on extension.
+     * @method isActive
+     * @returns {boolean} true
+     */ 
+    isActive: True
+});
 
 /**
  * Defines a new handler grouping.
@@ -17,10 +102,10 @@ export function $define(tag, variance) {
     if (!$isString(tag) || tag.length === 0 || /\s/.test(tag)) {
         throw new TypeError("The tag must be a non-empty string with no whitespace.");
     } else if (_definitions[tag]) {
-        throw new TypeError(format("'%1' is already defined.", tag));
+        throw new TypeError(`'${tag}' is already defined.`);
     }
 
-    var handled, comparer;
+    let handled, comparer;
     variance = variance || Variance.Contravariant;
     if (!(variance instanceof Variance)) {
         throw new TypeError("Invalid variance type supplied");
@@ -41,10 +126,10 @@ export function $define(tag, variance) {
     }
 
     function definition(owner, constraint, handler, removed) {
-        if ($isArray(constraint)) {
-            return Array2.reduce(constraint, function (result, c) {
-                var undefine = _definition(owner, c, handler, removed);
-                return function (notifyRemoved) {
+        if (Array.isArray(constraint)) {
+            return constraint.reduce((result, c) => {
+                const undefine = _definition(owner, c, handler, removed);
+                return notifyRemoved => {
                     result(notifyRemoved);
                     undefine(notifyRemoved);
                 };
@@ -60,28 +145,27 @@ export function $define(tag, variance) {
             constraint = $classOf(Modifier.unwrap(constraint));
         }
         if ($isNothing(handler)) {
-            throw new TypeError(format(
-                "Incomplete '%1' definition: missing handler for constraint %2.",
-                tag, constraint));
+            throw new TypeError(
+                `Incomplete '${tag}' definition: missing handler for constraint ${constraint}`);
         } else if (removed && !$isFunction(removed)) {
             throw new TypeError("The removed argument is not a function.");
         }
         if (!$isFunction(handler)) {
             if ($copy.test(handler)) {
-                var source = Modifier.unwrap(handler);
+                const source = Modifier.unwrap(handler);
                 if (!$isFunction(source.copy)) {
                     throw new Error("$copy requires the target to have a copy method.");
                 }
                 handler = source.copy.bind(source);
             } else {
-                var source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
-                handler    = $lift(source);
+                const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
+                handler = $lift(source);
             }
         }
-        var meta  = owner.$meta,
-            node  = new _Node(constraint, handler, removed),
-            index = _createIndex(node.constraint),
-            list  = meta[tag] || (meta[tag] = new IndexedList(comparer));
+        const meta  = owner[Metadata],
+              node  = new Node(constraint, handler, removed),
+              index = _createIndex(node.constraint),
+              list  = meta[tag] || (meta[tag] = new IndexedList(comparer));
         list.insert(node, index);
         return function (notifyRemoved) {
             list.remove(node);
@@ -94,9 +178,9 @@ export function $define(tag, variance) {
         };
     };
     definition.removeAll = function (owner) {
-        var meta = owner.$meta;
-        var list = meta[tag],
-            head = list.head;
+        const meta = owner[Metadata],
+              list = meta[tag];
+        let   head = list.head;
         while (head) {
             if (head.removed) {
                 head.removed(owner);
@@ -106,8 +190,8 @@ export function $define(tag, variance) {
         delete meta[tag];
     };
     definition.dispatch = function (handler, callback, constraint, composer, all, results) {
-        var v        = variance,
-            delegate = handler.delegate;
+        let   v        = variance;
+        const delegate = handler.delegate;
         constraint = constraint || callback;
         if (constraint) {
             if ($eq.test(constraint)) {
@@ -118,33 +202,33 @@ export function $define(tag, variance) {
                 constraint = $classOf(constraint);
             }
         }
-        var ok = delegate && _dispatch(delegate, delegate.$meta, callback, constraint, v, composer, all, results);
+        let ok = delegate && _dispatch(delegate, delegate[Metadata], callback, constraint, v, composer, all, results);
         if (!ok || all) {
-            ok = ok || _dispatch(handler, handler.$meta, callback, constraint, v, composer, all, results);
+            ok = ok || _dispatch(handler, handler[Metadata], callback, constraint, v, composer, all, results);
         }
         return ok;
     };
     function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
-        var dispatched = false,
-            invariant  = (v === Variance.Invariant),
-            index      = meta && _createIndex(constraint);
+        let   dispatched = false;
+        const invariant  = (v === Variance.Invariant),
+              index      = meta && _createIndex(constraint);
         while (meta) {
-            var list = meta[tag];
+            const list = meta[tag];
             if (list && (!invariant || index)) {
-                var node = list.getIndex(index) || list.head;
+                let node = list.getIndex(index) || list.head;
                 while (node) {
                     if (node.match(constraint, v)) {
-                        var base       = target.base,
-                            baseCalled = false;
+                        const base       = target.base;
+                        let   baseCalled = false;
                         target.base    = function () {
-                            var baseResult;
+                            let baseResult;
                             baseCalled = true;
-                            _dispatch(target, meta.getParent(), callback, constraint, v, composer, false,
+                            _dispatch(target, meta.parent, callback, constraint, v, composer, false,
                                       function (result) { baseResult = result; });
                             return baseResult;
                         };
                         try {
-                            var result = node.handler.call(target, callback, composer);
+                            const result = node.handler.call(target, callback, composer);
                             if (handled(result)) {
                                 if (results) {
                                     results.call(callback, result);
@@ -167,7 +251,7 @@ export function $define(tag, variance) {
                     node = node.next;
                 }
             }
-            meta = meta.getParent();
+            meta = meta.parent;
         }
         return dispatched;
     }
@@ -175,8 +259,8 @@ export function $define(tag, variance) {
     return definition;
 }
 
-function _Node(constraint, handler, removed) {
-    var invariant   = $eq.test(constraint);
+export function Node(constraint, handler, removed) {
+    const invariant = $eq.test(constraint);
     constraint      = Modifier.unwrap(constraint);
     this.constraint = constraint;
     this.handler    = handler;
@@ -188,7 +272,7 @@ function _Node(constraint, handler, removed) {
         this.match = invariant ? _matchInvariant : _matchClass;
     } else if ($isString(constraint)) {
         this.match = _matchString;
-    } else if (instanceOf(constraint, RegExp)) {
+    } else if (constraint instanceof RegExp) {
         this.match = invariant ? False : _matchRegExp;
     } else if ($isFunction(constraint)) {
         this.match = constraint;
@@ -219,7 +303,7 @@ function _matchEverything(match, variance) {
 }
 
 function _matchProtocol(match, variance) {
-    var constraint = this.constraint;
+    const constraint = this.constraint;
     if (constraint === match) {
         return true;
     } else if (variance === Variance.Covariant) {
@@ -231,7 +315,7 @@ function _matchProtocol(match, variance) {
 }
 
 function _matchClass(match, variance) {
-    var constraint = this.constraint;
+    const constraint = this.constraint;
     if (constraint === match) {
         return true;
     } else if (variance === Variance.Contravariant) {
@@ -281,16 +365,4 @@ function _requiresResult(result) {
 
 function _impliesSuccess(result) {
     return result ? (result !== $NOT_HANDLED) : (result === undefined);
-}
-
-function _flattenPrune(array) {
-    var i = 0, flatten = function (result, item) {
-        if (Array2.like(item)) {
-            Array2.reduce(item, flatten, result);
-        } else if (item != null) {
-            result[i++] = item;
-        }
-        return result;
-    };
-    return Array2.reduce(array, flatten, []);
 }

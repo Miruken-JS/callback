@@ -1,6 +1,28 @@
 import {
-    Base, Protocol
+    HandleMethod, RejectedError, TimeoutError,
+    $composer
+} from '../src/callbacks';
+
+import {
+    CallbackHandler, CascadeCallbackHandler,
+    CompositeCallbackHandler
+} from '../src/handlers';
+
+import {
+    $define, $handle, $provide, $lookup, $callbacks,
+    $NOT_HANDLED
+} from '../src/meta'
+
+import { Batching } from '../src/batch';
+
+import {
+    True, False, Undefined, Base, Protocol,
+    StrictProtocol, Metadata, Variance, Resolving,
+    assignID, $isPromise, $eq, $copy, $instant,
+    $using, $flatten
 } from 'miruken-core';
+
+import '../src/invocation';
 
 import chai from 'chai';
 
@@ -10,16 +32,14 @@ const Guest = Base.extend({
     $properties: {
         age: 0
     },
-    constructor: function (age) {
+    constructor(age) {
         this.age = age;
     }
 });
 
 const Dealer = Base.extend({
-    shuffle: function (cards) {
-        return cards.sort(function () {
-            return 0.5 - Math.random();
-        });
+    shuffle (cards) {
+        return cards.sort(() => 0.5 - Math.random());
     }
 });
 
@@ -27,7 +47,7 @@ const PitBoss = Base.extend({
     $properties: {
         name: ''
     },
-    constructor: function (name) {
+    constructor(name) {
         this.name = name;
     }
 });
@@ -36,27 +56,27 @@ const DrinkServer = Base.extend({
 });
 
 const Game = Protocol.extend({
-    open: function (numPlayers) {}
+    open(numPlayers) {}
 });
 
 const Security = Protocol.extend({
-    admit: function (guest) {},
-    trackActivity: function (activity) {},
-    scan: function () {}
+    admit(guest) {},
+    trackActivity(activity) {},
+    scan() {}
 });
 
 const Level1Security = Base.extend(Security, {
-    admit: function (guest) {
+    admit(guest) {
         return guest.age >= 21;
     }
 });
 
 const Level2Security = Base.extend(Security, {
-    trackActivity: function (activity) {
-        console.log(lang.format("Tracking '%1'", activity.name));
+    trackActivity(activity) {
+        console.log(`Tracking '${activity.name}'`);
     },
-    scan: function () {
-        return Promise.delay(true, 2);
+    scan() {
+        return Promise.delay(2).then(True);
     }
 });
 
@@ -65,32 +85,32 @@ const WireMoney = Base.extend({
         requested: 0.0,
         received:  0.0
     },
-    constructor: function (requested) {
+    constructor(requested) {
         this.requested = requested;
     }
 });
 
 const CountMoney = Base.extend({
-    constructor: function () {
+    constructor() {
         let _total = 0.0;
         this.extend({
             get total() { return _total; },
-            record: function (amount) { _total += amount; }
+            record(amount) { _total += amount; }
         });
     }
 });
 
 const Accountable = Base.extend($callbacks, {
-    constructor: function (assets, liabilities) {
+    constructor(assets, liabilities) {
         assets      = Number(assets || 0);
         liabilities = Number(liabilities || 0);
         this.extend({
             get assets() { return assets; },
             get liabilities() { return liabilities; },
             get balance() { return assets - liabilities; },
-            addAssets:       function (amount) { assets      += amount; },
-            addLiabilities:  function (amount) { liabilities += amount; },
-            transfer:        function (amount, receiver) {
+            addAssets(amount) { assets      += amount; },
+            addLiabilities(amount) { liabilities += amount; },
+            transfer(amount, receiver) {
                 assets -= amount;
                 if (assets < 0) {
                     liabilties -= assets;
@@ -108,9 +128,9 @@ const Accountable = Base.extend($callbacks, {
 });
 
 const Cashier = Accountable.extend({
-    toString: function () { return 'Cashier $' + this.balance; },
+    toString() { return 'Cashier $' + this.balance; },
     $handle:[
-        WireMoney, function (wireMoney, composer) {
+        WireMoney, wireMoney => {
             wireMoney.received = wireMoney.requested;
             return Promise.resolve(wireMoney);
         }]
@@ -120,18 +140,18 @@ const Activity = Accountable.extend({
     $properties: {
         name: ''
     },
-    constructor: function (name) {
+    constructor(name) {
         this.base();
         this.name = name;
     },
-    toString: function () { return 'Activity ' + this.name; }
+    toString() { return 'Activity ' + this.name; }
 });
 
 const CardTable = Activity.extend(Game, {
-    constructor: function (name, minPlayers, maxPlayers) {
+    constructor(name, minPlayers, maxPlayers) {
         this.base(name);
         this.extend({
-            open: function (numPlayers) {
+            open(numPlayers) {
                 if (minPlayers > numPlayers || numPlayers > maxPlayers)
                     return $NOT_HANDLED;
             },
@@ -143,87 +163,83 @@ const Casino = CompositeCallbackHandler.extend({
     $properties: {
         name: ''
     },
-    constructor: function (name) {
+    constructor(name) {
         this.base();
         this.name = name;
     },
-    toString: function () { return 'Casino ' + this.name; },
+    toString() { return 'Casino ' + this.name; },
 
     $provide:[
-        PitBoss, function (composer) {
-            return new PitBoss('Freddy');
-        },
-
-        DrinkServer, function (composer) {
-            return Promise.delay(new DrinkServer(), 100);
-        }]
+        PitBoss, () => new PitBoss('Freddy'),
+        DrinkServer, () => Promise.delay(100).then(() => new DrinkServer())
+    ]
 });
 
-describe("HandleMethod", function () {
-    describe("#getType", function () {
-        it("should get the method type", function () {
-            var method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+describe("HandleMethod", () => {
+    describe("#getType", () => {
+        it("should get the method type", () => {
+            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
             expect(method.type).to.equal(HandleMethod.Invoke);
         });
     });
 
-    describe("#getMethodName", function () {
-        it("should get the method name", function () {
-            var method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+    describe("#getMethodName", () => {
+        it("should get the method name", () => {
+            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
             expect(method.methodName).to.equal("deal");
         });
     });
 
-    describe("#getArguments", function () {
-        it("should get the method arguments", function () {
-            var method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+    describe("#getArguments", () => {
+        it("should get the method arguments", () => {
+            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
             expect(method.arguments).to.eql([[1,3,8], 2]);
         });
 
-        it("should be able to change arguments", function () {
-            var method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+        it("should be able to change arguments", () => {
+            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
             method.arguments[0] = [2,4,8];
             expect(method.arguments).to.eql([[2,4,8], 2]);
         });
     });
 
-    describe("#getReturnValue", function () {
-        it("should get the return value", function () {
-            var method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+    describe("#getReturnValue", () => {
+        it("should get the return value", () => {
+            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
             method.returnValue = [1,8];
             expect(method.returnValue).to.eql([1,8]);
         });
     });
 
-    describe("#setReturnValue", function () {
-        it("should set the return value", function () {
-            var method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+    describe("#setReturnValue", () => {
+        it("should set the return value", () => {
+            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
             method.returnValue = [1,8];
             expect(method.returnValue).to.eql([1,8]);
         });
     });
 
-    describe("#invokeOn", function () {
-        it("should invoke method on target", function () {
-            var dealer  = new Dealer,
-                method  = new HandleMethod(HandleMethod.Invoke, undefined, "shuffle", [[22,19,9,14,29]]),
-                handled = method.invokeOn(dealer);
+    describe("#invokeOn", () => {
+        it("should invoke method on target", () => {
+            const dealer  = new Dealer(),
+                  method  = new HandleMethod(HandleMethod.Invoke, undefined, "shuffle", [[22,19,9,14,29]]),
+                  handled = method.invokeOn(dealer);
             expect(handled).to.be.true;
             expect(method.returnValue).to.have.members([22,19,9,14,29]);
         });
 
-        it("should call getter on target", function () {
-            var guest   = new Guest(12),
-                method  = new HandleMethod(HandleMethod.Get, undefined, "age"),
-                handled = method.invokeOn(guest);
+        it("should call getter on target", () => {
+            const guest   = new Guest(12),
+                  method  = new HandleMethod(HandleMethod.Get, undefined, "age"),
+                  handled = method.invokeOn(guest);
             expect(handled).to.be.true;
             expect(method.returnValue).to.equal(12);
         });
 
-        it("should call setter on target", function () {
-            var guest   = new Guest(12),
-                method  = new HandleMethod(HandleMethod.Set, undefined, "age", 18),
-                handled = method.invokeOn(guest);
+        it("should call setter on target", () => {
+            const guest   = new Guest(12),
+                  method  = new HandleMethod(HandleMethod.Set, undefined, "age", 18),
+                  handled = method.invokeOn(guest);
             expect(handled).to.be.true;
             expect(method.returnValue).to.equal(18);
             expect(guest.age).to.equal(18);
@@ -231,247 +247,226 @@ describe("HandleMethod", function () {
     });
 });
 
-describe("Definitions", function () {
-    describe("$define", function () {
-        it("should require non-empty tag", function () {
+describe("Definitions", () => {
+    describe("$define", () => {
+        it("should require non-empty tag", () => {
             $define('$foo');
-            expect(function () {
+            expect(() => {
                 $define();
             }).to.throw(Error, "The tag must be a non-empty string with no whitespace.");
-            expect(function () {
+            expect(() => {
                 $define("");
             }).to.throw(Error, "The tag must be a non-empty string with no whitespace.");
-            expect(function () {
+            expect(() => {
                 $define("  ");
             }).to.throw(Error, "The tag must be a non-empty string with no whitespace.");
         });
 
-        it("should prevent same tag from being registered", function () {
+        it("should prevent same tag from being registered", () => {
             $define('$bar');
-            expect(function () {
+            expect(() => {
                 $define('$bar');
             }).to.throw(Error, "'$bar' is already defined.");
         });
 
-        it("Should accept variance option", function () {
-            var baz = $define('$baz', Variance.Contravariant);
+        it("Should accept variance option", () => {
+            const baz = $define('$baz', Variance.Contravariant);
         expect(baz).to.be.ok;
         });
 
-        it("Should reject invalid variance option", function () {
-            expect(function () {
+        it("Should reject invalid variance option", () => {
+            expect(() => {
         $define('$buz', { variance: 1000 });
             }).to.throw(TypeError, "Invalid variance type supplied");
         });
     });
 
-    describe("#list", function () {
-        it("should create $meta.$handle key when first handler registered", function () {
-            var handler    = new CallbackHandler;
+    describe("#list", () => {
+        it("should create [Metadata].$handle key when first handler registered", () => {
+            const handler  = new CallbackHandler();
             $handle(handler, True, True);
-            expect(handler.$meta.$handle).to.be.ok;
+            expect(handler[Metadata].$handle).to.be.ok;
         });
 
-        it("should maintain linked-list of handlers", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {};
-            $handle(handler, Activity, nothing);
-            $handle(handler, Accountable, nothing);
-            $handle(handler, Game, nothing);
-            expect(handler.$meta.$handle.head.constraint).to.equal(Activity);
-            expect(handler.$meta.$handle.head.next.constraint).to.equal(Accountable);
-            expect(handler.$meta.$handle.tail.prev.constraint).to.equal(Accountable);
-            expect(handler.$meta.$handle.tail.constraint).to.equal(Game);
+        it("should maintain linked-list of handlers", () => {
+            const handler = new CallbackHandler();
+            $handle(handler, Activity, Undefined);
+            $handle(handler, Accountable, Undefined);
+            $handle(handler, Game, Undefined);
+            expect(handler[Metadata].$handle.head.constraint).to.equal(Activity);
+            expect(handler[Metadata].$handle.head.next.constraint).to.equal(Accountable);
+            expect(handler[Metadata].$handle.tail.prev.constraint).to.equal(Accountable);
+            expect(handler[Metadata].$handle.tail.constraint).to.equal(Game);
         });
 
-        it("should order $handle contravariantly", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {};
-            $handle(handler, Accountable, nothing);
-            $handle(handler, Activity, nothing);
-            expect(handler.$meta.$handle.head.constraint).to.equal(Activity);
-            expect(handler.$meta.$handle.tail.constraint).to.equal(Accountable);
+        it("should order $handle contravariantly", () => {
+            const handler = new CallbackHandler();
+            $handle(handler, Accountable, Undefined);
+            $handle(handler, Activity, Undefined);
+            expect(handler[Metadata].$handle.head.constraint).to.equal(Activity);
+            expect(handler[Metadata].$handle.tail.constraint).to.equal(Accountable);
         });
 
-        it("should order $handle invariantly", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                something   = function (callback) {};
-            $handle(handler, Activity, nothing);
-            $handle(handler, Activity, something);
-            expect(handler.$meta.$handle.head.handler).to.equal(nothing);
-            expect(handler.$meta.$handle.tail.handler).to.equal(something);
+        it("should order $handle invariantly", () => {
+            const handler = new CallbackHandler();
+            $handle(handler, Activity, Undefined);
+            $handle(handler, Activity, True);
+            expect(handler[Metadata].$handle.head.handler).to.equal(Undefined);
+            expect(handler[Metadata].$handle.tail.handler).to.equal(True);
         });
 
-        it("should order $provide covariantly", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {};
-            $provide(handler, Activity, nothing);
-            $provide(handler, Accountable, nothing);
-            expect(handler.$meta.$provide.head.constraint).to.equal(Accountable);
-            expect(handler.$meta.$provide.tail.constraint).to.equal(Activity);
+        it("should order $provide covariantly", () => {
+            const handler = new CallbackHandler();
+            $provide(handler, Activity, Undefined);
+            $provide(handler, Accountable, Undefined);
+            expect(handler[Metadata].$provide.head.constraint).to.equal(Accountable);
+            expect(handler[Metadata].$provide.tail.constraint).to.equal(Activity);
         });
 
-        it("should order $provide invariantly", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                something   = function (callback) {};
-            $provide(handler, Activity, nothing);
-            $provide(handler, Activity, something);
-            expect(handler.$meta.$provide.head.handler).to.equal(nothing);
-            expect(handler.$meta.$provide.tail.handler).to.equal(something);
+        it("should order $provide invariantly", () => {
+            const handler = new CallbackHandler();
+            $provide(handler, Activity, Undefined);
+            $provide(handler, Activity, True);
+            expect(handler[Metadata].$provide.head.handler).to.equal(Undefined);
+            expect(handler[Metadata].$provide.tail.handler).to.equal(True);
         });
 
-        it("should order $lookup invariantly", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                something   = function (callback) {};
-            $lookup(handler, Activity, nothing);
-            $lookup(handler, Activity, something);
-            expect(handler.$meta.$lookup.head.handler).to.equal(nothing);
-            expect(handler.$meta.$lookup.tail.handler).to.equal(something);
+        it("should order $lookup invariantly", () => {
+            const handler = new CallbackHandler();
+            $lookup(handler, Activity, Undefined);
+            $lookup(handler, Activity, True);
+            expect(handler[Metadata].$lookup.head.handler).to.equal(Undefined);
+            expect(handler[Metadata].$lookup.tail.handler).to.equal(True);
         });
 
-        it("should index first registered handler with head and tail", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                unregister  = $handle(handler, True, nothing);
+        it("should index first registered handler with head and tail", () => {
+            const handler  = new CallbackHandler,
+                unregister = $handle(handler, True, Undefined);
             expect(unregister).to.be.a('function');
-            expect(handler.$meta.$handle.head.handler).to.equal(nothing);
-            expect(handler.$meta.$handle.tail.handler).to.equal(nothing);
+            expect(handler[Metadata].$handle.head.handler).to.equal(Undefined);
+            expect(handler[Metadata].$handle.tail.handler).to.equal(Undefined);
         });
 
-        it("should call function when handler removed", function () {
-            var handler        = new CallbackHandler,
-                func           = function (callback) {},
+        it("should call function when handler removed", () => {
+            let handler        = new CallbackHandler,
                 handlerRemoved = false,
-                unregister     = $handle(handler, True, func, function () {
+                unregister     = $handle(handler, True, Undefined, () => {
                     handlerRemoved = true;
                 });
             unregister();
             expect(handlerRemoved).to.be.true;
-            expect(handler.$meta.$handle).to.be.undefined;
+            expect(handler[Metadata].$handle).to.be.undefined;
         });
 
-        it("should suppress handler removed if requested", function () {
-            var handler        = new CallbackHandler,
-                func           = function (callback) {},
+        it("should suppress handler removed if requested", () => {
+            let handler        = new CallbackHandler,
                 handlerRemoved = false,
-                unregister     = $handle(handler, True, func, function () {
+                unregister     = $handle(handler, True, Undefined, () => {
                     handlerRemoved = true;
                 });
             unregister(false);
             expect(handlerRemoved).to.be.false;
-            expect(handler.$meta.$handle).to.be.undefined;
+            expect(handler[Metadata].$handle).to.be.undefined;
         });
 
-        it("should remove $handle when no handlers remain", function () {
-            var handler     = new CallbackHandler,
-                func        = function (callback) {},
-                unregister  = $handle(handler, True, func);
+        it("should remove $handle when no handlers remain", () => {
+            const handler    = new CallbackHandler,
+                  unregister = $handle(handler, True, Undefined);
             unregister();
-            expect(handler.$meta.$handle).to.be.undefined;
+            expect(handler[Metadata].$handle).to.be.undefined;
         });
     });
 
-    describe("#index", function () {
-        it("should index class constraints using assignID", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                index       = assignID(Activity);
-            $handle(handler, Activity, nothing);
-            expect(handler.$meta.$handle.getIndex(index).constraint).to.equal(Activity);
+    describe("#index", () => {
+        it("should index class constraints using assignID", () => {
+            const handler = new CallbackHandler,
+                  index   = assignID(Activity);
+            $handle(handler, Activity, Undefined);
+            expect(handler[Metadata].$handle.getIndex(index).constraint).to.equal(Activity);
         });
 
-        it("should index protocol constraints using assignID", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                index       = assignID(Game);
-            $handle(handler, Game, nothing);
-            expect(handler.$meta.$handle.getIndex(index).constraint).to.equal(Game);
+        it("should index protocol constraints using assignID", () => {
+            const handler   = new CallbackHandler,
+                  index     = assignID(Game);
+            $handle(handler, Game, Undefined);
+            expect(handler[Metadata].$handle.getIndex(index).constraint).to.equal(Game);
         });
 
-        it("should index string constraints using string", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {};
-            $handle(handler, "something", nothing);
-            expect(handler.$meta.$handle.getIndex("something").handler).to.equal(nothing);
+        it("should index string constraints using string", () => {
+            const handler   = new CallbackHandler();
+            $handle(handler, "something", Undefined);
+            expect(handler[Metadata].$handle.getIndex("something").handler).to.equal(Undefined);
         });
 
-        it("should move index to next match", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                something   = function (callback) {},
+        it("should move index to next match", () => {
+            let handler     = new CallbackHandler,
                 index       = assignID(Activity),
-                unregister  = $handle(handler, Activity, nothing);
-            $handle(handler, Activity, something);
-            expect(handler.$meta.$handle.getIndex(index).handler).to.equal(nothing);
+                unregister  = $handle(handler, Activity, Undefined);
+            $handle(handler, Activity, True);
+            expect(handler[Metadata].$handle.getIndex(index).handler).to.equal(Undefined);
             unregister();
-            expect(handler.$meta.$handle.getIndex(index).handler).to.equal(something);
+            expect(handler[Metadata].$handle.getIndex(index).handler).to.equal(True);
         });
 
-        it("should remove index when no more matches", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-                index       = assignID(Activity);
-            $handle(handler, Accountable, nothing);
-            var unregister  = $handle(handler, Activity, nothing);
+        it("should remove index when no more matches", () => {
+            const handler   = new CallbackHandler,
+                  index     = assignID(Activity);
+            $handle(handler, Accountable, Undefined);
+            const unregister  = $handle(handler, Activity, Undefined);
             unregister();
-            expect(handler.$meta.$handle.getIndex(index)).to.be.undefined;
+            expect(handler[Metadata].$handle.getIndex(index)).to.be.undefined;
         });
     });
 
-    describe("#removeAll", function () {
-        it("should remove all $handler definitions", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-            removeCount = 0,
-            removed     = function () { ++removeCount; };
-            $handle(handler, Accountable, nothing, removed);
-            $handle(handler, Activity, nothing, removed);
+    describe("#removeAll", () => {
+        it("should remove all $handler definitions", () => {
+            let handler     = new CallbackHandler,
+                removeCount = 0,
+                removed     = () => { ++removeCount; };
+            $handle(handler, Accountable, Undefined, removed);
+            $handle(handler, Activity, Undefined, removed);
         $handle.removeAll(handler);
         expect(removeCount).to.equal(2);
-            expect(handler.$meta.$handle).to.be.undefined;
+            expect(handler[Metadata].$handle).to.be.undefined;
         });
 
-        it("should remove all $provider definitions", function () {
-            var handler     = new CallbackHandler,
-                nothing     = function (callback) {},
-            removeCount = 0,
-            removed     = function () { ++removeCount; };
-            $provide(handler, Activity, nothing, removed);
-            $provide(handler, Accountable, nothing, removed);
+        it("should remove all $provider definitions", () => {
+            let handler     = new CallbackHandler,
+                removeCount = 0,
+                removed     = () => { ++removeCount; };
+            $provide(handler, Activity, Undefined, removed);
+            $provide(handler, Accountable, Undefined, removed);
         $provide.removeAll(handler);
         expect(removeCount).to.equal(2);
-            expect(handler.$meta.$provide).to.be.undefined;
+            expect(handler[Metadata].$provide).to.be.undefined;
         });
     });
 });
 
-describe("CallbackHandler", function () {
-    describe("#handle", function () {
-        it("should not handle nothing", function () {
-            var casino     = new Casino;
+describe("CallbackHandler", () => {
+    describe("#handle", () => {
+        it("should not handle nothing", () => {
+            const casino   = new Casino();
             expect(casino.handle()).to.be.false;
             expect(casino.handle(null)).to.be.false;
         });
 
-        it("should not handle anonymous objects", function () {
-            var casino     = new Casino;
+        it("should not handle anonymous objects", () => {
+            const casino   = new Casino();
             expect(casino.handle({name:'Joe'})).to.be.false;
         });
 
-        it("should handle callbacks", function () {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier),
-                countMoney = new CountMoney;
+        it("should handle callbacks", () => {
+            const cashier    = new Cashier(1000000.00),
+                  casino     = new Casino('Belagio').addHandlers(cashier),
+                  countMoney = new CountMoney;
             expect(casino.handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000000.00);
         });
 
-        it("should handle callbacks per instance", function () {
-            var cashier    = new Cashier(1000000.00),
-                handler    = new CallbackHandler;
+        it("should handle callbacks per instance", () => {
+            const cashier    = new Cashier(1000000.00),
+                  handler    = new CallbackHandler();
             $handle(handler, Cashier, function (cashier) {
                 this.cashier = cashier;
             });
@@ -479,38 +474,37 @@ describe("CallbackHandler", function () {
             expect(handler.cashier).to.equal(cashier);
         });
 
-        it("should handle callback hierarchy", function () {
-            var cashier    = new Cashier(1000000.00),
-                inventory  = new (CallbackHandler.extend({
-                    $handle:[
-                        Accountable, function (accountable) {
-                            this.accountable = accountable;
-                        }]
-                }));
+        it("should handle callback hierarchy", () => {
+            const cashier   = new Cashier(1000000.00),
+                  inventory = new (CallbackHandler.extend({
+                      $handle:[
+                          Accountable, function (accountable) {
+                              this.accountable = accountable;
+                          }]
+                  }));
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
         });
 
-        it("should ignore callback if $NOT_HANDLED", function () {
-            var cashier    = new Cashier(1000000.00),
-                inventory  = new (CallbackHandler.extend({
-                    $handle:[
-                        Cashier, function (cashier) {
-                            return $NOT_HANDLED;
-                        }]
-                }));
+        it("should ignore callback if $NOT_HANDLED", () => {
+            const cashier   = new Cashier(1000000.00),
+                  inventory = new (CallbackHandler.extend({
+                      $handle:[
+                          Cashier, () =>  $NOT_HANDLED
+                      ]
+                  }));
             expect(inventory.handle(cashier)).to.be.false;
         });
 
-        it("should handle callback invariantly", function () {
-            var cashier     = new Cashier(1000000.00),
-                accountable = new Accountable(1.00),
-                inventory   = new (CallbackHandler.extend({
-                    $handle:[
-                        $eq(Accountable), function (accountable) {
-                            this.accountable = accountable;
-                        }]
-                }));
+        it("should handle callback invariantly", () => {
+            const cashier     = new Cashier(1000000.00),
+                  accountable = new Accountable(1.00),
+                  inventory   = new (CallbackHandler.extend({
+                      $handle:[
+                          $eq(Accountable), function (accountable) {
+                              this.accountable = accountable;
+                          }]
+                  }));
             expect(inventory.handle(cashier)).to.be.false;
             expect(inventory.handle(accountable)).to.be.true;
             expect(inventory.accountable).to.equal(accountable);
@@ -521,134 +515,117 @@ describe("CallbackHandler", function () {
             expect(inventory.accountable).to.equal(cashier);
         });
 
-        it("should stop early if handle callback invariantly", function () {
-            var cashier     = new Cashier(1000000.00),
-                accountable = new Accountable(1.00),
-                inventory   = new (CallbackHandler.extend({
-                    $handle:[
-                        Accountable, function (accountable) {
-                        },
-                        null, function (anything) {
-                        }]
-                }));
+        it("should stop early if handle callback invariantly", () => {
+            const cashier     = new Cashier(1000000.00),
+                  accountable = new Accountable(1.00),
+                  inventory   = new (CallbackHandler.extend({
+                      $handle:[
+                          Accountable, Undefined,
+                          null, Undefined]
+                  }));
             expect(inventory.handle($eq(accountable))).to.be.true;
             expect(inventory.handle($eq(cashier))).to.be.false;
         });
 
-        it("should handle callback protocol conformance", function () {
-            var blackjack  = new CardTable('Blackjack'),
-                inventory  = new (CallbackHandler.extend({
-                    $handle:[
-                        Game, function (game) {
-                            this.game = game;
-                        }]
-                }));
+        it("should handle callback protocol conformance", () => {
+            const blackjack  = new CardTable('Blackjack'),
+                  inventory  = new (CallbackHandler.extend({
+                      $handle:[
+                          Game, function (game) {
+                              this.game = game;
+                          }]
+                  }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.game).to.equal(blackjack);
         });
 
-        it("should prefer callback hierarchy over protocol conformance", function () {
-            var blackjack  = new CardTable('Blackjack'),
-                inventory  = new (CallbackHandler.extend({
-                    $handle:[
-                        Activity, function (activity) {
-                            this.activity = activity;
-                        },
-                        Game, function (game) {
-                            this.game = game;
-                        }]
-                }));
+        it("should prefer callback hierarchy over protocol conformance", () => {
+            const blackjack  = new CardTable('Blackjack'),
+                  inventory  = new (CallbackHandler.extend({
+                      $handle:[
+                          Activity, function (activity) {
+                              this.activity = activity;
+                          },
+                          Game, function (game) {
+                              this.game = game;
+                          }]
+                  }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.activity).to.equal(blackjack);
             expect(inventory.game).to.be.undefined;
         });
 
-        it("should prefer callback hierarchy and continue with protocol conformance", function () {
-            var blackjack  = new CardTable('Blackjack'),
-                inventory  = new (CallbackHandler.extend({
-                    $handle:[
-                        Activity, function (activity) {
-                            this.activity = activity;
-                            return false;
-                        },
-                        Game, function (game) {
-                            this.game = game;
-                        }]
-                    }));
+        it("should prefer callback hierarchy and continue with protocol conformance", () => {
+            const blackjack  = new CardTable('Blackjack'),
+                  inventory  = new (CallbackHandler.extend({
+                      $handle:[
+                          Activity, function (activity) {
+                              this.activity = activity;
+                              return false;
+                          },
+                          Game, function (game) {
+                              this.game = game;
+                          }]
+                  }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.activity).to.equal(blackjack);
             expect(inventory.game).to.equal(blackjack);
         });
 
-        it("should handle unknown callback", function () {
-            var blackjack = new CardTable('Blackjack'),
-                inventory = new (CallbackHandler.extend({
-                    $handle:[null, function (callback) {
-                        callback.check = true;
-                    }]
-                }));
+        it("should handle unknown callback", () => {
+            const blackjack = new CardTable('Blackjack'),
+                  inventory = new (CallbackHandler.extend({
+                      $handle:[
+                          null, callback => callback.check = true
+                      ]
+                  }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(blackjack.check).to.be.true;
         });
 
-        it("should handle unknown callback via delegate", function () {
-            var blackjack = new CardTable('Blackjack'),
-                inventory = new (Base.extend($callbacks, {
-                    $handle:[null, function (callback) {
-                        callback.check = true;
-                    }]
-                }));
-                casino     = new Casino('Belagio').addHandlers(inventory);
+        it("should handle unknown callback via delegate", () => {
+            const blackjack = new CardTable('Blackjack'),
+                  inventory = new (Base.extend($callbacks, {
+                      $handle:[
+                          null, callback => callback.check = true
+                      ]
+                  })),
+                  casino   = new Casino('Belagio').addHandlers(inventory);
             expect(casino.handle(blackjack)).to.be.true;
             expect(blackjack.check).to.be.true;
         });
 
-        it("should allow handlers to chain to base", function () {
-            var blackjack  = new CardTable('Blackjack'),
-                Tagger     = CallbackHandler.extend({
-                    $handle:[
-                        Activity, function (activity) {
-                            activity.tagged = true;
-                        }]
-                });
-                inventory  = new (Tagger.extend({
-                    $handle:[
-                        Activity, function (activity) {
-                            this.base();
-                        }]
-                }));
+        it("should allow handlers to chain to base", () => {
+            const blackjack = new CardTable('Blackjack'),
+                  Tagger    = CallbackHandler.extend({
+                      $handle:[
+                          Activity, activity => activity.tagged = true
+                      ]
+                  }),
+                  inventory  = new (Tagger.extend({
+                      $handle:[
+                          Activity, function (activity) {
+                              this.base();
+                          }]
+                  }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(blackjack.tagged).to.be.true;
         });
 
-        it("should handle callbacks with precedence rules", function () {
-            var matched   = -1,
+        it("should handle callbacks with precedence rules", () => {
+            let matched   = -1,
                 Checkers  = Base.extend(Game),
                 inventory = new (CallbackHandler.extend({
                     $handle:[
-                        function (constraint) {
-                            return constraint === PitBoss;
-                        }, function (callback) {
-                            matched = 0;
-                        },
-                        null,        function (callback) {
-                            matched = 1;
-                        },
-                        Game,        function (callback) {
-                            matched = 2;
-                        },
-                        Security,    function (callback) {
-                            matched = 3;
-                        },
-                        Activity,    function (callback) {
-                            matched = 5;
-                        },
-                        Accountable, function (callback) {
-                            matched = 4;
-                        },
-                        CardTable,   function (callback) {
-                            matched = 6;
-                        }]
+                        constraint => constraint === PitBoss,
+                                     () => { matched = 0; },
+                        null,        () => { matched = 1; },
+                        Game,        () => { matched = 2; },
+                        Security,    () => { matched = 3; },
+                        Activity,    () => { matched = 5; },
+                        Accountable, () => { matched = 4; },
+                        CardTable  , () => { matched = 6; }
+                    ]
                 }));
             inventory.handle(new CardTable('3 Card Poker'));
             expect(matched).to.equal(6);
@@ -666,12 +643,12 @@ describe("CallbackHandler", function () {
             expect(matched).to.equal(0);
         });
 
-        it("should handle callbacks greedy", function () {
-            var cashier    = new Cashier(1000000.00),
-                blackjack  = new Activity('Blackjack'),
-                casino     = new Casino('Belagio')
-                .addHandlers(cashier, blackjack),
-            countMoney = new CountMoney;
+        it("should handle callbacks greedy", () => {
+            const cashier   = new Cashier(1000000.00),
+                  blackjack = new Activity('Blackjack'),
+                  casino    = new Casino('Belagio')
+                     .addHandlers(cashier, blackjack),
+                  countMoney = new CountMoney();
             cashier.transfer(50000, blackjack)
 
             expect(blackjack.balance).to.equal(50000);
@@ -680,25 +657,25 @@ describe("CallbackHandler", function () {
             expect(countMoney.total).to.equal(1000000.00);
         });
 
-        it("should handle callbacks anonymously", function () {
-            var countMoney = new CountMoney,
-                handler    = CallbackHandler.accepting(function (countMoney) {
-                    countMoney.record(50);
-                }, CountMoney);
+        it("should handle callbacks anonymously", () => {
+            const countMoney = new CountMoney(),
+                  handler    = CallbackHandler.accepting(countMoney => {
+                      countMoney.record(50);
+                  }, CountMoney);
             expect(handler.handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(50);
         });
 
-        it("should handle compound keys", function () {
-            var cashier    = new Cashier(1000000.00),
-                blackjack  = new Activity('Blackjack'),
-                bank       = new (Accountable.extend()),
-                inventory  = new (CallbackHandler.extend({
-                    $handle:[
-                        [Cashier, Activity], function (accountable) {
-                            this.accountable = accountable;
-                        }]
-                }));
+        it("should handle compound keys", () => {
+            const cashier   = new Cashier(1000000.00),
+                  blackjack = new Activity('Blackjack'),
+                  bank      = new (Accountable.extend()),
+                  inventory = new (CallbackHandler.extend({
+                      $handle:[
+                          [Cashier, Activity], function (accountable) {
+                              this.accountable = accountable;
+                          }]
+                  }));
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
             expect(inventory.handle(blackjack)).to.be.true;
@@ -706,14 +683,14 @@ describe("CallbackHandler", function () {
             expect(inventory.handle(bank)).to.be.false;
         });
 
-        it("should unregister compound keys", function () {
-            var cashier    = new Cashier(1000000.00),
-                blackjack  = new Activity('Blackjack'),
-                bank       = new (Accountable.extend()),
-                inventory  = new CallbackHandler,
-                unregister = $handle(inventory, [Cashier, Activity], function (accountable) {
-                    this.accountable = accountable;
-                });
+        it("should unregister compound keys", () => {
+            const cashier    = new Cashier(1000000.00),
+                  blackjack  = new Activity('Blackjack'),
+                  bank       = new (Accountable.extend()),
+                  inventory  = new CallbackHandler,
+                  unregister = $handle(inventory, [Cashier, Activity], function (accountable) {
+                      this.accountable = accountable;
+                  });
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
             expect(inventory.handle(blackjack)).to.be.true;
@@ -725,41 +702,40 @@ describe("CallbackHandler", function () {
         });
     })
 
-    describe("#defer", function () {
-        it("should handle objects eventually", function (done) {
-            var cashier    = new Cashier(750000.00),
-                casino     = new Casino('Venetian').addHandlers(cashier),
-                wireMoney  = new WireMoney(250000);
-            Promise.resolve(casino.defer(wireMoney)).then(function (handled) {
+    describe("#defer", () => {
+        it("should handle objects eventually", done => {
+            const cashier   = new Cashier(750000.00),
+                  casino    = new Casino('Venetian').addHandlers(cashier),
+                  wireMoney = new WireMoney(250000);
+            Promise.resolve(casino.defer(wireMoney)).then(handled => {
                 expect(handled).to.be.true;
                 expect(wireMoney.received).to.equal(250000);
                 done();
             });
         });
 
-        it("should handle objects eventually with promise", function (done) {
-            var bank       = (new (CallbackHandler.extend({
-                    $handle:[
-                        WireMoney, function (wireMoney) {
-                            wireMoney.received = 50000;
-                            return Promise.delay(wireMoney, 100);
-                        }]
-                }))),
-                casino     = new Casino('Venetian').addHandlers(bank),
-                wireMoney  = new WireMoney(150000);
-            Promise.resolve(casino.defer(wireMoney)).then(function (handled) {
+        it("should handle objects eventually with promise", done => {
+            const bank = (new (CallbackHandler.extend({
+                      $handle:[
+                         WireMoney, wireMoney => {
+                             wireMoney.received = 50000;
+                             return Promise.delay(100).then(() => wireMoney);
+                          }]
+                  }))),
+                  casino    = new Casino('Venetian').addHandlers(bank),
+                  wireMoney = new WireMoney(150000);
+            Promise.resolve(casino.defer(wireMoney)).then(handled => {
                 expect(handled).to.be.true;
                 expect(wireMoney.received).to.equal(50000);
                 done();
             });
         });
 
-        it("should handle callbacks anonymously with promise", function (done) {
-            var handler    = CallbackHandler.accepting(function (countMoney) {
-                    countMoney.record(50);
-                }, CountMoney),
-                countMoney = new CountMoney;
-            Promise.resolve(handler.defer(countMoney)).then(function (handled) {
+        it("should handle callbacks anonymously with promise", done => {
+            const handler = CallbackHandler.accepting(
+                    countMoney => countMoney.record(50), CountMoney),
+                  countMoney = new CountMoney();
+            Promise.resolve(handler.defer(countMoney)).then(handled => {
                 expect(handled).to.be.true;
                 expect(countMoney.total).to.equal(50);
                 done();
@@ -767,211 +743,198 @@ describe("CallbackHandler", function () {
         });
     });
 
-    describe("#resolve", function () {
-        it("should resolve explicit objects", function () {
-            var cashier    = new Cashier(1000000.00),
-                inventory  = new (CallbackHandler.extend({
-                    $provide:[Cashier, cashier]
-                }));
+    describe("#resolve", () => {
+        it("should resolve explicit objects", () => {
+            const cashier   = new Cashier(1000000.00),
+                  inventory = new (CallbackHandler.extend({
+                      $provide:[Cashier, cashier]
+                  }));
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
 
-        it("should infer constraint from explicit objects", function () {
-            var cashier    = new Cashier(1000000.00),
-                inventory  = new CallbackHandler;
+        it("should infer constraint from explicit objects", () => {
+            const cashier   = new Cashier(1000000.00),
+                  inventory = new CallbackHandler();
             $provide(inventory, cashier);
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
 
-        it("should resolve copy of object with $copy", function () {
-            var Circle     = Base.extend({
-                    constructor: function (radius) {
-                        this.radius = radius;
-                    },
-                    copy: function () {
-                        return new Circle(this.radius);
-                    }
-                }),
-                circle     = new Circle(2),
-                shapes     = new (CallbackHandler.extend({
-                    $provide:[Circle, $copy(circle)]
-                }));
-           var shape = shapes.resolve(Circle);
+        it("should resolve copy of object with $copy", () => {
+            const Circle = Base.extend({
+                      constructor(radius) {
+                          this.radius = radius;
+                      },
+                      copy() {
+                          return new Circle(this.radius);
+                      }
+                  }),
+                  circle = new Circle(2),
+                  shapes = new (CallbackHandler.extend({
+                      $provide:[Circle, $copy(circle)]
+                  }));
+           const shape = shapes.resolve(Circle);
            expect(shape).to.not.equal(circle);
            expect(shape.radius).to.equal(2);
         });
 
-        it("should resolve objects by class implicitly", function () {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier);
+        it("should resolve objects by class implicitly", () => {
+            const cashier = new Cashier(1000000.00),
+                  casino  = new Casino('Belagio').addHandlers(cashier);
             expect(casino.resolve(Casino)).to.equal(casino);
             expect(casino.resolve(Cashier)).to.equal(cashier);
         });
 
-        it("should resolve objects by protocol implicitly", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                casino     = new Casino('Belagio').addHandlers(blackjack);
+        it("should resolve objects by protocol implicitly", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  casino    = new Casino('Belagio').addHandlers(blackjack);
             expect(casino.resolve(Game)).to.equal(blackjack);
         });
 
-        it("should resolve objects by class explicitly", function () {
-            var casino     = new Casino('Belagio'),
-                pitBoss    = casino.resolve(PitBoss);
+        it("should resolve objects by class explicitly", () => {
+            const casino  = new Casino('Belagio'),
+                  pitBoss = casino.resolve(PitBoss);
             expect(pitBoss).to.be.an.instanceOf(PitBoss);
         });
 
-        it("should resolve objects by per instance", function () {
-            var cashier    = new Cashier(1000000.00),
-                provider   = new CallbackHandler;
-            $provide(provider, Cashier, function (resolution) {
-                return cashier;
-            });
+        it("should resolve objects by per instance", () => {
+            const cashier  = new Cashier(1000000.00),
+                  provider = new CallbackHandler();
+            $provide(provider, Cashier, () => cashier);
             expect(provider.resolve(Cashier)).to.equal(cashier);
         });
 
-        it("should resolve objects by class invariantly", function () {
-            var cashier    = new Cashier(1000000.00),
-                inventory  = new (CallbackHandler.extend({
-                    $provide:[
-                        $eq(Cashier), function (resolution) {
-                            return cashier;
-                        }]
-                }));
+        it("should resolve objects by class invariantly", () => {
+            const cashier   = new Cashier(1000000.00),
+                  inventory = new (CallbackHandler.extend({
+                      $provide:[
+                          $eq(Cashier), () => cashier
+                      ]
+                  }));
             expect(inventory.resolve(Accountable)).to.be.undefined;
             expect(inventory.resolve(Cashier)).to.equal(cashier);
-            $provide(inventory, Cashier, function (resolution) {
-                return cashier;
-            });
+            $provide(inventory, Cashier, resolution => cashier);
             expect(inventory.resolve(Accountable)).to.equal(cashier);
         });
 
-        it("should resolve objects by protocol invariantly", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $provide:[
-                        $eq(Game), function (resolution) {
-                            return blackjack;
-                        }]
-                }));
+        it("should resolve objects by protocol invariantly", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $provide:[
+                          $eq(Game), () => blackjack
+                      ]
+                  }));
             expect(cardGames.resolve(CardTable)).to.be.undefined;
             expect(cardGames.resolve(Game)).to.equal(blackjack);
         });
 
-        it("should resolve objects by class instantly", function () {
-            var cashier    = new Cashier(1000000.00),
-                blackjack  = new CardTable("BlackJack", 1, 5),
-                inventory  = new (CallbackHandler.extend({
-                    $provide:[
-                        Cashier, function (resolution) {
-                            return cashier;
-                        },
-                        CardTable, function (resolution) {
-                            return Promise.resolve(blackjack);
-                        }]
-                }));
+        it("should resolve objects by class instantly", () => {
+            const cashier   = new Cashier(1000000.00),
+                  blackjack = new CardTable("BlackJack", 1, 5),
+                  inventory = new (CallbackHandler.extend({
+                      $provide:[
+                          Cashier, () => cashier,
+                          CardTable, () => Promise.resolve(blackjack)
+                      ]
+                  }));
             expect(inventory.resolve($instant(Cashier))).to.equal(cashier);
             expect($isPromise(inventory.resolve(CardTable))).to.be.true;
             expect(inventory.resolve($instant(CardTable))).to.be.undefined;
         });
 
-        it("should resolve objects by protocol instantly", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $provide:[
-                        Game, function (resolution) {
-                            return Promise.resolve(blackjack);
-                        }]
-                }));
+        it("should resolve objects by protocol instantly", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $provide:[
+                          Game, () => Promise.resolve(blackjack)
+                      ]
+                  }));
             expect($isPromise(cardGames.resolve(Game))).to.be.true;
             expect(cardGames.resolve($instant(Game))).to.be.undefined;
         });
 
-        it("should resolve by string literal", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $provide:[
-                        'BlackJack', function (resolution) {
-                            return blackjack;
-                        }]
-                }));
+        it("should resolve by string literal", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $provide:[
+                          'BlackJack', () =>  blackjack
+                      ]
+                  }));
             expect(cardGames.resolve('BlackJack')).to.equal(blackjack);
         });
 
-        it("should resolve by string instance", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $provide:[
-                        'BlackJack', function (resolution) {
-                            return blackjack;
-                        }]
-                }));
+        it("should resolve by string instance", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                     $provide:[
+                         'BlackJack', () =>  blackjack
+                     ]
+                  }));
             expect(cardGames.resolve(new String("BlackJack"))).to.equal(blackjack);
         });
 
-        it("should resolve string by regular expression", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $provide:[
-                        /black/i, function (resolution) {
-                            return blackjack;
-                        }]
-                }));
+        it("should resolve string by regular expression", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $provide:[
+                          /black/i, () =>  blackjack
+                      ]
+                  }));
             expect(cardGames.resolve('BlackJack')).to.equal(blackjack);
         });
 
-        it("should resolve instances using instance class", function () {
-            var Config  = Base.extend({
-                    constructor: function (key) {
-                        this.extend({
-                            get key() { return key; }
-                        });
-                    }
-                });
-                settings  = new (CallbackHandler.extend({
-                    $provide:[
-                        Config, function (resolution) {
-                            var config = resolution.key,
-                                key    = config.key;
-                            if (key == "url") {
-                                return "my.server.com";
-                            } else if (key == "user") {
-                                return "dba";
-                            }
-                        }]
-                }));
+        it("should resolve instances using instance class", () => {
+            const Config = Base.extend({
+                      constructor(key) {
+                          this.extend({
+                              get key() { return key; }
+                          });
+                      }
+                  }), 
+                  settings = new (CallbackHandler.extend({
+                      $provide:[
+                          Config, resolution => {
+                              const config = resolution.key,
+                                    key    = config.key;
+                              if (key == "url") {
+                                  return "my.server.com";
+                              } else if (key == "user") {
+                                  return "dba";
+                              }
+                          }]
+                  }));
                 expect(settings.resolve(new Config("user"))).to.equal("dba");
                 expect(settings.resolve(new Config("name"))).to.be.undefined;
         });
 
-        it("should resolve objects with compound keys", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cashier    = new Cashier(1000000.00),
-                cardGames  = new (CallbackHandler.extend({
-                    $provide:[
-                        [CardTable, Cashier], function (resolution) {
-                            var key = resolution.key;
-                            if (key.conformsTo(Game)) {
-                                return blackjack;
-                            } else if (key === Cashier) {
-                                return cashier;
-                            }
-                        }]
-                }));
+        it("should resolve objects with compound keys", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cashier   = new Cashier(1000000.00),
+                  cardGames = new (CallbackHandler.extend({
+                      $provide:[
+                          [CardTable, Cashier], resolution => {
+                              const key = resolution.key;
+                              if (key.conformsTo(Game)) {
+                                  return blackjack;
+                              } else if (key === Cashier) {
+                                  return cashier;
+                              }
+                          }]
+                  }));
             expect(cardGames.resolve(Game)).to.equal(blackjack);
             expect(cardGames.resolve(Cashier)).to.equal(cashier);
         });
 
-        it("should unregister objects with compound keys", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cashier    = new Cashier(1000000.00),
-                cardGames  = new CallbackHandler,
-                unregister = $provide(cardGames, [CardTable, Cashier], function (resolution) {
-                    var key = resolution.key;
-                    if (key.conformsTo(Game)) {
-                        return blackjack;
-                    } else if (key === Cashier) {
-                        return cashier;
-               }});
+        it("should unregister objects with compound keys", () => {
+            const blackjack  = new CardTable("BlackJack", 1, 5),
+                  cashier    = new Cashier(1000000.00),
+                  cardGames  = new CallbackHandler(),
+                  unregister = $provide(cardGames, [CardTable, Cashier], resolution => {
+                      const key = resolution.key;
+                      if (key.conformsTo(Game)) {
+                          return blackjack;
+                      } else if (key === Cashier) {
+                          return cashier;
+                 }});
             expect(cardGames.resolve(Game)).to.equal(blackjack);
             expect(cardGames.resolve(Cashier)).to.equal(cashier);
             unregister();
@@ -979,77 +942,60 @@ describe("CallbackHandler", function () {
             expect(cardGames.resolve(Cashier)).to.be.undefined;
         });
 
-        it("should not resolve objects if not found", function () {
-            var something = new CallbackHandler;
+        it("should not resolve objects if not found", () => {
+            const something = new CallbackHandler();
             expect(something.resolve(Cashier)).to.be.undefined;
         });
 
-        it("should not resolve objects if $NOT_HANDLED", function () {
-            var inventory  = new (CallbackHandler.extend({
-                    $provide:[
-                        Cashier, function (resolution) {
-                            return $NOT_HANDLED;
-                        }]
-                }));
+        it("should not resolve objects if $NOT_HANDLED", () => {
+            const inventory = new (CallbackHandler.extend({
+                      $provide:[
+                          Cashier, resolution => $NOT_HANDLED]
+                  }));
             expect(inventory.resolve(Cashier)).to.be.undefined;
         });
 
-        it("should resolve unknown objects", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $provide:[
-                        True, function (resolution) {
-                            if (resolution.key === CardTable) {
-                                return blackjack;
-                            }
-                        }]
-                }));
+        it("should resolve unknown objects", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $provide:[
+                          True, resolution => {
+                              if (resolution.key === CardTable) {
+                                  return blackjack;
+                              }
+                          }]
+                  }));
             expect(cardGames.resolve(CardTable)).to.equal(blackjack);
             expect(cardGames.resolve(Game)).to.be.undefined;
         });
 
-        it("should resolve objects by class eventually", function (done) {
-            var casino = new Casino('Venetian');
-            Promise.resolve(casino.resolve(DrinkServer)).then(function (server) {
+        it("should resolve objects by class eventually", done => {
+            const casino = new Casino('Venetian');
+            Promise.resolve(casino.resolve(DrinkServer)).then(server => {
                 expect(server).to.be.an.instanceOf(DrinkServer);
                 done();
             });
         });
 
-        it("should not resolve by string", function () {
-            var casino = new Casino('Venetian');
+        it("should not resolve by string", () => {
+            const casino = new Casino('Venetian');
             expect(casino.resolve("slot machine")).to.be.undefined;
         });
 
-        it("should resolve with precedence rules", function () {
-            var Checkers  = Base.extend(Game),
-                inventory = new (CallbackHandler.extend({
-                    $provide:[
-                        function (constraint) {
-                            return constraint === PitBoss;
-                        }, function (callback) {
-                            return 0;
-                            },
-                        null, function (callback) {
-                            return 1;
-                        },
-                        Checkers, function (callback) {
-                            return 2;
-                        },
-                        Level1Security, function (callback) {
-                            return 3;
-                        },
-                        Activity, function (callback) {
-                            return 5;
-                        },
-                        Accountable, function (callback) {
-                            return 4;
-                        },
-                        CardTable, function (callback) {
-                            return 6;
-                            }]
-                }));
-                      expect(inventory.resolve(CardTable)).to.equal(6);
+        it("should resolve with precedence rules", () => {
+            const Checkers  = Base.extend(Game),
+                  inventory = new (CallbackHandler.extend({
+                      $provide:[
+                          constraint => constraint === PitBoss,() => 0,
+                          null, () => 1,
+                          Checkers, () => 2,
+                          Level1Security, () => 3,
+                          Activity, () => 5,
+                          Accountable, () => 4,
+                          CardTable, () => 6
+                          ]
+                  }));
+            expect(inventory.resolve(CardTable)).to.equal(6);
             expect(inventory.resolve(Activity)).to.equal(5);
             expect(inventory.resolve(Cashier)).to.equal(1);
             expect(inventory.resolve(Security)).to.equal(3);
@@ -1059,157 +1005,142 @@ describe("CallbackHandler", function () {
         });
     });
 
-    describe("#resolveAll", function () {
-        it("should resolve all objects by class explicitly", function (done) {
-            var belagio    = new Casino('Belagio'),
-                venetian   = new Casino('Venetian'),
-                paris      = new Casino('Paris'),
-                strip      = belagio.next(venetian, paris);
-            Promise.resolve(strip.resolveAll(Casino)).then(function (casinos) {
+    describe("#resolveAll", () => {
+        it("should resolve all objects by class explicitly", done => {
+            const belagio  = new Casino('Belagio'),
+                  venetian = new Casino('Venetian'),
+                  paris    = new Casino('Paris'),
+                  strip    = belagio.next(venetian, paris);
+            Promise.resolve(strip.resolveAll(Casino)).then(casinos => {
                 expect(casinos).to.eql([belagio, venetian, paris]);
                 done();
             });
         });
 
-        it("should resolve all objects by class eventually", function (done) {
-            var stop1      = [ new PitBoss("Craig"),  new PitBoss("Matthew") ],
-                stop2      = [ new PitBoss("Brenda"), new PitBoss("Lauren"), new PitBoss("Kaitlyn") ],
-                stop3      = [ new PitBoss("Phil") ],
-                bus1       = new (CallbackHandler.extend({
-                    $provide:[ PitBoss, function (resolution) {
-                        expect(resolution.isMany).to.be.true;
-                        return Promise.delay(stop1, 75);
-                    }]
-                })),
-                bus2       = new (CallbackHandler.extend({
-                    $provide:[ PitBoss, function (resolution) {
-                        expect(resolution.isMany).to.be.true;
-                        return Promise.delay(stop2, 100);
-                    }]
-                })),
-                bus3       = new (CallbackHandler.extend({
-                    $provide:[ PitBoss, function (resolution) {
-                        expect(resolution.isMany).to.be.true;
-                        return Promise.delay(stop3, 50);
-                    }]
-                })),
-                company    = bus1.next(bus2, bus3);
-            Promise.resolve(company.resolveAll(PitBoss)).then(function (pitBosses) {
-                expect(pitBosses).to.eql(js.Array2.flatten([stop1, stop2, stop3]));
+        it("should resolve all objects by class eventually", done => {
+            const stop1 = [ new PitBoss("Craig"),  new PitBoss("Matthew") ],
+                  stop2 = [ new PitBoss("Brenda"), new PitBoss("Lauren"), new PitBoss("Kaitlyn") ],
+                  stop3 = [ new PitBoss("Phil") ],
+                  bus1  = new (CallbackHandler.extend({
+                      $provide:[ PitBoss, resolution => {
+                          expect(resolution.isMany).to.be.true;
+                          return Promise.delay(75).then(() => stop1);
+                      }]
+                  })),
+                  bus2  = new (CallbackHandler.extend({
+                      $provide:[ PitBoss, resolution => {
+                          expect(resolution.isMany).to.be.true;
+                          return Promise.delay(100).then(() => stop2);
+                      }]
+                  })),
+                  bus3  = new (CallbackHandler.extend({
+                      $provide:[ PitBoss, resolution => {
+                          expect(resolution.isMany).to.be.true;
+                          return Promise.delay(50).then(() => stop3);
+                      }]
+                  })),
+                  company = bus1.next(bus2, bus3);
+            Promise.resolve(company.resolveAll(PitBoss)).then(pitBosses => {
+                expect(pitBosses).to.eql($flatten([stop1, stop2, stop3]));
                 done();
             });
         });
 
-        it("should resolve all objects by class instantly", function () {
-            var belagio    = new Casino('Belagio'),
-                venetian   = new Casino('Venetian'),
-                paris      = new Casino('Paris'),
-                strip      = new (CallbackHandler.extend({
-                    $provide:[
-                        Casino, function (resolution) {
-                            return venetian;
-                        },
-                        Casino, function (resolution) {
-                            return Promise.resolve(belagio);
-                        },
-                        Casino, function (resolution) {
-                            return paris;
-                        }]
-                }));
-            var casinos = strip.resolveAll($instant(Casino));
+        it("should resolve all objects by class instantly", () => {
+            const belagio  = new Casino('Belagio'),
+                  venetian = new Casino('Venetian'),
+                  paris    = new Casino('Paris'),
+                  strip    = new (CallbackHandler.extend({
+                      $provide:[
+                          Casino, () => venetian,
+                          Casino, () => Promise.resolve(belagio),
+                          Casino, () => paris
+                      ]
+                  }));
+            const casinos = strip.resolveAll($instant(Casino));
             expect(casinos).to.eql([venetian, paris]);
         });
 
-        it("should return empty array if none resolved", function (done) {
-            Promise.resolve((new CallbackHandler).resolveAll(Casino)).then(function (casinos) {
+        it("should return empty array if none resolved", done => {
+            Promise.resolve((new CallbackHandler).resolveAll(Casino)).then(casinos => {
                 expect(casinos).to.have.length(0);
                 done();
             });
         });
 
-        it("should return empty array instantly if none resolved", function () {
-            var belagio  = new Casino('Belagio'),
-                strip    = new (CallbackHandler.extend({
-                    $provide:[
-                        Casino, function (resolution) {
-                            return Promise.resolve(belagio);
-                        }]
-                }));
-            var casinos = strip.resolveAll($instant(Casino));
+        it("should return empty array instantly if none resolved", () => {
+            const belagio = new Casino('Belagio'),
+                  strip   = new (CallbackHandler.extend({
+                      $provide:[
+                          Casino, () => Promise.resolve(belagio)
+                      ]
+                  }));
+            const casinos = strip.resolveAll($instant(Casino));
             expect(casinos).to.have.length(0);
         });
     });
 
-    describe("#lookup", function () {
-        it("should lookup by class", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $lookup:[
-                        CardTable, function (lookup) {
-                            return blackjack;
-                        },
-                        null, function (lookup) {
-                            return blackjack;
-                        }]
-                }));
+    describe("#lookup", () => {
+        it("should lookup by class", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $lookup:[
+                          CardTable, () => blackjack,
+                          null, () => blackjack
+                      ]
+                  }));
             expect(cardGames.lookup(CardTable)).to.equal(blackjack);
             expect(cardGames.lookup(Game)).to.be.undefined;
         });
 
-        it("should lookup by protocol", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $lookup:[
-                        Game, function (lookup) {
-                            return blackjack;
-                        },
-                        null, function (lookup) {
-                            return blackjack;
-                        }]
-                }));
+        it("should lookup by protocol", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $lookup:[
+                          Game, () => blackjack, 
+                          null, () => blackjack
+                      ]
+                  }));
             expect(cardGames.lookup(Game)).to.equal(blackjack);
             expect(cardGames.lookup(CardTable)).to.be.undefined;
         });
 
-        it("should lookup by string", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = new (CallbackHandler.extend({
-                    $lookup:[
-                        'blackjack', function (lookup) {
-                            return blackjack;
-                        },
-                        /game/, function (lookup) {
-                            return blackjack;
-                        }]
-                }));
+        it("should lookup by string", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (CallbackHandler.extend({
+                      $lookup:[
+                          'blackjack', () => blackjack,
+                              /game/, () => blackjack,
+                      ]
+                  }));
             expect(cardGames.lookup('blackjack')).to.equal(blackjack);
             expect(cardGames.lookup('game')).to.be.undefined;
         });
     });
 
-    describe("#filter", function () {
-        it("should accept callback", function () {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier),
-                countMoney = new CountMoney;
-            expect(casino.filter(function (cb, cm, proceed) { return proceed(); })
+    describe("#filter", () => {
+        it("should accept callback", () => {
+            const cashier    = new Cashier(1000000.00),
+                  casino     = new Casino('Belagio').addHandlers(cashier),
+                  countMoney = new CountMoney;
+            expect(casino.filter((cb, cm, proceed) => proceed())
                    .handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000000.00);
         });
 
-        it("should reject callback", function () {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier),
-                countMoney = new CountMoney;
+        it("should reject callback", () => {
+            const cashier    = new Cashier(1000000.00),
+                  casino     = new Casino('Belagio').addHandlers(cashier),
+                  countMoney = new CountMoney;
             expect(casino.filter(False).handle(countMoney)).to.be.false;
         });
 
-        it("should ignore filter when reentrant", function () {
-            var cashier      = new Cashier(1000000.00),
-                casino       = new Casino('Belagio').addHandlers(cashier),
-                countMoney   = new CountMoney,
-                filterCalled = 0;
-            expect(casino.filter(function (cb, cm, proceed) {
+        it("should ignore filter when reentrant", () => {
+            const cashier      = new Cashier(1000000.00),
+                  casino       = new Casino('Belagio').addHandlers(cashier),
+                  countMoney   = new CountMoney;
+            let   filterCalled = 0;
+            expect(casino.filter((cb, cm, proceed) => {
                 ++filterCalled;
                 expect(cm.resolve(Cashier)).to.equal(cashier);
                 return proceed();
@@ -1218,763 +1149,744 @@ describe("CallbackHandler", function () {
         });
     });
 
-    describe("#aspect", function () {
-        it("should ignore callback", function () {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier),
-                countMoney = new CountMoney;
-            expect(function () {
+    describe("#aspect", () => {
+        it("should ignore callback", () => {
+            const cashier    = new Cashier(1000000.00),
+                  casino     = new Casino('Belagio').addHandlers(cashier),
+                  countMoney = new CountMoney();
+            expect(() => {
                 casino.aspect(False).handle(countMoney);
             }).to.throw(RejectedError);
         });
 
-        it("should ignore invocation", function () {
-            var guest = new Guest(21),
-                level = CallbackHandler(new Level1Security);
-            expect(function () {
+        it("should ignore invocation", () => {
+            const guest = new Guest(21),
+                  level = CallbackHandler(new Level1Security);
+            expect(() => {
                 Security(level.aspect(False)).admit(guest);
             }).to.throw(RejectedError);
         });
 
-        it("should handle callback with side-effect", function () {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier),
-                countMoney = new CountMoney;
-            expect(casino.aspect(True, function (countIt) { countIt.record(-1); })
+        it("should handle callback with side-effect", () => {
+            const cashier    = new Cashier(1000000.00),
+                  casino     = new Casino('Belagio').addHandlers(cashier),
+                  countMoney = new CountMoney();
+            expect(casino.aspect(True, countIt => countIt.record(-1))
                    .handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(999999.00);
         });
 
-        it("should invoke with side-effect", function () {
-            var count = 0,
+        it("should invoke with side-effect", () => {
+            let count = 0,
                 guest = new Guest(21),
                 level = CallbackHandler(new Level1Security);
-            expect(Security(level.aspect(True, function () { ++count; }))
+            expect(Security(level.aspect(True, () => { ++count; }))
                             .admit(guest)).to.be.true;
             expect(count).to.equal(1);
         });
 
-        it("should ignore deferrerd callback", function (done) {
-            var cashier    = new Cashier(750000.00),
-                casino     = new Casino('Venetian').addHandlers(cashier),
-                wireMoney  = new WireMoney(250000);
-            Promise.resolve(casino.aspect(function () {
-                return Promise.resolve(false);
-            }).defer(wireMoney)).then(function (handled) {
+        it("should ignore deferrerd callback", done => {
+            const cashier   = new Cashier(750000.00),
+                  casino    = new Casino('Venetian').addHandlers(cashier),
+                  wireMoney = new WireMoney(250000);
+            Promise.resolve(casino.aspect(() => Promise.resolve(false))
+                .defer(wireMoney)).then(handled => {
                 throw new Error("Should not get here");
-            }, function (error) {
+            }, error => {
                 expect(error).to.be.instanceOf(RejectedError);
                 done();
             });
         });
 
-        it("should ignore async invocation", function (done) {
-            var level2 = CallbackHandler(new Level2Security);
-            Security(level2.aspect(function () {
+        it("should ignore async invocation", done => {
+            const level2 = CallbackHandler(new Level2Security);
+            Security(level2.aspect(() => {
                 return Promise.resolve(false);
-            })).scan().then(function (scanned) {
+            })).scan().then(scanned => {
                 throw new Error("Should not get here");
-            }, function (error) {
+            }, error => {
                 expect(error).to.be.instanceOf(RejectedError);
                 done();
             });
         });
 
-        it("should handle deferred callback with side-effect", function (done) {
-            var cashier    = new Cashier(750000.00),
-                casino     = new Casino('Venetian').addHandlers(cashier),
-                wireMoney  = new WireMoney(250000);
-            Promise.resolve(casino.aspect(True, function (wire) {
-                received = wire.received;
-                done();
-            }).defer(wireMoney)).then(function (handled) {
+        it("should handle deferred callback with side-effect", done => {
+            const cashier   = new Cashier(750000.00),
+                  casino    = new Casino('Venetian').addHandlers(cashier),
+                  wireMoney = new WireMoney(250000);
+            Promise.resolve(casino.aspect(True, wire =>  done())
+                .defer(wireMoney)).then(handled => {
                 expect(handled).to.be.true;
                 expect(wireMoney.received).to.equal(250000);
             });
         });
 
-        it("should invoke async with side-effect", function (done) {
-            var level2 = CallbackHandler(new Level2Security);
-            Security(level2.aspect(True, function () {
-                done();
-            })).scan().then(function (scanned) {
+        it("should invoke async with side-effect", done => {
+            const level2 = CallbackHandler(new Level2Security);
+            Security(level2.aspect(True, () => done())).scan().then(scanned => {
                 expect(scanned).to.be.true;
             });
         });
 
-        it("should fail on exception in before", function () {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier),
-                countMoney = new CountMoney;
-            expect(function () {
-                expect(casino.aspect(function () { throw new Error; })
+        it("should fail on exception in before", () => {
+            const cashier    = new Cashier(1000000.00),
+                  casino     = new Casino('Belagio').addHandlers(cashier),
+                  countMoney = new CountMoney;
+            expect(() => {
+                expect(casino.aspect(() => { throw new Error; })
                        .handle(countMoney)).to.be.false;
             }).to.throw(Error);
         });
 
-        it("should fail callback on rejection in before", function (done) {
-            var cashier    = new Cashier(1000000.00),
-                casino     = new Casino('Belagio').addHandlers(cashier),
-                countMoney = new CountMoney;
-            casino.aspect(function () {
+        it("should fail callback on rejection in before", done => {
+            const cashier    = new Cashier(1000000.00),
+                  casino     = new Casino('Belagio').addHandlers(cashier),
+                  countMoney = new CountMoney();
+            casino.aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
-            }).defer(countMoney).catch(function (error) {
+            }).defer(countMoney).catch(error => {
                 expect(error).to.be.instanceOf(Error);
                 expect(error.message).to.equal("Something bad");
             });
         });
 
-        it("should fail async invoke on rejection in before", function (done) {
-            var level2 = CallbackHandler(new Level2Security);
-            Security(level2.aspect(function () {
+        it("should fail async invoke on rejection in before", done => {
+            const level2 = CallbackHandler(new Level2Security);
+            Security(level2.aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
-            })).scan().catch(function (error) {
+            })).scan().catch(error => {
                 expect(error).to.be.instanceOf(Error);
                 expect(error.message).to.equal("Something bad");
             });
         });
     });
     
-    describe("#next", function () {
-        it("should cascade handlers using short syntax", function () {
-            var guest    = new Guest(17),
-                baccarat = new Activity('Baccarat'),
-                level1   = new Level1Security,
-                level2   = new Level2Security,
-                security = CallbackHandler(level1).next(level2);
+    describe("#next", () => {
+        it("should cascade handlers using short syntax", () => {
+            const guest    = new Guest(17),
+                  baccarat = new Activity('Baccarat'),
+                  level1   = new Level1Security(),
+                  level2   = new Level2Security(),
+                  security = CallbackHandler(level1).next(level2);
             expect(Security(security).admit(guest)).to.be.false;
             Security(security).trackActivity(baccarat);
         });
 
-        it("should compose handlers using short syntax", function () {
-            var baccarat = new Activity('Baccarat'),
-                level1   = new Level1Security,
-                level2   = new Level2Security,
-                compose  = CallbackHandler(level1).next(level2, baccarat),
+        it("should compose handlers using short syntax", () => {
+            const baccarat = new Activity('Baccarat'),
+                  level1   = new Level1Security(),
+                  level2   = new Level2Security(),
+                  compose  = CallbackHandler(level1).next(level2, baccarat),
             countMoney = new CountMoney();
             expect(compose.handle(countMoney)).to.be.true;
         });
     });
 
-    describe("#when", function () {
-        it("should restrict handlers using short syntax", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = (new (CallbackHandler.extend({
-                    $handle:[
-                        True, function (cardTable) {
-                            cardTable.closed = true;
-                        }]
-                }))).when(CardTable);
+    describe("#when", () => {
+        it("should restrict handlers using short syntax", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = (new (CallbackHandler.extend({
+                      $handle:[
+                          True, cardTable => cardTable.closed = true
+                      ]
+                  }))).when(CardTable);
             expect(cardGames.handle(blackjack)).to.be.true;
             expect(blackjack.closed).to.be.true;
             expect(cardGames.handle(new Cashier)).to.be.false;
         });
 
-        it("should restrict handlers invariantly using short syntax", function () {
-            var Blackjack  = CardTable.extend({
-                    constructor: function () {
-                        this.base("BlackJack", 1, 5);
-                    }
-                }),
-                blackjack  = new Blackjack,
-                cardGames  = (new (CallbackHandler.extend({
-                    $handle:[
-                        True, function (cardTable) {
-                            cardTable.closed = true;
-                        }]
-                }))).when($eq(CardTable));
+        it("should restrict handlers invariantly using short syntax", () => {
+            const Blackjack  = CardTable.extend({
+                      constructor() {
+                          this.base("BlackJack", 1, 5);
+                     }
+                  }),
+                  blackjack  = new Blackjack(),
+                  cardGames  = (new (CallbackHandler.extend({
+                      $handle:[
+                          True, cardTable => cardTable.closed = true
+                      ]
+                  }))).when($eq(CardTable));
             expect(cardGames.handle(blackjack)).to.be.false;
             expect(blackjack.closed).to.be.undefined;
             expect(cardGames.handle(new Cashier)).to.be.false;
         });
 
-        it("should restrict providers using short syntax", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = (new (CallbackHandler.extend({
-                    $provide:[
-                        True, function (resolution) {
-                            return blackjack;
-                        }]
-                }))).when(CardTable);
+        it("should restrict providers using short syntax", () => {
+            const blackjack  = new CardTable("BlackJack", 1, 5),
+                  cardGames  = (new (CallbackHandler.extend({
+                      $provide:[
+                          True, () => blackjack
+                          ]
+                  }))).when(CardTable);
             expect(cardGames.resolve(CardTable)).to.equal(blackjack);
             expect(cardGames.resolve(Cashier)).to.be.undefined;
         });
 
-        it("should restrict providers invariantly using short syntax", function () {
-            var blackjack  = new CardTable("BlackJack", 1, 5),
-                cardGames  = (new (CallbackHandler.extend({
-                    $provide:[
-                        True, function (resolution) {
-                            return blackjack;
-                        }]
-                }))).when($eq(Activity));
+        it("should restrict providers invariantly using short syntax", () => {
+            const blackjack  = new CardTable("BlackJack", 1, 5),
+                  cardGames  = (new (CallbackHandler.extend({
+                      $provide:[
+                          True, () => blackjack
+                      ]
+                  }))).when($eq(Activity));
             expect(cardGames.resolve(Activity)).to.equal(blackjack);
             expect(cardGames.resolve(CardTable)).to.be.undefined;
             expect(cardGames.resolve(Cashier)).to.be.undefined;
         });
     });
     
-    describe("#implementing", function () {
-        var Calculator = Protocol.extend({
-            add:    function (op1, op2) {},
-            divide: function (dividend, divisor) {},
-            clear:  function () {}
+    describe("#implementing", () => {
+        const Calculator = Protocol.extend({
+              add(op1, op2) {},
+              divide(dividend, divisor) {},
+              clear() {}
         });
         
-        it("should call function", function () {
-            var add = CallbackHandler.implementing("add", function (op1, op2) {
-                return op1 + op2;
-            });
+        it("should call function", () => {
+            const add = CallbackHandler.implementing("add", (op1, op2) =>  op1 + op2);
             expect(Calculator(add).add(5, 10)).to.equal(15);
         });
 
-        it("should propgate exception in function", function () {
-            var divide = CallbackHandler.implementing("divide", function (dividend, divisor) {
+        it("should propgate exception in function", () => {
+            const divide = CallbackHandler.implementing("divide", (dividend, divisor) => {
                 if (divisor === 0)
                     throw new Error("Division by zero");
                 return dividend / divisor;
             });
-            expect(function () {
+            expect(() => {
                 Calculator(divide).divide(10,0);
             }).to.throw(Error, /Division by zero/);
         });
 
-        it("should bind function", function () {
-            var context = new Object,
-                clear   = CallbackHandler.implementing("clear", (function () {
-                return context;
+        it("should bind function", () => {
+            const context = new Object(),
+                  clear   = CallbackHandler.implementing("clear", (() => {
+                  return context;
             }).bind(context));
             expect(Calculator(clear).clear()).to.equal(context);
         });
 
-        it("should require non-empty method name", function () {
-            expect(function () {
-                CallbackHandler.implementing(null, function () {});
+        it("should require non-empty method name", () => {
+            expect(() => {
+                CallbackHandler.implementing(null, () => {});
             }).to.throw(Error, /No methodName specified/);
 
-            expect(function () {
-                 CallbackHandler.implementing(void 0, function () {});
+            expect(() => {
+                 CallbackHandler.implementing(void 0, () => {});
             }).to.throw(Error, /No methodName specified/);
 
-            expect(function () {
-                CallbackHandler.implementing(10, function () {});
+            expect(() => {
+                CallbackHandler.implementing(10, () => {});
             }).to.throw(Error, /No methodName specified/);
 
-            expect(function () {
-                CallbackHandler.implementing("", function () {});
+            expect(() => {
+                CallbackHandler.implementing("", () => {});
             }).to.throw(Error, /No methodName specified/);
 
-            expect(function () {
-                CallbackHandler.implementing("   ", function () {});
+            expect(() => {
+                CallbackHandler.implementing("   ", () => {});
             }).to.throw(Error, /No methodName specified/);
         });
     });
 });
 
-describe("CascadeCallbackHandler", function () {
-    describe("#handle", function () {
-        it("should cascade handlers", function () {
-            var guest    = new Guest(17),
-                baccarat = new Activity('Baccarat'),
-                level1   = new Level1Security,
-                level2   = new Level2Security,
-                security = new CascadeCallbackHandler(level1, level2);
+describe("CascadeCallbackHandler", () => {
+    describe("#handle", () => {
+        it("should cascade handlers", () => {
+            const guest    = new Guest(17),
+                  baccarat = new Activity('Baccarat'),
+                  level1   = new Level1Security(),
+                  level2   = new Level2Security(),
+                  security = new CascadeCallbackHandler(level1, level2);
             expect(Security(security).admit(guest)).to.be.false;
             Security(security).trackActivity(baccarat);
         });
     });
 });
 
-describe("InvocationCallbackHandler", function () {
-    describe("#handle", function () {
-        it("should handle invocations", function () {
-            var guest1 = new Guest(17),
-                guest2 = new Guest(21),
-                level1 = CallbackHandler(new Level1Security);
+describe("InvocationCallbackHandler", () => {
+    describe("#handle", () => {
+        it("should handle invocations", () => {
+            const guest1 = new Guest(17),
+                  guest2 = new Guest(21),
+                  level1 = CallbackHandler(new Level1Security());
             expect(Security(level1).admit(guest1)).to.be.false;
             expect(Security(level1).admit(guest2)).to.be.true;
         });
         
-        it("should handle async invocations", function (done) {
-            var level2 = CallbackHandler(new Level2Security);
-            Security(level2).scan().then(function () {
+        it("should handle async invocations", done => {
+            const level2 = CallbackHandler(new Level2Security());
+            Security(level2).scan().then(() => {
                 done();
             });
         });
 
-        it("should ignore explicitly unhandled invocations", function () {
-            var texasHoldEm = new CardTable("Texas Hold'em", 2, 7),
-            casino    = new Casino('Caesars Palace')
+        it("should ignore explicitly unhandled invocations", () => {
+            const texasHoldEm = new CardTable("Texas Hold'em", 2, 7),
+                  casino      = new Casino('Caesars Palace')
                 .addHandlers(texasHoldEm);
-            expect(function () {
-                Game(casino).open(5);
-            }).to.not.throw(Error);
-            expect(function () {
-                Game(casino).open(9);
-            }).to.throw(Error, /has no method 'open'/);
+            expect(() => Game(casino).open(5)).to.not.throw(Error);
+            expect(() => Game(casino).open(9)).to.throw(Error, /has no method 'open'/);
         });
 
-        it("should fail missing methods", function () {
-            var letItRide = new Activity('Let It Ride'),
-                level1    = new Level1Security,
-                casino    = new Casino('Treasure Island')
-                .addHandlers(level1, letItRide);
+        it("should fail missing methods", () => {
+            const letItRide = new Activity('Let It Ride'),
+                  level1    = new Level1Security(),
+                  casino    = new Casino('Treasure Island')
+                  .addHandlers(level1, letItRide);
 
-            expect(function () {
+            expect(() => {
                 Security(casino).trackActivity(letItRide)
             }).to.throw(Error, /has no method 'trackActivity'/);
         });
 
-        it("should ignore missing methods", function () {
-            var letItRide = new Activity('Let It Ride'),
-                level1    = new Level1Security,
-                casino    = new Casino('Treasure Island')
-                .addHandlers(level1, letItRide);
+        it("should ignore missing methods", () => {
+            const letItRide = new Activity('Let It Ride'),
+                  level1    = new Level1Security(),
+                  casino    = new Casino('Treasure Island')
+                  .addHandlers(level1, letItRide);
             expect(Security(casino.$bestEffort()).trackActivity(letItRide)).to.be.undefined;
         });
 
-        it("should require protocol conformance", function () {
-            var gate  = new (CallbackHandler.extend(Security, {
-                    admit: function (guest) { return true; }
-                }));
+        it("should require protocol conformance", () => {
+            const gate  = new (CallbackHandler.extend(Security, {
+                      admit(guest) { return true; }
+                  }));
             expect(Security(gate.$strict()).admit(new Guest('Me'))).to.be.true;
         });
 
-        it("should reject if no protocol conformance", function () {
-            var gate  = new (CallbackHandler.extend({
-                    admit: function (guest) { return true; }
-                }));
-            expect(function () {
+        it("should reject if no protocol conformance", () => {
+            const gate  = new (CallbackHandler.extend({
+                      admit(guest) { return true; }
+                  }));
+            expect(() => {
                 Security(gate.$strict()).admit(new Guest('Me'))
             }).to.throw(Error, /has no method 'admit'/);
         });
 
-        it("should broadcast invocations", function () {
-            var letItRide = new Activity('Let It Ride'),
-                level1    = new Level1Security,
-                level2    = new Level2Security,
-                casino    = new Casino('Treasure Island')
-                .addHandlers(level1, level2, letItRide);
+        it("should broadcast invocations", () => {
+            const letItRide = new Activity('Let It Ride'),
+                  level1    = new Level1Security(),
+                  level2    = new Level2Security(),
+                  casino    = new Casino('Treasure Island')
+                  .addHandlers(level1, level2, letItRide);
             Security(casino.$broadcast()).trackActivity(letItRide);
         });
 
-        it("should notify invocations", function () {
-            var letItRide = new Activity('Let It Ride'),
-                level1    = new Level1Security,
-                casino    = new Casino('Treasure Island')
-                .addHandlers(level1, letItRide);
+        it("should notify invocations", () => {
+            const letItRide = new Activity('Let It Ride'),
+                  level1    = new Level1Security(),
+                  casino    = new Casino('Treasure Island')
+                  .addHandlers(level1, letItRide);
             Security(casino.$notify()).trackActivity(letItRide);
         });
 
-        it("should notify invocations", function () {
-            var letItRide = new Activity('Let It Ride'),
-                level1    = new Level1Security,
-                casino    = new Casino('Treasure Island')
-                .addHandlers(level1, letItRide);
+        it("should notify invocations", () => {
+            const letItRide = new Activity('Let It Ride'),
+                  level1    = new Level1Security(),
+                  casino    = new Casino('Treasure Island')
+                  .addHandlers(level1, letItRide);
             Security(casino.$notify()).trackActivity(letItRide);
         });
 
-        it("should resolve target for invocation", function () {
-            var Poker = Base.extend(Game, {
-                    open: function (numPlayers) {
-                        return "poker" + numPlayers;
-                    }
-                }),
-                handler = new CallbackHandler(new Poker),
-                id      = Game(handler.$resolve()).open(5);
+        it("should resolve target for invocation", () => {
+            const Poker = Base.extend(Game, {
+                      open(numPlayers) {
+                          return "poker" + numPlayers;
+                      }
+                  }),
+                  handler = new CallbackHandler(new Poker()),
+                  id      = Game(handler.$resolve()).open(5);
             expect(id).to.equal("poker5");
         });
 
-        it("should resolve target for invocation using promise", function (done) {
-            var Poker = Base.extend(Game, {
-                    open: function (numPlayers) {
-                        return "poker" + numPlayers;
-                    }
-                }),
-                handler = new (CallbackHandler.extend({
-                    $provide: [
-                        Game, function () {
-                            return Promise.delay(new Poker, 10);
-                        }]
-                }));
-            Game(handler.$resolve()).open(5).then(function (id) {
+        it("should resolve target for invocation using promise", done => {
+            const Poker = Base.extend(Game, {
+                      open(numPlayers) {
+                          return "poker" + numPlayers;
+                      }
+                  }),
+                  handler = new (CallbackHandler.extend({
+                      $provide: [
+                          Game, () => Promise.delay(10).then(() => new Poker())
+                      ]
+                  }));
+            Game(handler.$resolve()).open(5).then(id => {
                 expect(id).to.equal("poker5");
                 done();
             });
         });
 
-        it("should resolve target for invocation implicitly", function () {
-            var Pumping = Resolving.extend({
-                    pump: function () {}
-                }),
-                Pump = Base.extend(Pumping, {
-                    pump: function () { return 5; }
-                }),
-                handler = new CallbackHandler;
-            $provide(handler, new Pump);
+        it("should resolve target for invocation implicitly", () => {
+            const Pumping = Resolving.extend({
+                      pump() {}
+                  }),
+                  Pump = Base.extend(Pumping, {
+                      pump() { return 5; }
+                  }),
+                  handler = new CallbackHandler();
+            $provide(handler, new Pump());
             expect(Pumping(handler).pump()).to.equal(5);
         });
         
-        it("should fail invocation if unable to resolve", function () {
-            var handler = new CallbackHandler;
-            expect(function () {
+        it("should fail invocation if unable to resolve", () => {
+            const handler = new CallbackHandler();
+            expect(() => {
                 Game(handler.$resolve()).open(4);
             }).to.throw(TypeError, /has no method 'open'/);
         });
 
-        it("should fail invocation if method not found", function () {
-            var Poker   = Base.extend(Game),
-                handler = new CallbackHandler(new Poker);
-            expect(function () {
+        it("should fail invocation if method not found", () => {
+            const Poker   = Base.extend(Game),
+                  handler = new CallbackHandler(new Poker());
+            expect(() => {
                 Game(handler.$resolve()).open(4);
             }).to.throw(TypeError, /has no method 'open'/);
         });
 
-        it("should fail invocation promise if method not found", function (done) {
-            var Poker   = Base.extend(Game),
-                handler = new (CallbackHandler.extend({
-                    $provide: [
-                        Game, function () {
-                            return Promise.delay(new Poker, 10);
-                        }]
-                }));
-            Game(handler.$resolve()).open(5).catch(function (error) {
+        it("should fail invocation promise if method not found", done => {
+            const Poker   = Base.extend(Game),
+                  handler = new (CallbackHandler.extend({
+                      $provide: [
+                          Game, () => Promise.delay(10).then(() => new Poker())
+                      ]
+                  }));
+            Game(handler.$resolve()).open(5).catch(error => {
                 expect(error).to.be.instanceOf(TypeError);
                 expect(error.message).to.match(/has no method 'open'/)
                 done();
             });            
         });
 
-        it("should ignore invocation if unable to resolve", function () {
-            var handler = new CallbackHandler,
-                id      = Game(handler.$resolve().$bestEffort()).open(4);
+        it("should ignore invocation if unable to resolve", () => {
+            const handler = new CallbackHandler(),
+                  id      = Game(handler.$resolve().$bestEffort()).open(4);
             expect(id).to.be.undefined;
         });
 
-        it("should ignore invocation if unable to resolve promise", function (done) {
-            var handler = new (CallbackHandler.extend({
-                    $provide: [
-                        Game, function () {
-                            return Promise.delay($NOT_HANDLED, 10);
-                        }]
-            }));
-            Game(handler.$resolve().$bestEffort()).open(5).then(function (id) {
+        it("should ignore invocation if unable to resolve promise", done => {
+            const handler = new (CallbackHandler.extend({
+                      $provide: [
+                          Game, () => {
+                              return Promise.delay(10).then(() => $NOT_HANDLED);
+                          }]
+              }));
+            Game(handler.$resolve().$bestEffort()).open(5).then(id => {
                 expect(id).to.be.undefiend;
                 done();
             });            
         });
         
-        it("should resolve all targets or invocation", function () {
-            var count = 0,
-                Poker = Base.extend(Game, {
-                    open: function (numPlayers) {
-                        ++count;
-                        return "poker" + numPlayers;
-                    }
-                }),
-                Slots = Base.extend(Game, {
-                    open: function (numPlayers) {
-                        ++count;
-                        return "poker" + numPlayers;
-                    }
-                }),                
-                handler = new CascadeCallbackHandler(new Poker, new Slots),
+        it("should resolve all targets or invocation", () => {
+            let   count = 0;
+            const Poker = Base.extend(Game, {
+                      open(numPlayers) {
+                          ++count;
+                          return "poker" + numPlayers;
+                      }
+                  }),
+                  Slots = Base.extend(Game, {
+                      open(numPlayers) {
+                          ++count;
+                          return "poker" + numPlayers;
+                      }
+                  }),                
+                  handler = new CascadeCallbackHandler(new Poker(), new Slots()),
                 id      = Game(handler.$resolve().$broadcast()).open(5);
             expect(id).to.equal("poker5");
             expect(count).to.equal(2);
         });
 
-        it("should resolve all targets or invocation using promise", function (done) {
-            var count = 0,
-                Poker = Base.extend(Game, {
-                    open: function (numPlayers) {
-                        ++count;
-                        return "poker" + numPlayers;
-                    }
-                }),
-                Slots = Base.extend(Game, {
-                    open: function (numPlayers) {
-                        ++count;
-                        return "poker" + numPlayers;
-                    }
-                }),                
-                handler = new CascadeCallbackHandler(
-                    new (CallbackHandler.extend({
-                        $provide: [
-                            Game, function () {
-                                return Promise.delay(new Poker, 10);
-                            }]
-                    })),
-                    new (CallbackHandler.extend({
-                        $provide: [
-                            Game, function () {
-                                return Promise.delay(new Slots, 5);
-                            }]
-                    }))
+        it("should resolve all targets or invocation using promise", done => {
+            let   count = 0;
+            const Poker = Base.extend(Game, {
+                      open(numPlayers) {
+                          ++count;
+                          return "poker" + numPlayers;
+                      }
+                  }),
+                  Slots = Base.extend(Game, {
+                      open(numPlayers) {
+                          ++count;
+                          return "poker" + numPlayers;
+                      }
+                  }),                
+                  handler = new CascadeCallbackHandler(
+                      new (CallbackHandler.extend({
+                          $provide: [
+                              Game, () => Promise.delay(10).then(() => new Poker())
+                          ]
+                      })),
+                      new (CallbackHandler.extend({
+                          $provide: [
+                              Game, () => Promise.delay(5).then(() => new Slots())
+                          ]
+                      }))
                 );
-            Game(handler.$resolve().$broadcast()).open(5).then(function (id) {
+            Game(handler.$resolve().$broadcast()).open(5).then(id => {
                 expect(id).to.equal("poker5");
                 expect(count).to.equal(2);                
                 done();
             });
         });
         
-        it("should fail invocation if unable to resolve all", function () {
-            var handler = new CallbackHandler;
-            expect(function () {
+        it("should fail invocation if unable to resolve all", () => {
+            const handler = new CallbackHandler();
+            expect(() => {
                 Game(handler.$resolve().$broadcast()).open(4);
             }).to.throw(Error, /has no method 'open'/);
         });
 
-        it("should apply filters to resolved invocations", function () {
-            var Poker = Base.extend(Game, {
-                    open: function (numPlayers) {
-                        return "poker" + numPlayers;
-                    }
-                }),
-                handler = new CallbackHandler(new Poker);
+        it("should apply filters to resolved invocations", () => {
+            const Poker = Base.extend(Game, {
+                      open(numPlayers) {
+                          return "poker" + numPlayers;
+                      }
+                  }),
+                  handler = new CallbackHandler(new Poker());
             expect(Game(handler.$resolve().filter(
-                function (cb, cm, proceed) { return proceed(); })).open(5))
+                (cb, cm, proceed) => proceed())).open(5))
                 .to.equal("poker5");
-            expect(function () {
+            expect(() => {
                 Game(handler.$resolve().filter(False)).open(5);
             }).to.throw(Error, /has no method 'open'/);
         });
     })
 });
 
-describe("CallbackHandler", function () {
-    var Emailing = StrictProtocol.extend({
-           send: function (msg) {},
-           sendConfirm: function (msg) {},        
-           fail: function(msg) {},
-           failConfirm: function(msg) {}        
-           }),
-        EmailHandler = CallbackHandler.extend(Emailing, {
-            send: function (msg) {
-                var batch = this.getBatch();
-                return batch ? batch.send(msg) : msg; 
-            },
-            sendConfirm: function (msg) {
-                var batch = this.getBatch();
-                return batch ? batch.sendConfirm(msg)
-                     : Promise.resolve(msg);
-            },            
-            fail: function (msg) {
-                throw new Error("Can't send message");
-            },
-            failConfirm: function (msg) {
-                var batch = this.getBatch();
-                return batch ? batch.failConfirm(msg)
-                     : Promise.reject(Error("Can't send message"));
-            },            
-            getBatch: function () {
-                var batcher = $composer.getBatcher(Emailing);
-                if (batcher) {
-                    var batch = new EmailBatch;
-                    batcher.addHandlers(batch);
-                    return batch;
-                }
-            }
-        }),
-        EmailBatch = Base.extend(Emailing, Batching, {
-            constructor: function (handler) {
-                var _msgs     = [],
+describe("CallbackHandler", () => {
+    const Emailing = StrictProtocol.extend({
+             send(msg) {},
+             sendConfirm(msg) {},        
+             fail(msg) {},
+             failConfirm(msg) {}        
+             }),
+          EmailHandler = CallbackHandler.extend(Emailing, {
+              send(msg) {
+                  const batch = this.getBatch();
+                  return batch ? batch.send(msg) : msg; 
+              },
+              sendConfirm(msg) {
+                  const batch = this.getBatch();
+                  return batch ? batch.sendConfirm(msg)
+                       : Promise.resolve(msg);
+              },            
+              fail(msg) {
+                  throw new Error("Can't send message");
+              },
+              failConfirm(msg) {
+                  const batch = this.getBatch();
+                  return batch ? batch.failConfirm(msg)
+                       : Promise.reject(Error("Can't send message"));
+              },            
+              getBatch() {
+                  const batcher = $composer.getBatcher(Emailing);
+                  if (batcher) {
+                      const batch = new EmailBatch();
+                      batcher.addHandlers(batch);
+                      return batch;
+                  }
+              }
+          });
+        const EmailBatch = Base.extend(Emailing, Batching, {
+            constructor() {
+                let _msgs     = [],
                     _resolves = [],
                     _promises = [];
                 this.extend({
-                    send: function (msg) {
+                    send(msg) {
                         _msgs.push(msg + " batch");
                     },
-                    sendConfirm: function (msg) {
+                    sendConfirm(msg) {
                         _msgs.push(msg);
-                        var promise =  new Promise(function (resolve) {
-                            _resolves.push(function () { resolve(msg + " batch"); });
-                        });
+                        const promise =  new Promise(resolve =>
+                            _resolves.push(() => { resolve(msg + " batch"); })
+                        );
                         _promises.push(promise);
                         return promise;
                     },
-                    failConfirm: function (msg) {
-                        var promise = new Promise(function (resolve, reject) {
-                            _resolves.push(function () { reject(Error("Can't send message")); });
-                        });
+                    failConfirm(msg) {
+                        const promise = new Promise((resolve, reject) =>
+                            _resolves.push(() => { reject(Error("Can't send message")); })
+                        );
                         _promises.push(promise);
                         return promise;
                     },
-                    complete: function (composer) {
-                        for (var i = 0; i < _resolves.length; ++i) {
+                    complete(composer) {
+                        for (let i = 0; i < _resolves.length; ++i) {
                             _resolves[i]();
                         }
-                        var results = Emailing(composer).send(_msgs);
+                        const results = Emailing(composer).send(_msgs);
                         return _promises.length > 0
-                             ? Promise.all(_promises).then(function () { return results; })
+                             ? Promise.all(_promises).then(() => { return results; })
                              : results;
                     }
                 });
             }
         });
 
-    describe("#$promise", function () {
-        it("should convert return to promise", function (done) {
-            var handler = new EmailHandler;
+    describe("#$promise", () => {
+        it("should convert return to promise", done => {
+            const handler = new EmailHandler();
             expect(Emailing(handler).send("Hello")).to.eql("Hello");
-            Emailing(handler.$promise()).send("Hello").then(function (result) {
+            Emailing(handler.$promise()).send("Hello").then(result => {
                 expect(result).to.eql("Hello");
                 done();
             });
         });
         
-        it("should convert undefined to promise", function (done) {
-            var handler = new EmailHandler;
+        it("should convert undefined to promise", done => {
+            const handler = new EmailHandler();
             expect(Emailing(handler).send()).to.be.undefined;
-            Emailing(handler.$promise()).send().then(function (result) {
+            Emailing(handler.$promise()).send().then(result => {
                 expect(result).to.be.undefined;
                 done();
             });
         });
 
-        it("should pass promise returns through", function (done) {
-            var handler = new EmailHandler,
-                msg     = Promise.resolve("Hello");
+        it("should pass promise returns through", done => {
+            const handler = new EmailHandler,
+                  msg     = Promise.resolve("Hello");
             expect(Emailing(handler).send(msg)).to.equal(msg);
-            Emailing(handler.$promise()).send(msg).then(function (result) {
+            Emailing(handler.$promise()).send(msg).then(result => {
                 expect(result).to.eql("Hello");
                 done();
             });
         });
 
-        it("should convert exception to promise", function (done) {
-            var handler = new EmailHandler;
-            expect(function () {
+        it("should convert exception to promise", done => {
+            const handler = new EmailHandler();
+            expect(() => {
                 Emailing(handler).fail()                
             }).to.throw(Error, "Can't send message");
-            Emailing(handler.$promise()).fail().catch(function (err) {
+            Emailing(handler.$promise()).fail().catch(err => {
                 expect(err.message).to.equal("Can't send message");
                 done();
             });
         });        
     });
     
-    describe("#$timeout", function () {
-        it("should reject promise if timed out", function (done) {
-            var bank       = (new (CallbackHandler.extend({
-                    $handle:[
-                        WireMoney, function (wireMoney) {
-                            wireMoney.received = 50000;
-                            return Promise.delay(wireMoney, 100);
-                        }]
-                }))),
-                casino     = new Casino('Venetian').addHandlers(bank),
-                wireMoney  = new WireMoney(150000);
-            Promise.resolve(casino.$timeout(50).defer(wireMoney)).catch(function (err) {
+    describe("#$timeout", () => {
+        it("should reject promise if timed out", done => {
+            const bank = (new (CallbackHandler.extend({
+                      $handle:[
+                          WireMoney, wireMoney => {
+                              wireMoney.received = 50000;
+                              return Promise.delay(100).then(() => wireMoney);
+                          }]
+                  }))),
+                  casino    = new Casino('Venetian').addHandlers(bank),
+                  wireMoney = new WireMoney(150000);
+            Promise.resolve(casino.$timeout(50).defer(wireMoney)).catch(err => {
                 expect(err).to.be.instanceOf(TimeoutError);
                 done();
             });
         });
 
-        it("should ignore time out if promise resolved", function (done) {
-            var bank       = (new (CallbackHandler.extend({
-                    $handle:[
-                        WireMoney, function (wireMoney) {
-                            wireMoney.received = 50000;
-                            return Promise.delay(wireMoney, 50);
-                        }]
-                }))),
-                casino     = new Casino('Venetian').addHandlers(bank),
-                wireMoney  = new WireMoney(150000);
-            Promise.resolve(casino.$timeout(100).defer(wireMoney)).then(function (handled) {
+        it("should ignore time out if promise resolved", done => {
+            const bank = (new (CallbackHandler.extend({
+                      $handle:[
+                          WireMoney, wireMoney => {
+                              wireMoney.received = 50000;
+                              return Promise.delay(50).then(() => wireMoney);
+                          }]
+                  }))),
+                  casino    = new Casino('Venetian').addHandlers(bank),
+                  wireMoney = new WireMoney(150000);
+            Promise.resolve(casino.$timeout(100).defer(wireMoney)).then(handled => {
                 expect(handled).to.be.true;
                 expect(wireMoney.received).to.equal(50000);
                 done();
             });
         });
         
-        it("should reject promise with error instance", function (done) {
-            var bank       = (new (CallbackHandler.extend({
-                    $handle:[
-                        WireMoney, function (wireMoney) {
-                            wireMoney.received = 50000;
-                            return Promise.delay(wireMoney, 100);
-                        }]
-                }))),
-                casino     = new Casino('Venetian').addHandlers(bank),
-                wireMoney  = new WireMoney(150000);
+        it("should reject promise with error instance", done => {
+            const bank = (new (CallbackHandler.extend({
+                      $handle:[
+                          WireMoney,wireMoney => {
+                              wireMoney.received = 50000;
+                              return Promise.delay(100).then(() => wireMoney);
+                          }]
+                  }))),
+                  casino    = new Casino('Venetian').addHandlers(bank),
+                  wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, new Error("Oh No!"))
-                            .defer(wireMoney)).catch(function (err) {
+                            .defer(wireMoney)).catch(err => {
                 expect(err.message).to.equal("Oh No!");
                 done();
             });
         });
 
-        it("should reject promise with custom error class", function (done) {
+        it("should reject promise with custom error class", done => {
             function BankError(callback) {
                 this.callback = callback;
                 Error.call(this);
             }
-            BankError.prototype             = new Error;
+            BankError.prototype             = new Error();
             BankError.prototype.constructor = BankError;
-            var bank       = (new (CallbackHandler.extend({
-                    $handle:[
-                        WireMoney, function (wireMoney) {
-                            wireMoney.received = 50000;
-                            return Promise.delay(wireMoney, 100);
-                        }]
-                }))),
-                casino     = new Casino('Venetian').addHandlers(bank),
-                wireMoney  = new WireMoney(150000);
+            const bank = (new (CallbackHandler.extend({
+                      $handle:[
+                          WireMoney, wireMoney => {
+                              wireMoney.received = 50000;
+                              return Promise.delay(100).then(() => wireMoney);
+                          }]
+                  }))),
+                  casino    = new Casino('Venetian').addHandlers(bank),
+                  wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, BankError)
-                            .defer(wireMoney)).catch(function (err) {
+                            .defer(wireMoney)).catch(err => {
                 expect(err).to.be.instanceOf(BankError);
                 expect(err.callback.callback).to.equal(wireMoney);
                 done();
             });
         });
 
-        it("should propogate errors", function (done) {
-            var bank       = (new (CallbackHandler.extend({
-                    $handle:[
-                        WireMoney, function (wireMoney) {
-                            return Promise.reject(new Error("No money"));
-                        }]
-                }))),
-                casino     = new Casino('Venetian').addHandlers(bank),
-                wireMoney  = new WireMoney(150000);
+        it("should propogate errors", done => {
+            const bank = (new (CallbackHandler.extend({
+                      $handle:[
+                          WireMoney, wireMoney =>
+                             Promise.reject(new Error("No money"))
+                      ]
+                  }))),
+                  casino    = new Casino('Venetian').addHandlers(bank),
+                  wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, new Error("Oh No!"))
-                            .defer(wireMoney)).catch(function (err) {
+                            .defer(wireMoney)).catch(err => {
                 expect(err.message).to.equal("No money");
                 done();
             });
         });        
     });
  
-    describe("#$batch", function () {
-        it("should batch callbacks", function () {
-            var handler = new EmailHandler,
-                batch   = handler.$batch();
+    describe("#$batch", () => {
+        it("should batch callbacks", () => {
+            const handler = new EmailHandler(),
+                  batch   = handler.$batch();
             expect(Emailing(handler).send("Hello")).to.equal("Hello");
-            expect($using(batch, function () {
+            expect($using(batch, () => {
                 expect(Emailing(batch).send("Hello")).to.be.undefined;
             })).to.eql([["Hello batch"]]);
             expect(Emailing(batch).send("Hello")).to.equal("Hello");
         });
 
-        it("should batch async callbacks", function (done) {
-            var count   = 0,
-                handler = new EmailHandler;
-            Emailing(handler).sendConfirm("Hello").then(function (result) {
+        it("should batch async callbacks", done => {
+            let   count    = 0;
+            const handler = new EmailHandler();
+            Emailing(handler).sendConfirm("Hello").then(result => {
                 expect(result).to.equal("Hello");
                 ++count;
             });
-            $using(handler.$batch(), function (batch) {
-                Emailing(batch).sendConfirm("Hello").then(function (result) {
+            $using(handler.$batch(), batch => {
+                Emailing(batch).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello batch");
                     ++count;
                 });
-            }).then(function (result) {
+            }).then(result => {
                 expect(result).to.eql([["Hello"]]);
-                Emailing(handler).sendConfirm("Hello").then(function (result) {
+                Emailing(handler).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello");
                     expect(count).to.equal(2);
                     done();
@@ -1982,17 +1894,17 @@ describe("CallbackHandler", function () {
             });
         });
         
-        it("should reject batch async", function (done) {
-            var count   = 0,
-                handler = new EmailHandler;
-            $using(handler.$batch(), function (batch) {
-                Emailing(batch).failConfirm("Hello").catch(function (err) {
+        it("should reject batch async", done => {
+            let   count   = 0;
+            const handler = new EmailHandler();
+            $using(handler.$batch(), batch => {
+                Emailing(batch).failConfirm("Hello").catch(err => {
                     expect(err.message).to.equal("Can't send message");
                     ++count;
                 });
-            }).catch(function (err) {
+            }).catch(err => {
                 expect(err.message).to.equal("Can't send message");
-                Emailing(handler).failConfirm("Hello").catch(function (err) {
+                Emailing(handler).failConfirm("Hello").catch(err => {
                     expect(err.message).to.equal("Can't send message");
                     expect(count).to.equal(1);                    
                     done();
@@ -2000,28 +1912,28 @@ describe("CallbackHandler", function () {
             });
         });
 
-        it("should batch requested protocols", function () {
-            var handler = new EmailHandler;
-            expect($using(handler.$batch(Emailing), function (batch) {
+        it("should batch requested protocols", () => {
+            const handler = new EmailHandler();
+            expect($using(handler.$batch(Emailing), batch => {
                 expect(Emailing(batch).send("Hello")).to.be.undefined;
             })).to.eql([["Hello batch"]]);                
         });
 
-        it("should batch requested protocols async", function (done) {
-            var count   = 0,
-                handler = new EmailHandler;
-            Emailing(handler).sendConfirm("Hello").then(function (result) {
+        it("should batch requested protocols async", done => {
+            let   count   = 0;
+            const handler = new EmailHandler();
+            Emailing(handler).sendConfirm("Hello").then(result => {
                 expect(result).to.equal("Hello");
                 ++count;
             });
-            $using(handler.$batch(Emailing), function (batch) {
-                Emailing(batch).sendConfirm("Hello").then(function (result) {
+            $using(handler.$batch(Emailing), batch => {
+                Emailing(batch).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello batch");
                     ++count;
                 });
-            }).then(function (result) {
+            }).then(result => {
                 expect(result).to.eql([["Hello"]]);
-                Emailing(handler).sendConfirm("Hello").then(function (result) {
+                Emailing(handler).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello");
                     expect(count).to.equal(2);
                     done();
@@ -2029,28 +1941,28 @@ describe("CallbackHandler", function () {
             });
         });
 
-        it("should not batch unrequested protocols", function () {
-            var handler = new EmailHandler;
-            expect($using(handler.$batch(Game), function (batch) {
+        it("should not batch unrequested protocols", () => {
+            const handler = new EmailHandler();
+            expect($using(handler.$batch(Game), batch => {
                 expect(Emailing(batch.send("Hello"))).to.equal("Hello");
             })).to.eql([]);
         });
 
-        it("should not batch unrequested protocols async", function (done) { 
-            var handler = new EmailHandler;           
-            expect($using(handler.$batch(Game), function (batch) {
-                Emailing(batch).sendConfirm("Hello").then(function (result) {
+        it("should not batch unrequested protocols async", done => { 
+            const handler = new EmailHandler();           
+            expect($using(handler.$batch(Game), batch => {
+                Emailing(batch).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello");
                     done();
                 });
             })).to.eql([]);
         });
 
-        it("should not batch async after completed", function (done) {
-            var handler = new EmailHandler;
-            $using(handler.$batch(), function (batch) {
-                Emailing(batch).sendConfirm("Hello").then(function (result) {
-                    Emailing(batch).sendConfirm("Hello").then(function (result) {
+        it("should not batch async after completed", done => {
+            const handler = new EmailHandler();
+            $using(handler.$batch(), batch => {
+                Emailing(batch).sendConfirm("Hello").then(result => {
+                    Emailing(batch).sendConfirm("Hello").then(result => {
                         expect(result).to.equal("Hello");
                         done();
                     });
@@ -2058,13 +1970,13 @@ describe("CallbackHandler", function () {
             });
         });
 
-        it("should work with filters", function () {
-            var count   = 0,
-                handler = new EmailHandler,
-                batch   = handler.aspect(null, function () {
-                    ++count;
-                }).$batch();
-            expect($using(batch, function () {
+        it("should work with filters", () => {
+            let   count   = 0;
+            const handler = new EmailHandler(),
+                  batch   = handler.aspect(null, () => {
+                      ++count;
+                  }).$batch();
+            expect($using(batch, () => {
                 expect(Emailing(batch).send("Hello")).to.be.undefined;
             })).to.eql([["Hello batch"]]);
             expect(count).to.equal(2);

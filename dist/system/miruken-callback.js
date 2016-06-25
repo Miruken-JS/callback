@@ -1,33 +1,19 @@
-"use strict";
+'use strict';
 
-System.register(["miruken-core"], function (_export, _context) {
+System.register(['miruken-core'], function (_export, _context) {
     "use strict";
 
-    var False, True, Undefined, Base, Abstract, extend, typeOf;
+    var False, True, Undefined, Base, Abstract, extend, typeOf, assignID, Variance, MetaMacro, Metadata, $isClass, $isString, $isFunction, $isNothing, $isProtocol, $classOf, Modifier, IndexedList, $eq, $use, $copy, $lift, $isPromise, $instant, $flatten, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _definitions, $handle, $provide, $lookup, $NOT_HANDLED, $callbacks, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
+    function _toConsumableArray(arr) {
+        if (Array.isArray(arr)) {
+            for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) {
+                arr2[i] = arr[i];
+            }
 
-    function _Node(constraint, handler, removed) {
-        var invariant = $eq.test(constraint);
-        constraint = Modifier.unwrap(constraint);
-        this.constraint = constraint;
-        this.handler = handler;
-        if ($isNothing(constraint)) {
-            this.match = invariant ? False : _matchEverything;
-        } else if ($isProtocol(constraint)) {
-            this.match = invariant ? _matchInvariant : _matchProtocol;
-        } else if ($isClass(constraint)) {
-            this.match = invariant ? _matchInvariant : _matchClass;
-        } else if ($isString(constraint)) {
-            this.match = _matchString;
-        } else if (instanceOf(constraint, RegExp)) {
-            this.match = invariant ? False : _matchRegExp;
-        } else if ($isFunction(constraint)) {
-            this.match = constraint;
+            return arr2;
         } else {
-            this.match = False;
-        }
-        if (removed) {
-            this.removed = removed;
+            return Array.from(arr);
         }
     }
 
@@ -111,18 +97,54 @@ System.register(["miruken-core"], function (_export, _context) {
         return result ? result !== $NOT_HANDLED : result === undefined;
     }
 
-    function _flattenPrune(array) {
-        var i = 0,
-            flatten = function flatten(result, item) {
-            if (Array2.like(item)) {
-                Array2.reduce(item, flatten, result);
-            } else if (item != null) {
-                result[i++] = item;
+    function _aspectProceed(callback, composer, proceed, after, state) {
+        var promise = void 0;
+        try {
+            var handled = proceed();
+            if (handled) {
+                var result = callback.callbackResult;
+                if ($isPromise(result)) {
+                    promise = result;
+
+                    if ($isFunction(after)) {
+                        promise.then(function (result) {
+                            return after(callback, composer, state);
+                        }).catch(function (error) {
+                            return after(callback, composer, state);
+                        });
+                    }
+                }
             }
-            return result;
-        };
-        return Array2.reduce(array, flatten, []);
+            return handled;
+        } finally {
+            if (!promise && $isFunction(after)) {
+                after(callback, composer, state);
+            }
+        }
     }
+
+    function _delegateInvocation(delegate, type, protocol, methodName, args, strict) {
+        var broadcast = false,
+            useResolve = false,
+            bestEffort = false,
+            handler = delegate.handler;
+
+        if (!handler.isCompositionScope) {
+            var semantics = new InvocationSemantics();
+            if (handler.handle(semantics, true)) {
+                strict = !!(strict | semantics.getOption(InvocationOptions.Strict));
+                broadcast = semantics.getOption(InvocationOptions.Broadcast);
+                bestEffort = semantics.getOption(InvocationOptions.BestEffort);
+                useResolve = semantics.getOption(InvocationOptions.Resolve) || protocol.conformsTo(Resolving);
+            }
+        }
+        var handleMethod = useResolve ? new ResolveMethod(type, protocol, methodName, args, strict, broadcast, !bestEffort) : new HandleMethod(type, protocol, methodName, args, strict);
+        if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
+            throw new TypeError('Object ' + handler + ' has no method \'' + methodName + '\'');
+        }
+        return handleMethod.returnValue;
+    }
+
     return {
         setters: [function (_mirukenCore) {
             False = _mirukenCore.False;
@@ -132,16 +154,99 @@ System.register(["miruken-core"], function (_export, _context) {
             Abstract = _mirukenCore.Abstract;
             extend = _mirukenCore.extend;
             typeOf = _mirukenCore.typeOf;
+            assignID = _mirukenCore.assignID;
+            Variance = _mirukenCore.Variance;
+            MetaMacro = _mirukenCore.MetaMacro;
+            Metadata = _mirukenCore.Metadata;
+            $isClass = _mirukenCore.$isClass;
+            $isString = _mirukenCore.$isString;
+            $isFunction = _mirukenCore.$isFunction;
+            $isNothing = _mirukenCore.$isNothing;
+            $isProtocol = _mirukenCore.$isProtocol;
+            $classOf = _mirukenCore.$classOf;
+            Modifier = _mirukenCore.Modifier;
+            IndexedList = _mirukenCore.IndexedList;
+            $eq = _mirukenCore.$eq;
+            $use = _mirukenCore.$use;
+            $copy = _mirukenCore.$copy;
+            $lift = _mirukenCore.$lift;
+            $isPromise = _mirukenCore.$isPromise;
+            $instant = _mirukenCore.$instant;
+            $flatten = _mirukenCore.$flatten;
+            $decorator = _mirukenCore.$decorator;
+            $decorate = _mirukenCore.$decorate;
+            $decorated = _mirukenCore.$decorated;
+            StrictProtocol = _mirukenCore.StrictProtocol;
+            Flags = _mirukenCore.Flags;
+            Delegate = _mirukenCore.Delegate;
+            Resolving = _mirukenCore.Resolving;
         }],
         execute: function () {
+            _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+                return typeof obj;
+            } : function (obj) {
+                return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj;
+            };
+            _definitions = {};
+
+            _export('$handle', $handle = $define('$handle', Variance.Contravariant));
+
+            _export('$handle', $handle);
+
+            _export('$provide', $provide = $define('$provide', Variance.Covariant));
+
+            _export('$provide', $provide);
+
+            _export('$lookup', $lookup = $define('$lookup', Variance.Invariant));
+
+            _export('$lookup', $lookup);
+
+            _export('$NOT_HANDLED', $NOT_HANDLED = Object.freeze({}));
+
+            _export('$NOT_HANDLED', $NOT_HANDLED);
+
+            _export('$callbacks', $callbacks = MetaMacro.extend({
+                execute: function execute(step, metadata, target, definition) {
+                    if ($isNothing(definition)) {
+                        return;
+                    }
+                    var source = target,
+                        type = metadata.type;
+                    if (target === type.prototype) {
+                        target = type;
+                    }
+                    for (var tag in _definitions) {
+                        var list = this.extractProperty(tag, source, definition);
+                        if (!list || list.length == 0) {
+                            continue;
+                        }
+                        var define = _definitions[tag];
+                        for (var idx = 0; idx < list.length; ++idx) {
+                            var constraint = list[idx];
+                            if (++idx >= list.length) {
+                                throw new Error('Incomplete ' + tag + ' definition: missing handler for constraint ' + constraint + '.');
+                            }
+                            define(target, constraint, list[idx]);
+                        }
+                    }
+                },
+
+                shouldInherit: True,
+
+                isActive: True
+            }));
+
+            _export('$callbacks', $callbacks);
+
             function $define(tag, variance) {
                 if (!$isString(tag) || tag.length === 0 || /\s/.test(tag)) {
                     throw new TypeError("The tag must be a non-empty string with no whitespace.");
                 } else if (_definitions[tag]) {
-                    throw new TypeError(format("'%1' is already defined.", tag));
+                    throw new TypeError('\'' + tag + '\' is already defined.');
                 }
 
-                var handled, comparer;
+                var handled = void 0,
+                    comparer = void 0;
                 variance = variance || Variance.Contravariant;
                 if (!(variance instanceof Variance)) {
                     throw new TypeError("Invalid variance type supplied");
@@ -162,8 +267,8 @@ System.register(["miruken-core"], function (_export, _context) {
                 }
 
                 function definition(owner, constraint, handler, removed) {
-                    if ($isArray(constraint)) {
-                        return Array2.reduce(constraint, function (result, c) {
+                    if (Array.isArray(constraint)) {
+                        return constraint.reduce(function (result, c) {
                             var undefine = _definition(owner, c, handler, removed);
                             return function (notifyRemoved) {
                                 result(notifyRemoved);
@@ -181,7 +286,7 @@ System.register(["miruken-core"], function (_export, _context) {
                         constraint = $classOf(Modifier.unwrap(constraint));
                     }
                     if ($isNothing(handler)) {
-                        throw new TypeError(format("Incomplete '%1' definition: missing handler for constraint %2.", tag, constraint));
+                        throw new TypeError('Incomplete \'' + tag + '\' definition: missing handler for constraint ' + constraint);
                     } else if (removed && !$isFunction(removed)) {
                         throw new TypeError("The removed argument is not a function.");
                     }
@@ -193,12 +298,12 @@ System.register(["miruken-core"], function (_export, _context) {
                             }
                             handler = source.copy.bind(source);
                         } else {
-                            var source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
-                            handler = $lift(source);
+                            var _source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
+                            handler = $lift(_source);
                         }
                     }
-                    var meta = owner.$meta,
-                        node = new _Node(constraint, handler, removed),
+                    var meta = owner[Metadata],
+                        node = new Node(constraint, handler, removed),
                         index = _createIndex(node.constraint),
                         list = meta[tag] || (meta[tag] = new IndexedList(comparer));
                     list.insert(node, index);
@@ -213,9 +318,9 @@ System.register(["miruken-core"], function (_export, _context) {
                     };
                 };
                 definition.removeAll = function (owner) {
-                    var meta = owner.$meta;
-                    var list = meta[tag],
-                        head = list.head;
+                    var meta = owner[Metadata],
+                        list = meta[tag];
+                    var head = list.head;
                     while (head) {
                         if (head.removed) {
                             head.removed(owner);
@@ -225,8 +330,8 @@ System.register(["miruken-core"], function (_export, _context) {
                     delete meta[tag];
                 };
                 definition.dispatch = function (handler, callback, constraint, composer, all, results) {
-                    var v = variance,
-                        delegate = handler.delegate;
+                    var v = variance;
+                    var delegate = handler.delegate;
                     constraint = constraint || callback;
                     if (constraint) {
                         if ($eq.test(constraint)) {
@@ -237,15 +342,15 @@ System.register(["miruken-core"], function (_export, _context) {
                             constraint = $classOf(constraint);
                         }
                     }
-                    var ok = delegate && _dispatch(delegate, delegate.$meta, callback, constraint, v, composer, all, results);
+                    var ok = delegate && _dispatch(delegate, delegate[Metadata], callback, constraint, v, composer, all, results);
                     if (!ok || all) {
-                        ok = ok || _dispatch(handler, handler.$meta, callback, constraint, v, composer, all, results);
+                        ok = ok || _dispatch(handler, handler[Metadata], callback, constraint, v, composer, all, results);
                     }
                     return ok;
                 };
                 function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
-                    var dispatched = false,
-                        invariant = v === Variance.Invariant,
+                    var dispatched = false;
+                    var invariant = v === Variance.Invariant,
                         index = meta && _createIndex(constraint);
                     while (meta) {
                         var list = meta[tag];
@@ -253,12 +358,12 @@ System.register(["miruken-core"], function (_export, _context) {
                             var node = list.getIndex(index) || list.head;
                             while (node) {
                                 if (node.match(constraint, v)) {
-                                    var base = target.base,
-                                        baseCalled = false;
+                                    var base = target.base;
+                                    var baseCalled = false;
                                     target.base = function () {
-                                        var baseResult;
+                                        var baseResult = void 0;
                                         baseCalled = true;
-                                        _dispatch(target, meta.getParent(), callback, constraint, v, composer, false, function (result) {
+                                        _dispatch(target, meta.parent, callback, constraint, v, composer, false, function (result) {
                                             baseResult = result;
                                         });
                                         return baseResult;
@@ -287,14 +392,1045 @@ System.register(["miruken-core"], function (_export, _context) {
                                 node = node.next;
                             }
                         }
-                        meta = meta.getParent();
+                        meta = meta.parent;
                     }
                     return dispatched;
                 }
                 _definitions[tag] = definition;
                 return definition;
             }
-            _export("$define", $define);
+
+            _export('$define', $define);
+
+            function Node(constraint, handler, removed) {
+                var invariant = $eq.test(constraint);
+                constraint = Modifier.unwrap(constraint);
+                this.constraint = constraint;
+                this.handler = handler;
+                if ($isNothing(constraint)) {
+                    this.match = invariant ? False : _matchEverything;
+                } else if ($isProtocol(constraint)) {
+                    this.match = invariant ? _matchInvariant : _matchProtocol;
+                } else if ($isClass(constraint)) {
+                    this.match = invariant ? _matchInvariant : _matchClass;
+                } else if ($isString(constraint)) {
+                    this.match = _matchString;
+                } else if (constraint instanceof RegExp) {
+                    this.match = invariant ? False : _matchRegExp;
+                } else if ($isFunction(constraint)) {
+                    this.match = constraint;
+                } else {
+                    this.match = False;
+                }
+                if (removed) {
+                    this.removed = removed;
+                }
+            }
+            _export('Node', Node);
+
+            _export('$composer', $composer = void 0);
+
+            _export('$composer', $composer);
+
+            _export('HandleMethod', HandleMethod = Base.extend({
+                constructor: function constructor(type, protocol, methodName, args, strict) {
+                    if (protocol && !$isProtocol(protocol)) {
+                        throw new TypeError("Invalid protocol supplied.");
+                    }
+                    var _returnValue = void 0,
+                        _exception = void 0;
+                    this.extend({
+                        get type() {
+                            return type;
+                        },
+
+                        get protocol() {
+                            return protocol;
+                        },
+
+                        get methodName() {
+                            return methodName;
+                        },
+
+                        get arguments() {
+                            return args;
+                        },
+
+                        get returnValue() {
+                            return _returnValue;
+                        },
+                        set returnValue(value) {
+                            _returnValue = value;
+                        },
+
+                        get exception() {
+                            return _exception;
+                        },
+                        set exception(exception) {
+                            _exception = exception;
+                        },
+
+                        get callbackResult() {
+                            return _returnValue;
+                        },
+                        set callbackResult(value) {
+                            _returnValue = value;
+                        },
+                        invokeOn: function invokeOn(target, composer) {
+                            if (!target || strict && protocol && !protocol.adoptedBy(target)) {
+                                return false;
+                            }
+                            var method = void 0,
+                                result = void 0;
+                            if (type === HandleMethod.Invoke) {
+                                method = target[methodName];
+                                if (!$isFunction(method)) {
+                                    return false;
+                                }
+                            }
+                            var oldComposer = $composer;
+                            try {
+                                _export('$composer', $composer = composer);
+                                switch (type) {
+                                    case HandleMethod.Get:
+                                        result = target[methodName];
+                                        break;
+                                    case HandleMethod.Set:
+                                        result = target[methodName] = args;
+                                        break;
+                                    case HandleMethod.Invoke:
+                                        result = method.apply(target, args);
+                                        break;
+                                }
+                                if (result === $NOT_HANDLED) {
+                                    return false;
+                                }
+                                _returnValue = result;
+                                return true;
+                            } catch (exception) {
+                                _exception = exception;
+                                throw exception;
+                            } finally {
+                                _export('$composer', $composer = oldComposer);
+                            }
+                        }
+                    });
+                }
+            }, {
+                Get: 1,
+
+                Set: 2,
+
+                Invoke: 3
+            }));
+
+            _export('HandleMethod', HandleMethod);
+
+            _export('ResolveMethod', ResolveMethod = HandleMethod.extend({
+                constructor: function constructor(type, protocol, methodName, args, strict, all, required) {
+                    this.base(type, protocol, methodName, args, strict);
+                    this.extend({
+                        invokeResolve: function invokeResolve(composer) {
+                            var _this = this;
+
+                            var handled = false,
+                                targets = composer.resolveAll(protocol);
+
+                            if ($isPromise(targets)) {
+                                this.returnValue = new Promise(function (resolve, reject) {
+                                    targets.then(function (targets) {
+                                        invokeTargets.call(_this, targets);
+                                        if (_this.execption) {
+                                            reject(_this.exeception);
+                                        } else if (handled) {
+                                            resolve(_this.returnValue);
+                                        } else if (required) {
+                                            reject(new TypeError('Object ' + composer + ' has no method \'' + methodName + '\''));
+                                        } else {
+                                            resolve();
+                                        }
+                                    }, reject);
+                                });
+                                return true;
+                            }
+
+                            invokeTargets.call(this, targets);
+
+                            function invokeTargets(targets) {
+                                for (var i = 0; i < targets.length; ++i) {
+                                    handled = handled | this.invokeOn(targets[i], composer);
+                                    if (handled && !all) {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            return handled;
+                        }
+                    });
+                }
+            }));
+
+            _export('ResolveMethod', ResolveMethod);
+
+            _export('Lookup', Lookup = Base.extend({
+                constructor: function constructor(key, many) {
+                    if ($isNothing(key)) {
+                        throw new TypeError("The key is required.");
+                    }
+                    many = !!many;
+                    var _results = [],
+                        _result = void 0,
+                        _instant = $instant.test(key);
+                    this.extend({
+                        get key() {
+                            return key;
+                        },
+
+                        get isMany() {
+                            return many;
+                        },
+
+                        get results() {
+                            return _results;
+                        },
+
+                        get callbackResult() {
+                            if (_result === undefined) {
+                                if (!many) {
+                                    if (_results.length > 0) {
+                                        _result = _results[0];
+                                    }
+                                } else if (_instant) {
+                                    _result = $flatten(_results);
+                                } else {
+                                    _result = Promise.all(_results).then($flatten);
+                                }
+                            }
+                            return _result;
+                        },
+                        set callbackResult(value) {
+                            _result = value;
+                        },
+                        addResult: function addResult(result) {
+                            if ((many || _results.length === 0) && !(_instant && $isPromise(result))) {
+                                _results.push(result);
+                                _result = undefined;
+                            }
+                        }
+                    });
+                }
+            }));
+
+            _export('Lookup', Lookup);
+
+            _export('Deferred', Deferred = Base.extend({
+                constructor: function constructor(callback, many) {
+                    if ($isNothing(callback)) {
+                        throw new TypeError("The callback is required.");
+                    }
+                    many = !!many;
+                    var _pending = [],
+                        _tracked = void 0,
+                        _result = void 0;
+                    this.extend({
+                        get isMany() {
+                            return many;
+                        },
+
+                        get callback() {
+                            return callback;
+                        },
+
+                        get pending() {
+                            return _pending;
+                        },
+
+                        get callbackResult() {
+                            if (_result === undefined) {
+                                if (_pending.length === 1) {
+                                    _result = Promise.resolve(_pending[0]).then(True);
+                                } else if (_pending.length > 1) {
+                                    _result = Promise.all(_pending).then(True);
+                                } else {
+                                    _result = Promise.resolve(_tracked);
+                                }
+                            }
+                            return _result;
+                        },
+                        set callbackResult(value) {
+                            _result = value;
+                        },
+                        track: function track(promise) {
+                            if ((many || _pending.length === 0) && $isPromise(promise)) {
+                                _pending.push(promise);
+                                _result = undefined;
+                            }
+                            if (!_tracked) {
+                                _tracked = true;
+                                _result = undefined;
+                            }
+                        }
+                    });
+                }
+            }));
+
+            _export('Deferred', Deferred);
+
+            _export('Resolution', Resolution = Base.extend({
+                constructor: function constructor(key, many) {
+                    if ($isNothing(key)) {
+                        throw new TypeError("The key is required.");
+                    }
+                    many = !!many;
+                    var _resolutions = [],
+                        _promised = false,
+                        _result = void 0,
+                        _instant = $instant.test(key);
+                    this.extend({
+                        get key() {
+                            return key;
+                        },
+
+                        get isMany() {
+                            return many;
+                        },
+
+                        get instant() {
+                            return !_promised;
+                        },
+
+                        get resolutions() {
+                            return _resolutions;
+                        },
+
+                        get callbackResult() {
+                            if (_result === undefined) {
+                                if (!many) {
+                                    var resolutions = $flatten(_resolutions, true);
+                                    if (resolutions.length > 0) {
+                                        _result = resolutions[0];
+                                    }
+                                } else {
+                                    _result = this.instant ? $flatten(_resolutions, true) : Promise.all(_resolutions).then(function (res) {
+                                        return $flatten(res, true);
+                                    });
+                                }
+                            }
+                            return _result;
+                        },
+                        set callbackResult(value) {
+                            _result = value;
+                        },
+                        resolve: function resolve(resolution) {
+                            if (!many && _resolutions.length > 0) {
+                                return;
+                            }
+                            var promised = $isPromise(resolution);
+                            if (!_instant || !promised) {
+                                _promised = _promised || promised;
+                                if (promised && many) {
+                                    resolution = resolution.catch(Undefined);
+                                }
+                                _resolutions.push(resolution);
+                                _result = undefined;
+                            }
+                        }
+                    });
+                }
+            }));
+
+            _export('Resolution', Resolution);
+
+            _export('Composition', Composition = Base.extend({
+                constructor: function constructor(callback) {
+                    if (callback) {
+                        this.extend({
+                            get callback() {
+                                return callback;
+                            },
+
+                            get callbackResult() {
+                                return callback.callbackResult;
+                            },
+                            set callbackResult(value) {
+                                callback.callbackResult = value;
+                            }
+                        });
+                    }
+                }
+            }));
+
+            _export('Composition', Composition);
+
+            function RejectedError(callback) {
+                this.callback = callback;
+
+                if (Error.captureStackTrace) {
+                    Error.captureStackTrace(this, this.constructor);
+                } else {
+                    Error.call(this);
+                }
+            }
+
+            _export('RejectedError', RejectedError);
+
+            RejectedError.prototype = new Error();
+            RejectedError.prototype.constructor = RejectedError;
+
+            function TimeoutError(callback, message) {
+                this.callback = callback;
+
+                this.message = message || "Timeout occurred";
+
+                if (Error.captureStackTrace) {
+                    Error.captureStackTrace(this, this.constructor);
+                } else {
+                    Error.call(this);
+                }
+            }
+
+            _export('TimeoutError', TimeoutError);
+
+            TimeoutError.prototype = new Error();
+            TimeoutError.prototype.constructor = TimeoutError;
+
+            _export('CallbackHandler', CallbackHandler = Base.extend($callbacks, {
+                constructor: function constructor(delegate) {
+                    this.extend({
+                        get delegate() {
+                            return delegate;
+                        }
+                    });
+                },
+                handle: function handle(callback, greedy, composer) {
+                    if ($isNothing(callback)) {
+                        return false;
+                    }
+                    if ($isNothing(composer)) {
+                        composer = compositionScope(this);
+                    }
+                    return !!this.handleCallback(callback, !!greedy, composer);
+                },
+                handleCallback: function handleCallback(callback, greedy, composer) {
+                    return $handle.dispatch(this, callback, null, composer, greedy);
+                },
+
+                $handle: [Lookup, function (lookup, composer) {
+                    return $lookup.dispatch(this, lookup, lookup.key, composer, lookup.isMany, lookup.addResult);
+                }, Deferred, function (deferred, composer) {
+                    return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);
+                }, Resolution, function (resolution, composer) {
+                    var key = resolution.key,
+                        many = resolution.isMany;
+                    var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
+                    if (!resolved) {
+                        var implied = new Node(key),
+                            delegate = this.delegate;
+                        if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
+                            resolution.resolve($decorated(delegate, true));
+                            resolved = true;
+                        }
+                        if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
+                            resolution.resolve($decorated(this, true));
+                            resolved = true;
+                        }
+                    }
+                    return resolved;
+                }, HandleMethod, function (method, composer) {
+                    return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
+                }, ResolveMethod, function (method, composer) {
+                    return method.invokeResolve(composer);
+                }, Composition, function (composable, composer) {
+                    var callback = composable.callback;
+                    return callback && $handle.dispatch(this, callback, null, composer);
+                }]
+            }, {
+                coerce: function coerce(object) {
+                    return new this(object);
+                }
+            }));
+
+            _export('CallbackHandler', CallbackHandler);
+
+            Base.implement({
+                toCallbackHandler: function toCallbackHandler() {
+                    return CallbackHandler(this);
+                }
+            });
+
+            compositionScope = $decorator({
+                isCompositionScope: function isCompositionScope() {
+                    return true;
+                },
+                handleCallback: function handleCallback(callback, greedy, composer) {
+                    if (!(callback instanceof Composition)) {
+                        callback = new Composition(callback);
+                    }
+                    return this.base(callback, greedy, composer);
+                }
+            });
+
+            _export('CascadeCallbackHandler', CascadeCallbackHandler = CallbackHandler.extend({
+                constructor: function constructor(handler, cascadeToHandler) {
+                    if ($isNothing(handler)) {
+                        throw new TypeError("No handler specified.");
+                    } else if ($isNothing(cascadeToHandler)) {
+                        throw new TypeError("No cascadeToHandler specified.");
+                    }
+                    handler = handler.toCallbackHandler();
+                    cascadeToHandler = cascadeToHandler.toCallbackHandler();
+                    this.extend({
+                        get handler() {
+                            return handler;
+                        },
+
+                        get cascadeToHandler() {
+                            return cascadeToHandler;
+                        }
+                    });
+                },
+                handleCallback: function handleCallback(callback, greedy, composer) {
+                    var handled = greedy ? this.handler.handleCallback(callback, true, composer) | this.cascadeToHandler.handleCallback(callback, true, composer) : this.handler.handleCallback(callback, false, composer) || this.cascadeToHandler.handleCallback(callback, false, composer);
+                    if (!handled || greedy) {
+                        handled = this.base(callback, greedy, composer) || handled;
+                    }
+                    return !!handled;
+                }
+            }));
+
+            _export('CascadeCallbackHandler', CascadeCallbackHandler);
+
+            _export('CompositeCallbackHandler', CompositeCallbackHandler = CallbackHandler.extend({
+                constructor: function constructor() {
+                    for (var _len = arguments.length, handlers = Array(_len), _key = 0; _key < _len; _key++) {
+                        handlers[_key] = arguments[_key];
+                    }
+
+                    var _handlers = [];
+                    this.extend({
+                        getHandlers: function getHandlers() {
+                            return _handlers.slice();
+                        },
+                        addHandlers: function addHandlers() {
+                            for (var _len2 = arguments.length, handlers = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+                                handlers[_key2] = arguments[_key2];
+                            }
+
+                            handlers = $flatten(handlers, true).map(function (h) {
+                                return h.toCallbackHandler();
+                            });
+                            _handlers.push.apply(_handlers, _toConsumableArray(handlers));
+                            return this;
+                        },
+                        insertHandlers: function insertHandlers(atIndex) {
+                            for (var _len3 = arguments.length, handlers = Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
+                                handlers[_key3 - 1] = arguments[_key3];
+                            }
+
+                            handlers = $flatten(handlers, true).map(function (h) {
+                                return h.toCallbackHandler();
+                            });
+                            _handlers.splice.apply(_handlers, [atIndex].concat(_toConsumableArray(handlers)));
+                            return this;
+                        },
+                        removeHandlers: function removeHandlers() {
+                            for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+                                handlers[_key4] = arguments[_key4];
+                            }
+
+                            $flatten(handlers).forEach(function (handler) {
+                                if (!handler) {
+                                    return;
+                                }
+                                var count = _handlers.length;
+                                for (var idx = 0; idx < count; ++idx) {
+                                    var testHandler = _handlers[idx];
+                                    if (testHandler == handler || testHandler.delegate == handler) {
+                                        _handlers.removeAt(idx);
+                                        return;
+                                    }
+                                }
+                            });
+                            return this;
+                        },
+                        handleCallback: function handleCallback(callback, greedy, composer) {
+                            var handled = false,
+                                count = _handlers.length;
+                            for (var idx = 0; idx < count; ++idx) {
+                                var handler = _handlers[idx];
+                                if (handler.handleCallback(callback, greedy, composer)) {
+                                    if (!greedy) {
+                                        return true;
+                                    }
+                                    handled = true;
+                                }
+                            }
+                            return this.base(callback, greedy, composer) || handled;
+                        }
+                    });
+                    this.addHandlers(handlers);
+                }
+            }));
+
+            _export('CompositeCallbackHandler', CompositeCallbackHandler);
+
+            CallbackHandler.accepting = function (handler, constraint) {
+                var accepting = new CallbackHandler();
+                $handle(accepting, constraint, handler);
+                return accepting;
+            };
+
+            CallbackHandler.providing = function (provider, constraint) {
+                var providing = new CallbackHandler();
+                $provide(providing, constraint, provider);
+                return providing;
+            };
+
+            CallbackHandler.implementing = function (methodName, method) {
+                if (!$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
+                    throw new TypeError("No methodName specified.");
+                } else if (!$isFunction(method)) {
+                    throw new TypeError('Invalid method: ' + method + ' is not a function.');
+                }
+                return new CallbackHandler().extend({
+                    handleCallback: function handleCallback(callback, greedy, composer) {
+                        if (callback instanceof HandleMethod) {
+                            var target = new Object();
+                            target[methodName] = method;
+                            return callback.invokeOn(target);
+                        }
+                        return false;
+                    }
+                });
+            };
+
+            CallbackHandler.implement({
+                defer: function defer(callback) {
+                    var deferred = new Deferred(callback);
+                    this.handle(deferred, false, $composer);
+                    return deferred.callbackResult;
+                },
+                deferAll: function deferAll(callback) {
+                    var deferred = new Deferred(callback, true);
+                    this.handle(deferred, true, $composer);
+                    return deferred.callbackResult;
+                },
+                resolve: function resolve(key) {
+                    var resolution = key instanceof Resolution ? key : new Resolution(key);
+                    if (this.handle(resolution, false, $composer)) {
+                        return resolution.callbackResult;
+                    }
+                },
+                resolveAll: function resolveAll(key) {
+                    var resolution = key instanceof Resolution ? key : new Resolution(key, true);
+                    return this.handle(resolution, true, $composer) ? resolution.callbackResult : [];
+                },
+                lookup: function lookup(key) {
+                    var lookup = key instanceof Lookup ? key : new Lookup(key);
+                    if (this.handle(lookup, false, $composer)) {
+                        return lookup.callbackResult;
+                    }
+                },
+                lookupAll: function lookupAll(key) {
+                    var lookup = key instanceof Lookup ? key : new Lookup(key, true);
+                    return this.handle(lookup, true, $composer) ? lookup.callbackResult : [];
+                },
+                decorate: function decorate(decorations) {
+                    return $decorate(this, decorations);
+                },
+                filter: function filter(_filter, reentrant) {
+                    if (!$isFunction(_filter)) {
+                        throw new TypeError('Invalid filter: ' + _filter + ' is not a function.');
+                    }
+                    return this.decorate({
+                        handleCallback: function handleCallback(callback, greedy, composer) {
+                            var _this2 = this;
+
+                            if (!reentrant && callback instanceof Composition) {
+                                return this.base(callback, greedy, composer);
+                            }
+                            var base = this.base;
+                            return _filter(callback, composer, function () {
+                                return base.call(_this2, callback, greedy, composer);
+                            });
+                        }
+                    });
+                },
+                aspect: function aspect(before, after, reentrant) {
+                    return this.filter(function (callback, composer, proceed) {
+                        if ($isFunction(before)) {
+                            var test = before(callback, composer);
+                            if ($isPromise(test)) {
+                                var _ret = function () {
+                                    var hasResult = "callbackResult" in callback,
+                                        accept = test.then(function (accepted) {
+                                        if (accepted !== false) {
+                                            _aspectProceed(callback, composer, proceed, after, accepted);
+                                            return hasResult ? callback.callbackResult : true;
+                                        }
+                                        return Promise.reject(new RejectedError(callback));
+                                    });
+                                    if (hasResult) {
+                                        callback.callbackResult = accept;
+                                    }
+                                    return {
+                                        v: true
+                                    };
+                                }();
+
+                                if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
+                            } else if (test === false) {
+                                throw new RejectedError(callback);
+                            }
+                        }
+                        return _aspectProceed(callback, composer, proceed, after);
+                    }, reentrant);
+                },
+                $$handle: function $$handle(definitions) {
+                    return this.decorate({ $handle: definitions });
+                },
+                $$provide: function $$provide(definitions) {
+                    return this.decorate({ $provide: definitions });
+                },
+                when: function when(constraint) {
+                    var when = new Node(constraint),
+                        condition = function condition(callback) {
+                        if (callback instanceof Deferred) {
+                            return when.match($classOf(callback.callback), Variance.Contravariant);
+                        } else if (callback instanceof Resolution) {
+                            return when.match(callback.key, Variance.Covariant);
+                        } else {
+                            return when.match($classOf(callback), Variance.Contravariant);
+                        }
+                    };
+                    return this.decorate({
+                        handleCallback: function handleCallback(callback, greedy, composer) {
+                            return condition(callback) && this.base(callback, greedy, composer);
+                        }
+                    });
+                },
+                next: function next() {
+                    for (var _len5 = arguments.length, handlers = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+                        handlers[_key5] = arguments[_key5];
+                    }
+
+                    switch (handlers.length) {
+                        case 0:
+                            return this;
+                        case 1:
+                            return new CascadeCallbackHandler(this, handlers[0]);
+                        default:
+                            return new (Function.prototype.bind.apply(CompositeCallbackHandler, [null].concat([this], handlers)))();
+                    }
+                },
+                $guard: function $guard(target, property) {
+                    var _this3 = this;
+
+                    if (target) {
+                        var _ret2 = function () {
+                            var guarded = false;
+                            property = property || "guarded";
+                            var propExists = property in target;
+                            return {
+                                v: _this3.aspect(function () {
+                                    if (guarded = target[property]) {
+                                        return false;
+                                    }
+                                    target[property] = true;
+                                    return true;
+                                }, function () {
+                                    if (!guarded) {
+                                        target[property] = undefined;
+                                        if (!propExists) {
+                                            delete target[property];
+                                        }
+                                    }
+                                })
+                            };
+                        }();
+
+                        if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
+                    }
+                    return this;
+                },
+                $activity: function $activity(target, ms, property) {
+                    property = property || "$$activity";
+                    var propExists = property in target;
+                    return this.aspect(function () {
+                        var state = { enabled: false };
+                        setTimeout(function () {
+                            if ("enabled" in state) {
+                                state.enabled = true;
+                                var activity = target[property] || 0;
+                                target[property] = ++activity;
+                            }
+                        }, $isSomething(ms) ? ms : 50);
+                        return state;
+                    }, function (_, composer, state) {
+                        if (state.enabled) {
+                            var activity = target[property];
+                            if (!activity || activity === 1) {
+                                target[property] = undefined;
+                                if (!propExists) {
+                                    delete target[property];
+                                }
+                            } else {
+                                target[property] = --activity;
+                            }
+                        }
+                        delete state.enabled;
+                    });
+                },
+                $promise: function $promise() {
+                    return this.filter(function (callback, composer, proceed) {
+                        try {
+                            var handled = proceed();
+                            if (handled) {
+                                var result = callback.callbackResult;
+                                callback.callbackResult = $isPromise(result) ? result : Promise.resolve(result);
+                            }
+                            return handled;
+                        } catch (ex) {
+                            callback.callbackResult = Promise.reject(ex);
+                            return true;
+                        }
+                    });
+                },
+                $timeout: function $timeout(ms, error) {
+                    return this.filter(function (callback, composer, proceed) {
+                        var handled = proceed();
+                        if (handled) {
+                            (function () {
+                                var result = callback.callbackResult;
+                                if ($isPromise(result)) {
+                                    callback.callbackResult = new Promise(function (resolve, reject) {
+                                        var timeout = void 0;
+                                        result.then(function (res) {
+                                            if (timeout) {
+                                                clearTimeout(timeout);
+                                            }
+                                            resolve(res);
+                                        }, function (err) {
+                                            if (timeout) {
+                                                clearTimeout(timeout);
+                                            }
+                                            reject(err);
+                                        });
+                                        timeout = setTimeout(function () {
+                                            if (!error) {
+                                                error = new TimeoutError(callback);
+                                            } else if ($isFunction(error)) {
+                                                error = Reflect.construct(error, [callback]);
+                                            }
+                                            if ($isFunction(result.reject)) {
+                                                result.reject(error);
+                                            }
+                                            reject(error);
+                                        }, ms);
+                                    });
+                                }
+                            })();
+                        }
+                        return handled;
+                    });
+                }
+            });
+            _export('Batching', Batching = StrictProtocol.extend({
+                complete: function complete(composer) {}
+            }));
+
+            _export('Batching', Batching);
+
+            BatchingComplete = Batching.extend();
+
+            _export('Batcher', Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
+                constructor: function constructor() {
+                    for (var _len6 = arguments.length, protocols = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
+                        protocols[_key6] = arguments[_key6];
+                    }
+
+                    this.base();
+                    protocols = $flatten(protocols, true);
+                    this.extend({
+                        shouldBatch: function shouldBatch(protocol) {
+                            return protocol && (protocols.length == 0 || protocols.indexOf(protocol) >= 0);
+                        }
+                    });
+                },
+                complete: function complete(composer) {
+                    var promise = false,
+                        results = this.getHandlers().reduce(function (res, handler) {
+                        var result = Batching(handler).complete(composer);
+                        if (result) {
+                            promise = promise || $isPromise(result);
+                            res.push(result);
+                            return res;
+                        }
+                    }, []);
+                    return promise ? Promise.all(results) : results;
+                }
+            }));
+
+            _export('Batcher', Batcher);
+
+            CallbackHandler.implement({
+                $batch: function $batch(protocols) {
+                    var _batcher = new Batcher(protocols),
+                        _complete = false,
+                        _promises = [];
+                    return this.decorate({
+                        $provide: [Batcher, function () {
+                            return _batcher;
+                        }],
+                        handleCallback: function handleCallback(callback, greedy, composer) {
+                            var handled = false;
+                            if (_batcher) {
+                                var b = _batcher;
+                                if (_complete && !(callback instanceof Composition)) {
+                                    _batcher = null;
+                                }
+                                if ((handled = b.handleCallback(callback, greedy, composer)) && !greedy) {
+                                    if (_batcher) {
+                                        var result = callback.callbackResult;
+                                        if ($isPromise(result)) {
+                                            _promises.push(result);
+                                        }
+                                    }
+                                    return true;
+                                }
+                            }
+                            return this.base(callback, greedy, composer) || handled;
+                        },
+                        dispose: function dispose() {
+                            _complete = true;
+                            var results = BatchingComplete(this).complete(this);
+                            return _promises.length > 0 ? Promise.all(_promises).then(function () {
+                                return results;
+                            }) : results;
+                        }
+                    });
+                },
+                getBatcher: function getBatcher(protocol) {
+                    var batcher = this.resolve(Batcher);
+                    if (batcher && (!protocol || batcher.shouldBatch(protocol))) {
+                        return batcher;
+                    }
+                }
+            });
+
+            _export('InvocationOptions', InvocationOptions = Flags({
+                None: 0,
+
+                Broadcast: 1 << 0,
+
+                BestEffort: 1 << 1,
+
+                Strict: 1 << 2,
+
+                Resolve: 1 << 3,
+
+                Notify: 1 << 0 | 1 << 1
+            }));
+
+            _export('InvocationOptions', InvocationOptions);
+
+            _export('InvocationSemantics', InvocationSemantics = Composition.extend({
+                constructor: function constructor(options) {
+                    var _options = InvocationOptions.None.addFlag(options),
+                        _specified = _options;
+                    this.extend({
+                        getOption: function getOption(option) {
+                            return _options.hasFlag(option);
+                        },
+                        setOption: function setOption(option, enabled) {
+                            _options = enabled ? _options.addFlag(option) : _options.removeFlag(option);
+                            _specified = _specified.addFlag(option);
+                        },
+                        isSpecified: function isSpecified(option) {
+                            return _specified.hasFlag(option);
+                        }
+                    });
+                },
+                mergeInto: function mergeInto(semantics) {
+                    var items = InvocationOptions.items;
+                    for (var i = 0; i < items.length; ++i) {
+                        var option = +items[i];
+                        if (this.isSpecified(option) && !semantics.isSpecified(option)) {
+                            semantics.setOption(option, this.getOption(option));
+                        }
+                    }
+                }
+            }));
+
+            _export('InvocationSemantics', InvocationSemantics);
+
+            _export('InvocationDelegate', InvocationDelegate = Delegate.extend({
+                constructor: function constructor(handler) {
+                    this.extend({
+                        get handler() {
+                            return handler;
+                        }
+                    });
+                },
+                get: function get(protocol, propertyName, strict) {
+                    return _delegateInvocation(this, HandleMethod.Get, protocol, propertyName, null, strict);
+                },
+                set: function set(protocol, propertyName, propertyValue, strict) {
+                    return _delegateInvocation(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
+                },
+                invoke: function invoke(protocol, methodName, args, strict) {
+                    return _delegateInvocation(this, HandleMethod.Invoke, protocol, methodName, args, strict);
+                }
+            }));
+
+            _export('InvocationDelegate', InvocationDelegate);
+
+            CallbackHandler.implement({
+                toDelegate: function toDelegate() {
+                    return new InvocationDelegate(this);
+                },
+                $strict: function $strict() {
+                    return this.$callOptions(InvocationOptions.Strict);
+                },
+                $broadcast: function $broadcast() {
+                    return this.$callOptions(InvocationOptions.Broadcast);
+                },
+                $bestEffort: function $bestEffort() {
+                    return this.$callOptions(InvocationOptions.BestEffort);
+                },
+                $notify: function $notify() {
+                    return this.$callOptions(InvocationOptions.Notify);
+                },
+                $resolve: function $resolve() {
+                    return this.$callOptions(InvocationOptions.Resolve);
+                },
+                $callOptions: function $callOptions(options) {
+                    var semantics = new InvocationSemantics(options);
+                    return this.decorate({
+                        handleCallback: function handleCallback(callback, greedy, composer) {
+                            var handled = false;
+                            if (callback instanceof InvocationSemantics) {
+                                semantics.mergeInto(callback);
+                                handled = true;
+                            } else if (!greedy) {
+                                if (semantics.isSpecified(InvocationOptions.Broadcast | InvocationOptions.Resolve)) {
+                                    greedy = semantics.getOption(InvocationOptions.Broadcast) && !semantics.getOption(InvocationOptions.Resolve);
+                                } else {
+                                    var inv = new InvocationSemantics();
+                                    if (this.handle(inv, true) && inv.isSpecified(InvocationOptions.Broadcast)) {
+                                        greedy = inv.getOption(InvocationOptions.Broadcast) && !inv.getOption(InvocationOptions.Resolve);
+                                    }
+                                }
+                            }
+                            if (greedy || !handled) {
+                                handled = handled | this.base(callback, greedy, composer);
+                            }
+                            return !!handled;
+                        }
+                    });
+                }
+            });
         }
     };
 });

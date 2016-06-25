@@ -14,7 +14,6 @@ System.config({
   },
 
   map: {
-    "miruken-core": "npm:miruken-core@0.0.1",
     "babel": "npm:babel-core@5.8.38",
     "babel-runtime": "npm:babel-runtime@5.8.38",
     "chai": "npm:chai@3.5.0",
