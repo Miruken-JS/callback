@@ -11,10 +11,7 @@ module.exports = function(config) {
 
         jspm: {
             loadFiles: [paths.tests],
-            serveFiles: [paths.source, 'node_modules/miruken-core/dist/amd/miruken-core.js'],
-            paths: {
-                "miruken-core": "node_modules/miruken-core/dist/amd/miruken-core.js"
-            }
+            serveFiles: [paths.source]
         },
         
         files: [],
