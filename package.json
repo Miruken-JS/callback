@@ -1,6 +1,7 @@
 {
   "name": "miruken-callback",
   "version": "0.0.1",
+  "registry": "npm",
   "description": "Provides message handling support",
   "keywords": [
     "miruken",
@@ -9,13 +10,12 @@
   "homepage": "http://miruken.com",
   "license": "MIT",
   "author": "Craig Neuwirt <Craig.Neuwirt@Improving.com>",
-  "main": "dist/commonjs/miruken.js",
+  "main": "dist/commonjs/miruken-callback.js",
   "repository": {
     "type": "git",
-    "url": "http://github.com/miruken/MirukenJS"
+    "url": "http://github.com/miruken/callback"
   },
   "jspm": {
-    "registry": "npm",
     "main": "miruken-callback",
     "format": "amd",
     "directories": {
