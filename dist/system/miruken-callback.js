@@ -947,7 +947,7 @@ System.register(['miruken-core'], function (_export, _context) {
                                 for (var idx = 0; idx < count; ++idx) {
                                     var testHandler = _handlers[idx];
                                     if (testHandler == handler || testHandler.delegate == handler) {
-                                        _handlers.removeAt(idx);
+                                        _handlers.splice(idx, 1);
                                         return;
                                     }
                                 }

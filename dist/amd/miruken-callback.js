@@ -828,7 +828,7 @@ define(['exports', 'miruken-core'], function (exports, _mirukenCore) {
                         for (var idx = 0; idx < count; ++idx) {
                             var testHandler = _handlers[idx];
                             if (testHandler == handler || testHandler.delegate == handler) {
-                                _handlers.removeAt(idx);
+                                _handlers.splice(idx, 1);
                                 return;
                             }
                         }

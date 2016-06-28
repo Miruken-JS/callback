@@ -1065,7 +1065,7 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
                     for (let idx = 0; idx < count; ++idx) {
                         const testHandler = _handlers[idx];
                         if (testHandler == handler || testHandler.delegate == handler) {
-                            _handlers.removeAt(idx);
+                            _handlers.splice(idx, 1);
                             return;
                         }
                     }
