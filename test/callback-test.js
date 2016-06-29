@@ -15,14 +15,14 @@ import {
 
 import { Batching } from '../src/batch';
 
+import '../src/invocation';
+
 import {
     True, False, Undefined, Base, Protocol,
     StrictProtocol, Metadata, Variance, Resolving,
     assignID, $isPromise, $eq, $copy, $instant,
     $using, $flatten
 } from 'miruken-core';
-
-import '../src/invocation';
 
 import chai from 'chai';
 

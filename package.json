@@ -21,7 +21,9 @@
     "directories": {
       "dist": "dist/amd"
     },
-    "dependencies": {},
+      "dependencies": {
+        "miruken-core": "npm:miruken-core@0.0.1"
+    },
     "devDependencies": {
       "babel": "babel-core@^5.8.24",
       "babel-runtime": "^5.8.24",
@@ -32,9 +34,6 @@
     }
   },
   "dependencies": {
-    "chai": "^1.10.0",
-    "grunt-cli": "latest",
-    "grunt-env": "latest"
   },
   "devDependencies": {
     "babel-plugin-syntax-flow": "^6.5.0",
