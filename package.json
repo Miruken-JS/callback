@@ -21,8 +21,7 @@
     "directories": {
       "dist": "dist/amd"
     },
-      "dependencies": {
-        "miruken-core": "npm:miruken-core@0.0.1"
+    "dependencies": {
     },
     "devDependencies": {
       "babel": "babel-core@^5.8.24",
