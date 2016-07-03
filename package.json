@@ -33,6 +33,7 @@
     }
   },
   "dependencies": {
+    "chai": "^1.10.0"        
   },
   "devDependencies": {
     "babel-plugin-syntax-flow": "^6.5.0",
