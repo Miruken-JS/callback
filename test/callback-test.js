@@ -24,9 +24,7 @@ import {
     $using, $flatten
 } from 'miruken-core';
 
-import chai from 'chai';
-
-const expect = chai.expect;
+import { expect } from 'chai';
 
 const Guest = Base.extend({
     $properties: {
