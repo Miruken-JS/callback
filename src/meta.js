@@ -49,6 +49,8 @@ export const $NOT_HANDLED = Object.freeze({});
  * @extends miruken.MetaMacro
  */
 export const $callbacks = MetaMacro.extend({
+    get active() { return true; },
+    get inherit() { return true; },
     execute(step, metadata, target, definition) {
         if ($isNothing(definition)) {
             return;
@@ -73,19 +75,7 @@ export const $callbacks = MetaMacro.extend({
                 define(target, constraint, list[idx]);
             }
         }
-    },
-    /**
-     * Determines if the macro should be inherited
-     * @method shouldInherit
-     * @returns {boolean} true
-     */                        
-    shouldInherit: True,
-    /**
-     * Determines if the macro should be applied on extension.
-     * @method isActive
-     * @returns {boolean} true
-     */ 
-    isActive: True
+    }
 });
 
 /**
@@ -112,28 +102,32 @@ export function $define(tag, variance) {
     }        
     switch (variance) {
     case Variance.Covariant:
-        handled  = _requiresResult;
-        comparer = _compareCovariant; 
+        handled  = requiresResult;
+        comparer = compareCovariant; 
         break;
     case Variance.Contravariant:
-        handled  = _impliesSuccess;
-        comparer = _compareContravariant; 
+        handled  = impliesSuccess;
+        comparer = compareContravariant; 
         break;
     case Variance.Invariant:
-        handled  = _requiresResult;
-        comparer = _compareInvariant; 
+        handled  = requiresResult;
+        comparer = compareInvariant; 
         break;
     }
 
     function definition(owner, constraint, handler, removed) {
         if (Array.isArray(constraint)) {
-            return constraint.reduce((result, c) => {
-                const undefine = _definition(owner, c, handler, removed);
-                return notifyRemoved => {
-                    result(notifyRemoved);
-                    undefine(notifyRemoved);
-                };
-            }, Undefined);
+            if (constraint.length == 1) {
+                constraint = constraint[0];
+            } else {
+                return constraint.reduce((result, c) => {
+                    const undefine = _definition(owner, c, handler, removed);
+                    return notifyRemoved => {
+                        result(notifyRemoved);
+                        undefine(notifyRemoved);
+                    };
+                }, Undefined);
+            }
         }
         return _definition(owner, constraint, handler, removed);
     }
@@ -164,7 +158,7 @@ export function $define(tag, variance) {
         }
         const meta  = owner[Metadata],
               node  = new Node(constraint, handler, removed),
-              index = _createIndex(node.constraint),
+              index = createIndex(node.constraint),
               list  = meta[tag] || (meta[tag] = new IndexedList(comparer));
         list.insert(node, index);
         return function (notifyRemoved) {
@@ -211,7 +205,7 @@ export function $define(tag, variance) {
     function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
         let   dispatched = false;
         const invariant  = (v === Variance.Invariant),
-              index      = meta && _createIndex(constraint);
+              index      = meta && createIndex(constraint);
         while (meta) {
             const list = meta[tag];
             if (list && (!invariant || index)) {
@@ -255,6 +249,8 @@ export function $define(tag, variance) {
         }
         return dispatched;
     }
+    definition.tag = tag;
+    Object.freeze(definition);
     _definitions[tag] = definition;
     return definition;
 }
@@ -265,15 +261,15 @@ export function Node(constraint, handler, removed) {
     this.constraint = constraint;
     this.handler    = handler;
     if ($isNothing(constraint)) {
-        this.match = invariant ? False : _matchEverything;
+        this.match = invariant ? False : matchEverything;
     } else if ($isProtocol(constraint)) {
-        this.match = invariant ? _matchInvariant : _matchProtocol;
+        this.match = invariant ? matchInvariant : matchProtocol;
     } else if ($isClass(constraint)) {
-        this.match = invariant ? _matchInvariant : _matchClass;
+        this.match = invariant ? matchInvariant : matchClass;
     } else if ($isString(constraint)) {
-        this.match = _matchString;
+        this.match = matchString;
     } else if (constraint instanceof RegExp) {
-        this.match = invariant ? False : _matchRegExp;
+        this.match = invariant ? False : matchRegExp;
     } else if ($isFunction(constraint)) {
         this.match = constraint;
     } else {
@@ -284,7 +280,7 @@ export function Node(constraint, handler, removed) {
     }
 }
 
-function _createIndex(constraint) {
+function createIndex(constraint) {
     if (constraint) {
         if ($isString(constraint)) {
             return constraint;
@@ -294,15 +290,15 @@ function _createIndex(constraint) {
     }
 }
 
-function _matchInvariant(match) {
+function matchInvariant(match) {
     return this.constraint === match;
 }
 
-function _matchEverything(match, variance) {
+function matchEverything(match, variance) {
     return variance !== Variance.Invariant;
 }
 
-function _matchProtocol(match, variance) {
+function matchProtocol(match, variance) {
     const constraint = this.constraint;
     if (constraint === match) {
         return true;
@@ -314,7 +310,7 @@ function _matchProtocol(match, variance) {
     return false;
 }
 
-function _matchClass(match, variance) {
+function matchClass(match, variance) {
     const constraint = this.constraint;
     if (constraint === match) {
         return true;
@@ -329,15 +325,15 @@ function _matchClass(match, variance) {
     return false;
 }
 
-function _matchString(match) {
+function matchString(match) {
     return $isString(match) && this.constraint == match;
 }
 
-function _matchRegExp(match, variance) {
+function matchRegExp(match, variance) {
     return (variance !== Variance.Invariant) && this.constraint.test(match);
 }
 
-function _compareCovariant(node, insert) {
+function compareCovariant(node, insert) {
     if (insert.match(node.constraint, Variance.Invariant)) {
         return 0;
     } else if (insert.match(node.constraint, Variance.Covariant)) {
@@ -346,7 +342,7 @@ function _compareCovariant(node, insert) {
     return 1;
 }
 
-function _compareContravariant(node, insert) {
+function compareContravariant(node, insert) {
     if (insert.match(node.constraint, Variance.Invariant)) {
         return 0;
     } else if (insert.match(node.constraint, Variance.Contravariant)) {
@@ -355,14 +351,14 @@ function _compareContravariant(node, insert) {
     return 1;
 }
 
-function _compareInvariant(node, insert) {
+function compareInvariant(node, insert) {
     return insert.match(node.constraint, Variance.Invariant) ? 0 : -1;
 }
 
-function _requiresResult(result) {
+function requiresResult(result) {
     return ((result !== null) && (result !== undefined) && (result !== $NOT_HANDLED));
 }
 
-function _impliesSuccess(result) {
+function impliesSuccess(result) {
     return result ? (result !== $NOT_HANDLED) : (result === undefined);
 }

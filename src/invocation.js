@@ -120,17 +120,17 @@ export const InvocationDelegate = Delegate.extend({
         });
     },
     get(protocol, propertyName, strict) {
-        return _delegateInvocation(this, HandleMethod.Get, protocol, propertyName, null, strict);
+        return delegate(this, HandleMethod.Get, protocol, propertyName, null, strict);
     },
     set(protocol, propertyName, propertyValue, strict) {
-        return _delegateInvocation(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
+        return delegate(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
     },
     invoke(protocol, methodName, args, strict) {
-        return _delegateInvocation(this, HandleMethod.Invoke, protocol, methodName, args, strict);
+        return delegate(this, HandleMethod.Invoke, protocol, methodName, args, strict);
     }
 });
 
-function _delegateInvocation(delegate, type, protocol, methodName, args, strict) {
+function delegate(delegate, type, protocol, methodName, args, strict) {
     let broadcast  = false,
         useResolve = false,
         bestEffort = false,

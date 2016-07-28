@@ -3,7 +3,7 @@
 System.register(['miruken-core'], function (_export, _context) {
     "use strict";
 
-    var False, True, Undefined, Base, Abstract, extend, typeOf, assignID, Variance, MetaMacro, Metadata, $isClass, $isString, $isFunction, $isNothing, $isProtocol, $classOf, Modifier, IndexedList, $eq, $use, $copy, $lift, $isPromise, $instant, $flatten, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _definitions, $handle, $provide, $lookup, $NOT_HANDLED, $callbacks, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, True, Undefined, Base, Abstract, extend, typeOf, assignID, Variance, MetaMacro, Metadata, $isClass, $isString, $isFunction, $isNothing, $isProtocol, $classOf, Modifier, IndexedList, $eq, $use, $copy, $lift, $isPromise, $instant, $flatten, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _slicedToArray, _definitions, $handle, $provide, $lookup, $NOT_HANDLED, $callbacks, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, Everything, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -17,7 +17,7 @@ System.register(['miruken-core'], function (_export, _context) {
         }
     }
 
-    function _createIndex(constraint) {
+    function createIndex(constraint) {
         if (constraint) {
             if ($isString(constraint)) {
                 return constraint;
@@ -27,15 +27,15 @@ System.register(['miruken-core'], function (_export, _context) {
         }
     }
 
-    function _matchInvariant(match) {
+    function matchInvariant(match) {
         return this.constraint === match;
     }
 
-    function _matchEverything(match, variance) {
+    function matchEverything(match, variance) {
         return variance !== Variance.Invariant;
     }
 
-    function _matchProtocol(match, variance) {
+    function matchProtocol(match, variance) {
         var constraint = this.constraint;
         if (constraint === match) {
             return true;
@@ -47,7 +47,7 @@ System.register(['miruken-core'], function (_export, _context) {
         return false;
     }
 
-    function _matchClass(match, variance) {
+    function matchClass(match, variance) {
         var constraint = this.constraint;
         if (constraint === match) {
             return true;
@@ -59,15 +59,15 @@ System.register(['miruken-core'], function (_export, _context) {
         return false;
     }
 
-    function _matchString(match) {
+    function matchString(match) {
         return $isString(match) && this.constraint == match;
     }
 
-    function _matchRegExp(match, variance) {
+    function matchRegExp(match, variance) {
         return variance !== Variance.Invariant && this.constraint.test(match);
     }
 
-    function _compareCovariant(node, insert) {
+    function compareCovariant(node, insert) {
         if (insert.match(node.constraint, Variance.Invariant)) {
             return 0;
         } else if (insert.match(node.constraint, Variance.Covariant)) {
@@ -76,7 +76,7 @@ System.register(['miruken-core'], function (_export, _context) {
         return 1;
     }
 
-    function _compareContravariant(node, insert) {
+    function compareContravariant(node, insert) {
         if (insert.match(node.constraint, Variance.Invariant)) {
             return 0;
         } else if (insert.match(node.constraint, Variance.Contravariant)) {
@@ -85,19 +85,23 @@ System.register(['miruken-core'], function (_export, _context) {
         return 1;
     }
 
-    function _compareInvariant(node, insert) {
+    function compareInvariant(node, insert) {
         return insert.match(node.constraint, Variance.Invariant) ? 0 : -1;
     }
 
-    function _requiresResult(result) {
+    function requiresResult(result) {
         return result !== null && result !== undefined && result !== $NOT_HANDLED;
     }
 
-    function _impliesSuccess(result) {
+    function impliesSuccess(result) {
         return result ? result !== $NOT_HANDLED : result === undefined;
     }
 
-    function _aspectProceed(callback, composer, proceed, after, state) {
+    function isDescriptor(descriptor) {
+        return 'value' in descriptor && 'enumerable' in descriptor && 'writable' in descriptor;
+    }
+
+    function aspectProceed(callback, composer, proceed, after, state) {
         var promise = void 0;
         try {
             var handled = proceed();
@@ -123,7 +127,7 @@ System.register(['miruken-core'], function (_export, _context) {
         }
     }
 
-    function _delegateInvocation(delegate, type, protocol, methodName, args, strict) {
+    function delegate(delegate, type, protocol, methodName, args, strict) {
         var broadcast = false,
             useResolve = false,
             bestEffort = false,
@@ -187,6 +191,45 @@ System.register(['miruken-core'], function (_export, _context) {
             } : function (obj) {
                 return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj;
             };
+
+            _slicedToArray = function () {
+                function sliceIterator(arr, i) {
+                    var _arr = [];
+                    var _n = true;
+                    var _d = false;
+                    var _e = undefined;
+
+                    try {
+                        for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+                            _arr.push(_s.value);
+
+                            if (i && _arr.length === i) break;
+                        }
+                    } catch (err) {
+                        _d = true;
+                        _e = err;
+                    } finally {
+                        try {
+                            if (!_n && _i["return"]) _i["return"]();
+                        } finally {
+                            if (_d) throw _e;
+                        }
+                    }
+
+                    return _arr;
+                }
+
+                return function (arr, i) {
+                    if (Array.isArray(arr)) {
+                        return arr;
+                    } else if (Symbol.iterator in Object(arr)) {
+                        return sliceIterator(arr, i);
+                    } else {
+                        throw new TypeError("Invalid attempt to destructure non-iterable instance");
+                    }
+                };
+            }();
+
             _definitions = {};
 
             _export('$handle', $handle = $define('$handle', Variance.Contravariant));
@@ -206,6 +249,12 @@ System.register(['miruken-core'], function (_export, _context) {
             _export('$NOT_HANDLED', $NOT_HANDLED);
 
             _export('$callbacks', $callbacks = MetaMacro.extend({
+                get active() {
+                    return true;
+                },
+                get inherit() {
+                    return true;
+                },
                 execute: function execute(step, metadata, target, definition) {
                     if ($isNothing(definition)) {
                         return;
@@ -229,11 +278,7 @@ System.register(['miruken-core'], function (_export, _context) {
                             define(target, constraint, list[idx]);
                         }
                     }
-                },
-
-                shouldInherit: True,
-
-                isActive: True
+                }
             }));
 
             _export('$callbacks', $callbacks);
@@ -253,28 +298,32 @@ System.register(['miruken-core'], function (_export, _context) {
                 }
                 switch (variance) {
                     case Variance.Covariant:
-                        handled = _requiresResult;
-                        comparer = _compareCovariant;
+                        handled = requiresResult;
+                        comparer = compareCovariant;
                         break;
                     case Variance.Contravariant:
-                        handled = _impliesSuccess;
-                        comparer = _compareContravariant;
+                        handled = impliesSuccess;
+                        comparer = compareContravariant;
                         break;
                     case Variance.Invariant:
-                        handled = _requiresResult;
-                        comparer = _compareInvariant;
+                        handled = requiresResult;
+                        comparer = compareInvariant;
                         break;
                 }
 
                 function definition(owner, constraint, handler, removed) {
                     if (Array.isArray(constraint)) {
-                        return constraint.reduce(function (result, c) {
-                            var undefine = _definition(owner, c, handler, removed);
-                            return function (notifyRemoved) {
-                                result(notifyRemoved);
-                                undefine(notifyRemoved);
-                            };
-                        }, Undefined);
+                        if (constraint.length == 1) {
+                            constraint = constraint[0];
+                        } else {
+                            return constraint.reduce(function (result, c) {
+                                var undefine = _definition(owner, c, handler, removed);
+                                return function (notifyRemoved) {
+                                    result(notifyRemoved);
+                                    undefine(notifyRemoved);
+                                };
+                            }, Undefined);
+                        }
                     }
                     return _definition(owner, constraint, handler, removed);
                 }
@@ -304,7 +353,7 @@ System.register(['miruken-core'], function (_export, _context) {
                     }
                     var meta = owner[Metadata],
                         node = new Node(constraint, handler, removed),
-                        index = _createIndex(node.constraint),
+                        index = createIndex(node.constraint),
                         list = meta[tag] || (meta[tag] = new IndexedList(comparer));
                     list.insert(node, index);
                     return function (notifyRemoved) {
@@ -351,7 +400,7 @@ System.register(['miruken-core'], function (_export, _context) {
                 function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
                     var dispatched = false;
                     var invariant = v === Variance.Invariant,
-                        index = meta && _createIndex(constraint);
+                        index = meta && createIndex(constraint);
                     while (meta) {
                         var list = meta[tag];
                         if (list && (!invariant || index)) {
@@ -396,6 +445,8 @@ System.register(['miruken-core'], function (_export, _context) {
                     }
                     return dispatched;
                 }
+                definition.tag = tag;
+                Object.freeze(definition);
                 _definitions[tag] = definition;
                 return definition;
             }
@@ -408,15 +459,15 @@ System.register(['miruken-core'], function (_export, _context) {
                 this.constraint = constraint;
                 this.handler = handler;
                 if ($isNothing(constraint)) {
-                    this.match = invariant ? False : _matchEverything;
+                    this.match = invariant ? False : matchEverything;
                 } else if ($isProtocol(constraint)) {
-                    this.match = invariant ? _matchInvariant : _matchProtocol;
+                    this.match = invariant ? matchInvariant : matchProtocol;
                 } else if ($isClass(constraint)) {
-                    this.match = invariant ? _matchInvariant : _matchClass;
+                    this.match = invariant ? matchInvariant : matchClass;
                 } else if ($isString(constraint)) {
-                    this.match = _matchString;
+                    this.match = matchString;
                 } else if (constraint instanceof RegExp) {
-                    this.match = invariant ? False : _matchRegExp;
+                    this.match = invariant ? False : matchRegExp;
                 } else if ($isFunction(constraint)) {
                     this.match = constraint;
                 } else {
@@ -795,6 +846,68 @@ System.register(['miruken-core'], function (_export, _context) {
             TimeoutError.prototype = new Error();
             TimeoutError.prototype.constructor = TimeoutError;
 
+            Everything = [null];
+            function callback(definition) {
+                for (var _len = arguments.length, constraints = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+                    constraints[_key - 1] = arguments[_key];
+                }
+
+                function decorate(target, key, descriptor) {
+                    if (definition && definition.tag && descriptor && descriptor.value) {
+                        var lateBinding = function lateBinding() {
+                            var method = this[key];
+
+                            for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+                                args[_key2] = arguments[_key2];
+                            }
+
+                            return $isFunction(method) ? method.apply(this, args) : $NOT_HANDLED;
+                        };
+
+                        var spec = target[definition.tag] || (target[definition.tag] = []);
+
+                        spec.push(constraints, lateBinding);
+                    }
+                    return descriptor;
+                };
+                if (constraints.length == 0) {
+                    constraints = Everything;
+                } else if (constraints.length === 3 && isDescriptor(constraints[2])) {
+                    var _constraints = constraints;
+
+                    var _constraints2 = _slicedToArray(_constraints, 3);
+
+                    var target = _constraints2[0];
+                    var key = _constraints2[1];
+                    var descriptor = _constraints2[2];
+
+                    constraints = Everything;
+                    return decorate(target, key, descriptor);
+                }
+                return decorate;
+            }
+
+            _export('callback', callback);
+
+            function handle() {
+                for (var _len3 = arguments.length, constraints = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+                    constraints[_key3] = arguments[_key3];
+                }
+
+                return callback.apply(undefined, [$handle].concat(constraints));
+            }
+
+            _export('handle', handle);
+
+            function provide() {
+                for (var _len4 = arguments.length, constraints = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+                    constraints[_key4] = arguments[_key4];
+                }
+
+                return callback.apply(undefined, [$provide].concat(constraints));
+            }
+            _export('provide', provide);
+
             _export('CallbackHandler', CallbackHandler = Base.extend($callbacks, {
                 constructor: function constructor(delegate) {
                     this.extend({
@@ -826,9 +939,9 @@ System.register(['miruken-core'], function (_export, _context) {
                     var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
                     if (!resolved) {
                         var implied = new Node(key),
-                            delegate = this.delegate;
-                        if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
-                            resolution.resolve($decorated(delegate, true));
+                            _delegate = this.delegate;
+                        if (_delegate && implied.match($classOf(_delegate), Variance.Contravariant)) {
+                            resolution.resolve($decorated(_delegate, true));
                             resolved = true;
                         }
                         if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
@@ -903,8 +1016,8 @@ System.register(['miruken-core'], function (_export, _context) {
 
             _export('CompositeCallbackHandler', CompositeCallbackHandler = CallbackHandler.extend({
                 constructor: function constructor() {
-                    for (var _len = arguments.length, handlers = Array(_len), _key = 0; _key < _len; _key++) {
-                        handlers[_key] = arguments[_key];
+                    for (var _len5 = arguments.length, handlers = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+                        handlers[_key5] = arguments[_key5];
                     }
 
                     var _handlers = [];
@@ -913,8 +1026,8 @@ System.register(['miruken-core'], function (_export, _context) {
                             return _handlers.slice();
                         },
                         addHandlers: function addHandlers() {
-                            for (var _len2 = arguments.length, handlers = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-                                handlers[_key2] = arguments[_key2];
+                            for (var _len6 = arguments.length, handlers = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
+                                handlers[_key6] = arguments[_key6];
                             }
 
                             handlers = $flatten(handlers, true).map(function (h) {
@@ -924,8 +1037,8 @@ System.register(['miruken-core'], function (_export, _context) {
                             return this;
                         },
                         insertHandlers: function insertHandlers(atIndex) {
-                            for (var _len3 = arguments.length, handlers = Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
-                                handlers[_key3 - 1] = arguments[_key3];
+                            for (var _len7 = arguments.length, handlers = Array(_len7 > 1 ? _len7 - 1 : 0), _key7 = 1; _key7 < _len7; _key7++) {
+                                handlers[_key7 - 1] = arguments[_key7];
                             }
 
                             handlers = $flatten(handlers, true).map(function (h) {
@@ -935,8 +1048,8 @@ System.register(['miruken-core'], function (_export, _context) {
                             return this;
                         },
                         removeHandlers: function removeHandlers() {
-                            for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
-                                handlers[_key4] = arguments[_key4];
+                            for (var _len8 = arguments.length, handlers = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
+                                handlers[_key8] = arguments[_key8];
                             }
 
                             $flatten(handlers).forEach(function (handler) {
@@ -1066,7 +1179,7 @@ System.register(['miruken-core'], function (_export, _context) {
                                     var hasResult = "callbackResult" in callback,
                                         accept = test.then(function (accepted) {
                                         if (accepted !== false) {
-                                            _aspectProceed(callback, composer, proceed, after, accepted);
+                                            aspectProceed(callback, composer, proceed, after, accepted);
                                             return hasResult ? callback.callbackResult : true;
                                         }
                                         return Promise.reject(new RejectedError(callback));
@@ -1084,7 +1197,7 @@ System.register(['miruken-core'], function (_export, _context) {
                                 throw new RejectedError(callback);
                             }
                         }
-                        return _aspectProceed(callback, composer, proceed, after);
+                        return aspectProceed(callback, composer, proceed, after);
                     }, reentrant);
                 },
                 $$handle: function $$handle(definitions) {
@@ -1111,8 +1224,8 @@ System.register(['miruken-core'], function (_export, _context) {
                     });
                 },
                 next: function next() {
-                    for (var _len5 = arguments.length, handlers = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
-                        handlers[_key5] = arguments[_key5];
+                    for (var _len9 = arguments.length, handlers = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
+                        handlers[_key9] = arguments[_key9];
                     }
 
                     switch (handlers.length) {
@@ -1246,8 +1359,8 @@ System.register(['miruken-core'], function (_export, _context) {
 
             _export('Batcher', Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
                 constructor: function constructor() {
-                    for (var _len6 = arguments.length, protocols = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
-                        protocols[_key6] = arguments[_key6];
+                    for (var _len10 = arguments.length, protocols = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
+                        protocols[_key10] = arguments[_key10];
                     }
 
                     this.base();
@@ -1374,13 +1487,13 @@ System.register(['miruken-core'], function (_export, _context) {
                     });
                 },
                 get: function get(protocol, propertyName, strict) {
-                    return _delegateInvocation(this, HandleMethod.Get, protocol, propertyName, null, strict);
+                    return delegate(this, HandleMethod.Get, protocol, propertyName, null, strict);
                 },
                 set: function set(protocol, propertyName, propertyValue, strict) {
-                    return _delegateInvocation(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
+                    return delegate(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
                 },
                 invoke: function invoke(protocol, methodName, args, strict) {
-                    return _delegateInvocation(this, HandleMethod.Invoke, protocol, methodName, args, strict);
+                    return delegate(this, HandleMethod.Invoke, protocol, methodName, args, strict);
                 }
             }));
 

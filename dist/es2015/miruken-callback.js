@@ -7,10 +7,15 @@ exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOpt
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 exports.$define = $define;
 exports.Node = Node;
 exports.RejectedError = RejectedError;
 exports.TimeoutError = TimeoutError;
+exports.callback = callback;
+exports.handle = handle;
+exports.provide = provide;
 
 var _mirukenCore = require('miruken-core');
 
@@ -24,6 +29,12 @@ var $lookup = exports.$lookup = $define('$lookup', _mirukenCore.Variance.Invaria
 var $NOT_HANDLED = exports.$NOT_HANDLED = Object.freeze({});
 
 var $callbacks = exports.$callbacks = _mirukenCore.MetaMacro.extend({
+    get active() {
+        return true;
+    },
+    get inherit() {
+        return true;
+    },
     execute: function execute(step, metadata, target, definition) {
         if ((0, _mirukenCore.$isNothing)(definition)) {
             return;
@@ -47,11 +58,7 @@ var $callbacks = exports.$callbacks = _mirukenCore.MetaMacro.extend({
                 define(target, constraint, list[idx]);
             }
         }
-    },
-
-    shouldInherit: _mirukenCore.True,
-
-    isActive: _mirukenCore.True
+    }
 });
 
 function $define(tag, variance) {
@@ -69,28 +76,32 @@ function $define(tag, variance) {
     }
     switch (variance) {
         case _mirukenCore.Variance.Covariant:
-            handled = _requiresResult;
-            comparer = _compareCovariant;
+            handled = requiresResult;
+            comparer = compareCovariant;
             break;
         case _mirukenCore.Variance.Contravariant:
-            handled = _impliesSuccess;
-            comparer = _compareContravariant;
+            handled = impliesSuccess;
+            comparer = compareContravariant;
             break;
         case _mirukenCore.Variance.Invariant:
-            handled = _requiresResult;
-            comparer = _compareInvariant;
+            handled = requiresResult;
+            comparer = compareInvariant;
             break;
     }
 
     function definition(owner, constraint, handler, removed) {
         if (Array.isArray(constraint)) {
-            return constraint.reduce(function (result, c) {
-                var undefine = _definition(owner, c, handler, removed);
-                return function (notifyRemoved) {
-                    result(notifyRemoved);
-                    undefine(notifyRemoved);
-                };
-            }, _mirukenCore.Undefined);
+            if (constraint.length == 1) {
+                constraint = constraint[0];
+            } else {
+                return constraint.reduce(function (result, c) {
+                    var undefine = _definition(owner, c, handler, removed);
+                    return function (notifyRemoved) {
+                        result(notifyRemoved);
+                        undefine(notifyRemoved);
+                    };
+                }, _mirukenCore.Undefined);
+            }
         }
         return _definition(owner, constraint, handler, removed);
     }
@@ -120,7 +131,7 @@ function $define(tag, variance) {
         }
         var meta = owner[_mirukenCore.Metadata],
             node = new Node(constraint, handler, removed),
-            index = _createIndex(node.constraint),
+            index = createIndex(node.constraint),
             list = meta[tag] || (meta[tag] = new _mirukenCore.IndexedList(comparer));
         list.insert(node, index);
         return function (notifyRemoved) {
@@ -167,7 +178,7 @@ function $define(tag, variance) {
     function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
         var dispatched = false;
         var invariant = v === _mirukenCore.Variance.Invariant,
-            index = meta && _createIndex(constraint);
+            index = meta && createIndex(constraint);
         while (meta) {
             var list = meta[tag];
             if (list && (!invariant || index)) {
@@ -212,6 +223,8 @@ function $define(tag, variance) {
         }
         return dispatched;
     }
+    definition.tag = tag;
+    Object.freeze(definition);
     _definitions[tag] = definition;
     return definition;
 }
@@ -222,15 +235,15 @@ function Node(constraint, handler, removed) {
     this.constraint = constraint;
     this.handler = handler;
     if ((0, _mirukenCore.$isNothing)(constraint)) {
-        this.match = invariant ? _mirukenCore.False : _matchEverything;
+        this.match = invariant ? _mirukenCore.False : matchEverything;
     } else if ((0, _mirukenCore.$isProtocol)(constraint)) {
-        this.match = invariant ? _matchInvariant : _matchProtocol;
+        this.match = invariant ? matchInvariant : matchProtocol;
     } else if ((0, _mirukenCore.$isClass)(constraint)) {
-        this.match = invariant ? _matchInvariant : _matchClass;
+        this.match = invariant ? matchInvariant : matchClass;
     } else if ((0, _mirukenCore.$isString)(constraint)) {
-        this.match = _matchString;
+        this.match = matchString;
     } else if (constraint instanceof RegExp) {
-        this.match = invariant ? _mirukenCore.False : _matchRegExp;
+        this.match = invariant ? _mirukenCore.False : matchRegExp;
     } else if ((0, _mirukenCore.$isFunction)(constraint)) {
         this.match = constraint;
     } else {
@@ -241,7 +254,7 @@ function Node(constraint, handler, removed) {
     }
 }
 
-function _createIndex(constraint) {
+function createIndex(constraint) {
     if (constraint) {
         if ((0, _mirukenCore.$isString)(constraint)) {
             return constraint;
@@ -251,15 +264,15 @@ function _createIndex(constraint) {
     }
 }
 
-function _matchInvariant(match) {
+function matchInvariant(match) {
     return this.constraint === match;
 }
 
-function _matchEverything(match, variance) {
+function matchEverything(match, variance) {
     return variance !== _mirukenCore.Variance.Invariant;
 }
 
-function _matchProtocol(match, variance) {
+function matchProtocol(match, variance) {
     var constraint = this.constraint;
     if (constraint === match) {
         return true;
@@ -271,7 +284,7 @@ function _matchProtocol(match, variance) {
     return false;
 }
 
-function _matchClass(match, variance) {
+function matchClass(match, variance) {
     var constraint = this.constraint;
     if (constraint === match) {
         return true;
@@ -283,15 +296,15 @@ function _matchClass(match, variance) {
     return false;
 }
 
-function _matchString(match) {
+function matchString(match) {
     return (0, _mirukenCore.$isString)(match) && this.constraint == match;
 }
 
-function _matchRegExp(match, variance) {
+function matchRegExp(match, variance) {
     return variance !== _mirukenCore.Variance.Invariant && this.constraint.test(match);
 }
 
-function _compareCovariant(node, insert) {
+function compareCovariant(node, insert) {
     if (insert.match(node.constraint, _mirukenCore.Variance.Invariant)) {
         return 0;
     } else if (insert.match(node.constraint, _mirukenCore.Variance.Covariant)) {
@@ -300,7 +313,7 @@ function _compareCovariant(node, insert) {
     return 1;
 }
 
-function _compareContravariant(node, insert) {
+function compareContravariant(node, insert) {
     if (insert.match(node.constraint, _mirukenCore.Variance.Invariant)) {
         return 0;
     } else if (insert.match(node.constraint, _mirukenCore.Variance.Contravariant)) {
@@ -309,15 +322,15 @@ function _compareContravariant(node, insert) {
     return 1;
 }
 
-function _compareInvariant(node, insert) {
+function compareInvariant(node, insert) {
     return insert.match(node.constraint, _mirukenCore.Variance.Invariant) ? 0 : -1;
 }
 
-function _requiresResult(result) {
+function requiresResult(result) {
     return result !== null && result !== undefined && result !== $NOT_HANDLED;
 }
 
-function _impliesSuccess(result) {
+function impliesSuccess(result) {
     return result ? result !== $NOT_HANDLED : result === undefined;
 }
 
@@ -668,6 +681,68 @@ function TimeoutError(callback, message) {
 TimeoutError.prototype = new Error();
 TimeoutError.prototype.constructor = TimeoutError;
 
+var Everything = [null];
+
+function callback(definition) {
+    for (var _len = arguments.length, constraints = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+        constraints[_key - 1] = arguments[_key];
+    }
+
+    function decorate(target, key, descriptor) {
+        if (definition && definition.tag && descriptor && descriptor.value) {
+            var lateBinding = function lateBinding() {
+                var method = this[key];
+
+                for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+                    args[_key2] = arguments[_key2];
+                }
+
+                return (0, _mirukenCore.$isFunction)(method) ? method.apply(this, args) : $NOT_HANDLED;
+            };
+
+            var spec = target[definition.tag] || (target[definition.tag] = []);
+
+            spec.push(constraints, lateBinding);
+        }
+        return descriptor;
+    };
+    if (constraints.length == 0) {
+        constraints = Everything;
+    } else if (constraints.length === 3 && isDescriptor(constraints[2])) {
+        var _constraints = constraints;
+
+        var _constraints2 = _slicedToArray(_constraints, 3);
+
+        var target = _constraints2[0];
+        var key = _constraints2[1];
+        var descriptor = _constraints2[2];
+
+        constraints = Everything;
+        return decorate(target, key, descriptor);
+    }
+    return decorate;
+}
+
+function handle() {
+    for (var _len3 = arguments.length, constraints = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+        constraints[_key3] = arguments[_key3];
+    }
+
+    return callback.apply(undefined, [$handle].concat(constraints));
+}
+
+function provide() {
+    for (var _len4 = arguments.length, constraints = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+        constraints[_key4] = arguments[_key4];
+    }
+
+    return callback.apply(undefined, [$provide].concat(constraints));
+}
+
+function isDescriptor(descriptor) {
+    return 'value' in descriptor && 'enumerable' in descriptor && 'writable' in descriptor;
+}
+
 var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend($callbacks, {
     constructor: function constructor(delegate) {
         this.extend({
@@ -699,9 +774,9 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend($callba
         var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (!resolved) {
             var implied = new Node(key),
-                delegate = this.delegate;
-            if (delegate && implied.match((0, _mirukenCore.$classOf)(delegate), _mirukenCore.Variance.Contravariant)) {
-                resolution.resolve((0, _mirukenCore.$decorated)(delegate, true));
+                _delegate = this.delegate;
+            if (_delegate && implied.match((0, _mirukenCore.$classOf)(_delegate), _mirukenCore.Variance.Contravariant)) {
+                resolution.resolve((0, _mirukenCore.$decorated)(_delegate, true));
                 resolved = true;
             }
             if ((!resolved || many) && implied.match((0, _mirukenCore.$classOf)(this), _mirukenCore.Variance.Contravariant)) {
@@ -772,8 +847,8 @@ var CascadeCallbackHandler = exports.CascadeCallbackHandler = CallbackHandler.ex
 
 var CompositeCallbackHandler = exports.CompositeCallbackHandler = CallbackHandler.extend({
     constructor: function constructor() {
-        for (var _len = arguments.length, handlers = Array(_len), _key = 0; _key < _len; _key++) {
-            handlers[_key] = arguments[_key];
+        for (var _len5 = arguments.length, handlers = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+            handlers[_key5] = arguments[_key5];
         }
 
         var _handlers = [];
@@ -782,8 +857,8 @@ var CompositeCallbackHandler = exports.CompositeCallbackHandler = CallbackHandle
                 return _handlers.slice();
             },
             addHandlers: function addHandlers() {
-                for (var _len2 = arguments.length, handlers = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-                    handlers[_key2] = arguments[_key2];
+                for (var _len6 = arguments.length, handlers = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
+                    handlers[_key6] = arguments[_key6];
                 }
 
                 handlers = (0, _mirukenCore.$flatten)(handlers, true).map(function (h) {
@@ -793,8 +868,8 @@ var CompositeCallbackHandler = exports.CompositeCallbackHandler = CallbackHandle
                 return this;
             },
             insertHandlers: function insertHandlers(atIndex) {
-                for (var _len3 = arguments.length, handlers = Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
-                    handlers[_key3 - 1] = arguments[_key3];
+                for (var _len7 = arguments.length, handlers = Array(_len7 > 1 ? _len7 - 1 : 0), _key7 = 1; _key7 < _len7; _key7++) {
+                    handlers[_key7 - 1] = arguments[_key7];
                 }
 
                 handlers = (0, _mirukenCore.$flatten)(handlers, true).map(function (h) {
@@ -804,8 +879,8 @@ var CompositeCallbackHandler = exports.CompositeCallbackHandler = CallbackHandle
                 return this;
             },
             removeHandlers: function removeHandlers() {
-                for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
-                    handlers[_key4] = arguments[_key4];
+                for (var _len8 = arguments.length, handlers = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
+                    handlers[_key8] = arguments[_key8];
                 }
 
                 (0, _mirukenCore.$flatten)(handlers).forEach(function (handler) {
@@ -933,7 +1008,7 @@ CallbackHandler.implement({
                         var hasResult = "callbackResult" in callback,
                             accept = test.then(function (accepted) {
                             if (accepted !== false) {
-                                _aspectProceed(callback, composer, proceed, after, accepted);
+                                aspectProceed(callback, composer, proceed, after, accepted);
                                 return hasResult ? callback.callbackResult : true;
                             }
                             return Promise.reject(new RejectedError(callback));
@@ -951,7 +1026,7 @@ CallbackHandler.implement({
                     throw new RejectedError(callback);
                 }
             }
-            return _aspectProceed(callback, composer, proceed, after);
+            return aspectProceed(callback, composer, proceed, after);
         }, reentrant);
     },
     $$handle: function $$handle(definitions) {
@@ -978,8 +1053,8 @@ CallbackHandler.implement({
         });
     },
     next: function next() {
-        for (var _len5 = arguments.length, handlers = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
-            handlers[_key5] = arguments[_key5];
+        for (var _len9 = arguments.length, handlers = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
+            handlers[_key9] = arguments[_key9];
         }
 
         switch (handlers.length) {
@@ -1104,7 +1179,7 @@ CallbackHandler.implement({
     }
 });
 
-function _aspectProceed(callback, composer, proceed, after, state) {
+function aspectProceed(callback, composer, proceed, after, state) {
     var promise = void 0;
     try {
         var handled = proceed();
@@ -1137,8 +1212,8 @@ var Batching = exports.Batching = _mirukenCore.StrictProtocol.extend({
 var BatchingComplete = Batching.extend();
 var Batcher = exports.Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
     constructor: function constructor() {
-        for (var _len6 = arguments.length, protocols = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
-            protocols[_key6] = arguments[_key6];
+        for (var _len10 = arguments.length, protocols = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
+            protocols[_key10] = arguments[_key10];
         }
 
         this.base();
@@ -1259,17 +1334,17 @@ var InvocationDelegate = exports.InvocationDelegate = _mirukenCore.Delegate.exte
         });
     },
     get: function get(protocol, propertyName, strict) {
-        return _delegateInvocation(this, HandleMethod.Get, protocol, propertyName, null, strict);
+        return delegate(this, HandleMethod.Get, protocol, propertyName, null, strict);
     },
     set: function set(protocol, propertyName, propertyValue, strict) {
-        return _delegateInvocation(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
+        return delegate(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
     },
     invoke: function invoke(protocol, methodName, args, strict) {
-        return _delegateInvocation(this, HandleMethod.Invoke, protocol, methodName, args, strict);
+        return delegate(this, HandleMethod.Invoke, protocol, methodName, args, strict);
     }
 });
 
-function _delegateInvocation(delegate, type, protocol, methodName, args, strict) {
+function delegate(delegate, type, protocol, methodName, args, strict) {
     var broadcast = false,
         useResolve = false,
         bestEffort = false,

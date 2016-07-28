@@ -13,8 +13,8 @@ import {
     $NOT_HANDLED
 } from '../src/meta'
 
+import { handle, provide } from '../src/decorators';
 import { Batching } from '../src/batch';
-
 import '../src/invocation';
 
 import {
@@ -119,19 +119,19 @@ const Accountable = Base.extend($callbacks, {
             }
         });
     },
-    $handle:[
-        CountMoney, function (countMoney, composer) {
-            countMoney.record(this.balance);
-        }]
+    @handle(CountMoney)
+    countMoney(countMoney, composer) {
+        countMoney.record(this.balance);        
+    }
 });
 
 const Cashier = Accountable.extend({
-    toString() { return 'Cashier $' + this.balance; },
-    $handle:[
-        WireMoney, wireMoney => {
-            wireMoney.received = wireMoney.requested;
-            return Promise.resolve(wireMoney);
-        }]
+    @handle(WireMoney)
+    wireMoney(wireMoney) {
+        wireMoney.received = wireMoney.requested;
+        return Promise.resolve(wireMoney);        
+    },
+    toString() { return 'Cashier $' + this.balance; }
 });
 
 const Activity = Accountable.extend({
@@ -165,12 +165,13 @@ const Casino = CompositeCallbackHandler.extend({
         this.base();
         this.name = name;
     },
+    @provide(PitBoss)
+    pitBoss() { return new PitBoss('Freddy'); },
+    @provide(DrinkServer)
+    drinkServer() {
+        return Promise.delay(100).then(() => new DrinkServer());
+    },
     toString() { return 'Casino ' + this.name; },
-
-    $provide:[
-        PitBoss, () => new PitBoss('Freddy'),
-        DrinkServer, () => Promise.delay(100).then(() => new DrinkServer())
-    ]
 });
 
 describe("HandleMethod", () => {
@@ -475,10 +476,10 @@ describe("CallbackHandler", () => {
         it("should handle callback hierarchy", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (CallbackHandler.extend({
-                      $handle:[
-                          Accountable, function (accountable) {
-                              this.accountable = accountable;
-                          }]
+                      @handle(Accountable)
+                      account(accountable) {
+                          this.accountable = accountable;                          
+                      }
                   }));
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
@@ -487,9 +488,8 @@ describe("CallbackHandler", () => {
         it("should ignore callback if $NOT_HANDLED", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (CallbackHandler.extend({
-                      $handle:[
-                          Cashier, () =>  $NOT_HANDLED
-                      ]
+                      @handle(Cashier)
+                      ignore(cashier) { return $NOT_HANDLED; }
                   }));
             expect(inventory.handle(cashier)).to.be.false;
         });
@@ -498,10 +498,10 @@ describe("CallbackHandler", () => {
             const cashier     = new Cashier(1000000.00),
                   accountable = new Accountable(1.00),
                   inventory   = new (CallbackHandler.extend({
-                      $handle:[
-                          $eq(Accountable), function (accountable) {
-                              this.accountable = accountable;
-                          }]
+                      @handle($eq(Accountable))
+                      account(accountable) {
+                          this.accountable = accountable;                          
+                      }
                   }));
             expect(inventory.handle(cashier)).to.be.false;
             expect(inventory.handle(accountable)).to.be.true;
@@ -528,10 +528,10 @@ describe("CallbackHandler", () => {
         it("should handle callback protocol conformance", () => {
             const blackjack  = new CardTable('Blackjack'),
                   inventory  = new (CallbackHandler.extend({
-                      $handle:[
-                          Game, function (game) {
-                              this.game = game;
-                          }]
+                      @handle(Game)
+                      play(game) {
+                          this.game = game;
+                      }
                   }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.game).to.equal(blackjack);
@@ -540,13 +540,14 @@ describe("CallbackHandler", () => {
         it("should prefer callback hierarchy over protocol conformance", () => {
             const blackjack  = new CardTable('Blackjack'),
                   inventory  = new (CallbackHandler.extend({
-                      $handle:[
-                          Activity, function (activity) {
-                              this.activity = activity;
-                          },
-                          Game, function (game) {
-                              this.game = game;
-                          }]
+                      @handle(Activity)
+                      activity(activity) {
+                          this.activity = activity;
+                      },
+                      @handle(Game)
+                      play(game) {
+                          this.game = game;
+                      }                      
                   }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.activity).to.equal(blackjack);
@@ -556,14 +557,15 @@ describe("CallbackHandler", () => {
         it("should prefer callback hierarchy and continue with protocol conformance", () => {
             const blackjack  = new CardTable('Blackjack'),
                   inventory  = new (CallbackHandler.extend({
-                      $handle:[
-                          Activity, function (activity) {
-                              this.activity = activity;
-                              return false;
-                          },
-                          Game, function (game) {
-                              this.game = game;
-                          }]
+                      @handle(Activity)
+                      activity(activity) {
+                          this.activity = activity;
+                          return false;
+                      },
+                      @handle(Game)
+                      play(game) {
+                          this.game = game;
+                      }                      
                   }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.activity).to.equal(blackjack);
@@ -573,9 +575,10 @@ describe("CallbackHandler", () => {
         it("should handle unknown callback", () => {
             const blackjack = new CardTable('Blackjack'),
                   inventory = new (CallbackHandler.extend({
-                      $handle:[
-                          null, callback => callback.check = true
-                      ]
+                      @handle
+                      everything(callback) {
+                          callback.check = true;
+                      }
                   }));
             expect(inventory.handle(blackjack)).to.be.true;
             expect(blackjack.check).to.be.true;
@@ -584,9 +587,10 @@ describe("CallbackHandler", () => {
         it("should handle unknown callback via delegate", () => {
             const blackjack = new CardTable('Blackjack'),
                   inventory = new (Base.extend($callbacks, {
-                      $handle:[
-                          null, callback => callback.check = true
-                      ]
+                      @handle
+                      everything(callback) {
+                          callback.check = true;
+                      }
                   })),
                   casino   = new Casino('Belagio').addHandlers(inventory);
             expect(casino.handle(blackjack)).to.be.true;
@@ -596,34 +600,40 @@ describe("CallbackHandler", () => {
         it("should allow handlers to chain to base", () => {
             const blackjack = new CardTable('Blackjack'),
                   Tagger    = CallbackHandler.extend({
-                      $handle:[
-                          Activity, activity => activity.tagged = true
-                      ]
+                      @handle(Activity)
+                      activity(activity) {
+                          activity.tagged++;
+                      }
                   }),
                   inventory  = new (Tagger.extend({
-                      $handle:[
-                          Activity, function (activity) {
-                              this.base();
-                          }]
+                      activity(activity) {
+                          activity.tagged++;                          
+                          this.base(activity);
+                      }
                   }));
+            blackjack.tagged = 0;
             expect(inventory.handle(blackjack)).to.be.true;
-            expect(blackjack.tagged).to.be.true;
+            expect(blackjack.tagged).to.equal(2);
         });
 
         it("should handle callbacks with precedence rules", () => {
             let matched   = -1,
                 Checkers  = Base.extend(Game),
                 inventory = new (CallbackHandler.extend({
-                    $handle:[
-                        constraint => constraint === PitBoss,
-                                     () => { matched = 0; },
-                        null,        () => { matched = 1; },
-                        Game,        () => { matched = 2; },
-                        Security,    () => { matched = 3; },
-                        Activity,    () => { matched = 5; },
-                        Accountable, () => { matched = 4; },
-                        CardTable  , () => { matched = 6; }
-                    ]
+                    @handle(c => c === PitBoss)
+                    pitBoss() { matched = 0; },
+                    @handle
+                    anything() { matched = 1; },
+                    @handle(Game)
+                    game() { matched = 2; },
+                    @handle(Security)
+                    security() { matched = 3; },
+                    @handle(Activity)
+                    activity() { matched = 5; },
+                    @handle(Accountable)
+                    accountable() { matched = 4; },
+                    @handle(CardTable)
+                    cardTable() { matched = 6; }
                 }));
             inventory.handle(new CardTable('3 Card Poker'));
             expect(matched).to.equal(6);
@@ -669,10 +679,10 @@ describe("CallbackHandler", () => {
                   blackjack = new Activity('Blackjack'),
                   bank      = new (Accountable.extend()),
                   inventory = new (CallbackHandler.extend({
-                      $handle:[
-                          [Cashier, Activity], function (accountable) {
-                              this.accountable = accountable;
-                          }]
+                      @handle(Cashier, Activity)
+                      account(accountable) {
+                          this.accountable = accountable;                          
+                      }
                   }));
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
@@ -714,11 +724,11 @@ describe("CallbackHandler", () => {
 
         it("should handle objects eventually with promise", done => {
             const bank = (new (CallbackHandler.extend({
-                      $handle:[
-                         WireMoney, wireMoney => {
-                             wireMoney.received = 50000;
-                             return Promise.delay(100).then(() => wireMoney);
-                          }]
+                        @handle(WireMoney)
+                        wireMoney(wireMoney) {
+                            wireMoney.received = 50000;
+                            return Promise.delay(100).then(() => wireMoney);
+                        }
                   }))),
                   casino    = new Casino('Venetian').addHandlers(bank),
                   wireMoney = new WireMoney(150000);
@@ -745,7 +755,8 @@ describe("CallbackHandler", () => {
         it("should resolve explicit objects", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (CallbackHandler.extend({
-                      $provide:[Cashier, cashier]
+                      @provide(Cashier)
+                      cashier() { return cashier; }
                   }));
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
@@ -768,7 +779,8 @@ describe("CallbackHandler", () => {
                   }),
                   circle = new Circle(2),
                   shapes = new (CallbackHandler.extend({
-                      $provide:[Circle, $copy(circle)]
+                      @provide(Circle)
+                      circle() { return $copy(circle); }
                   }));
            const shape = shapes.resolve(Circle);
            expect(shape).to.not.equal(circle);
@@ -1286,13 +1298,14 @@ describe("CallbackHandler", () => {
         it("should restrict handlers using short syntax", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = (new (CallbackHandler.extend({
-                      $handle:[
-                          True, cardTable => cardTable.closed = true
-                      ]
+                      @handle(True)
+                      close(cardTable) {
+                          cardTable.closed = true;
+                      }
                   }))).when(CardTable);
             expect(cardGames.handle(blackjack)).to.be.true;
             expect(blackjack.closed).to.be.true;
-            expect(cardGames.handle(new Cashier)).to.be.false;
+            expect(cardGames.handle(new Cashier())).to.be.false;
         });
 
         it("should restrict handlers invariantly using short syntax", () => {
@@ -1303,13 +1316,14 @@ describe("CallbackHandler", () => {
                   }),
                   blackjack  = new Blackjack(),
                   cardGames  = (new (CallbackHandler.extend({
-                      $handle:[
-                          True, cardTable => cardTable.closed = true
-                      ]
+                      @handle(True)
+                      close(cardTable) {
+                          cardTable.closed = true;
+                      }
                   }))).when($eq(CardTable));
             expect(cardGames.handle(blackjack)).to.be.false;
             expect(blackjack.closed).to.be.undefined;
-            expect(cardGames.handle(new Cashier)).to.be.false;
+            expect(cardGames.handle(new Cashier())).to.be.false;
         });
 
         it("should restrict providers using short syntax", () => {
@@ -1770,11 +1784,11 @@ describe("CallbackHandler", () => {
     describe("#$timeout", () => {
         it("should reject promise if timed out", done => {
             const bank = (new (CallbackHandler.extend({
-                      $handle:[
-                          WireMoney, wireMoney => {
-                              wireMoney.received = 50000;
-                              return Promise.delay(100).then(() => wireMoney);
-                          }]
+                      @handle(WireMoney)
+                      wireMoney(wireMoney) {
+                          wireMoney.received = 50000;
+                          return Promise.delay(100).then(() => wireMoney);
+                      }
                   }))),
                   casino    = new Casino('Venetian').addHandlers(bank),
                   wireMoney = new WireMoney(150000);
@@ -1786,11 +1800,11 @@ describe("CallbackHandler", () => {
 
         it("should ignore time out if promise resolved", done => {
             const bank = (new (CallbackHandler.extend({
-                      $handle:[
-                          WireMoney, wireMoney => {
-                              wireMoney.received = 50000;
-                              return Promise.delay(50).then(() => wireMoney);
-                          }]
+                      @handle(WireMoney)
+                      wireMoney(wireMoney) {
+                          wireMoney.received = 50000;
+                          return Promise.delay(50).then(() => wireMoney);
+                      }
                   }))),
                   casino    = new Casino('Venetian').addHandlers(bank),
                   wireMoney = new WireMoney(150000);
@@ -1803,11 +1817,11 @@ describe("CallbackHandler", () => {
         
         it("should reject promise with error instance", done => {
             const bank = (new (CallbackHandler.extend({
-                      $handle:[
-                          WireMoney,wireMoney => {
-                              wireMoney.received = 50000;
-                              return Promise.delay(100).then(() => wireMoney);
-                          }]
+                      @handle(WireMoney)
+                      wireMoney(wireMoney) {
+                          wireMoney.received = 50000;
+                          return Promise.delay(100).then(() => wireMoney);
+                      }                
                   }))),
                   casino    = new Casino('Venetian').addHandlers(bank),
                   wireMoney = new WireMoney(150000);
@@ -1826,11 +1840,11 @@ describe("CallbackHandler", () => {
             BankError.prototype             = new Error();
             BankError.prototype.constructor = BankError;
             const bank = (new (CallbackHandler.extend({
-                      $handle:[
-                          WireMoney, wireMoney => {
-                              wireMoney.received = 50000;
-                              return Promise.delay(100).then(() => wireMoney);
-                          }]
+                      @handle(WireMoney)
+                      wireMoney(wireMoney) {
+                          wireMoney.received = 50000;
+                          return Promise.delay(100).then(() => wireMoney);
+                      }                
                   }))),
                   casino    = new Casino('Venetian').addHandlers(bank),
                   wireMoney = new WireMoney(150000);
@@ -1844,10 +1858,10 @@ describe("CallbackHandler", () => {
 
         it("should propogate errors", done => {
             const bank = (new (CallbackHandler.extend({
-                      $handle:[
-                          WireMoney, wireMoney =>
-                             Promise.reject(new Error("No money"))
-                      ]
+                      @handle(WireMoney)
+                      wireMoney(wireMoney) {
+                          return Promise.reject(new Error("No money"))                    
+                      }                
                   }))),
                   casino    = new Casino('Venetian').addHandlers(bank),
                   wireMoney = new WireMoney(150000);

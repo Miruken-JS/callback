@@ -437,7 +437,7 @@ CallbackHandler.implement({
                     const hasResult = "callbackResult" in callback,
                           accept    = test.then(accepted => {
                             if (accepted !== false) {
-                                _aspectProceed(callback, composer, proceed, after, accepted);
+                                aspectProceed(callback, composer, proceed, after, accepted);
                                 return hasResult ? callback.callbackResult : true;
                             }
                             return Promise.reject(new RejectedError(callback));
@@ -450,7 +450,7 @@ CallbackHandler.implement({
                     throw new RejectedError(callback);
                 }
             }
-            return _aspectProceed(callback, composer, proceed, after);
+            return aspectProceed(callback, composer, proceed, after);
         }, reentrant);
     },
     /**
@@ -646,7 +646,7 @@ CallbackHandler.implement({
     },
 });
 
-function _aspectProceed(callback, composer, proceed, after, state) {
+function aspectProceed(callback, composer, proceed, after, state) {
     let promise;
     try {
         const handled = proceed();
