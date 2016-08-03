@@ -8,23 +8,19 @@ import {
 
 const Everything = [null];
 
-export function build(definition) {
+export function addDefinition(def, allowGets) {
     return function decorate(target, key, descriptor, constraints) {
-        if (constraints.length === 0) {
-            constraints = Everything;
-        }
-        if (definition && definition.tag) {
-            const spec = target[definition.tag]
-                      || (target[definition.tag] = []);
+        if (def && def.tag) { 
+            if (constraints.length === 0) {
+                constraints = Everything;
+            }
+            const spec = target[def.tag] || (target[def.tag] = []);
             function lateBinding() {
                 const result = this[key];
                 if ($isFunction(result)) {
                     return result.apply(this, arguments);
                 }
-                if (definition.variance == Variance.Covariant) {
-                    return result;
-                }
-                return $NOT_HANDLED;
+                return allowGets ? result : $NOT_HANDLED;
             }
             spec.push(constraints, lateBinding);
         }
@@ -32,17 +28,10 @@ export function build(definition) {
     };
 }
 
-export function callback(definition, ...args) {
-    if (definition == null) {
-        definition = $handle;
-    }
-    return decorate(build(definition), args);
-}
-
 export function handle(...args) {
-    return decorate(build($handle), args);
+    return decorate(addDefinition($handle), args);
 }
 
 export function provide(...args) {
-    return decorate(build($provide), args);    
+    return decorate(addDefinition($provide, true), args);    
 }
