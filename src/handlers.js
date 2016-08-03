@@ -16,7 +16,7 @@ import {
 
 /**
  * Base class for handling arbitrary callbacks.<br/>
- * See {{#crossLink "miruken.callback.$callbacks"}}{{/crossLink}}
+ * See {{#crossLink "$callbacks"}}{{/crossLink}}
  * @class CallbackHandler
  * @constructor
  * @param  {Object}  [delegate]  -  delegate
@@ -36,9 +36,9 @@ export const CallbackHandler = Base.extend($callbacks, {
     /**
      * Handles the callback.
      * @method handle
-     * @param   {Object}                           callback        -  any callback
-     * @param   {boolean}                          [greedy=false]  -  true if handle greedily
-     * @param   {miruken.callback.CallbackHandler} [composer]      -  composition handler
+     * @param   {Object}          callback        -  any callback
+     * @param   {boolean}         [greedy=false]  -  true if handle greedily
+     * @param   {CallbackHandler} [composer]      -  composition handler
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handle(callback, greedy, composer) {
@@ -53,9 +53,9 @@ export const CallbackHandler = Base.extend($callbacks, {
     /**
      * Handles the callback with all arguments populated.
      * @method handleCallback
-     * @param   {Object}                           callback    -  any callback
-     * @param   {boolean}                          greedy      -  true if handle greedily
-     * @param   {miruken.callback.CallbackHandler} [composer]  -  composition handler
+     * @param   {Object}          callback    -  any callback
+     * @param   {boolean}         greedy      -  true if handle greedily
+     * @param   {CallbackHandler} [composer]  -  composition handler
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handleCallback(callback, greedy, composer) {
@@ -117,12 +117,12 @@ const compositionScope = $decorator({
 
 /**
  * Represents a two-way
- * {{#crossLink "miruken.callback.CallbackHandler"}}{{/crossLink}} path.
+ * {{#crossLink "CallbackHandler"}}{{/crossLink}} path.
  * @class CascadeCallbackHandler
  * @constructor
- * @param  {miruken.callback.CallbackHandler}  handler           -  primary handler
- * @param  {miruken.callback.CallbackHandler}  cascadeToHandler  -  secondary handler
- * @extends miruken.callback.CallbackHandler
+ * @param  {CallbackHandler}  handler           -  primary handler
+ * @param  {CallbackHandler}  cascadeToHandler  -  secondary handler
+ * @extends CallbackHandler
  */
 export const CascadeCallbackHandler = CallbackHandler.extend({
     constructor(handler, cascadeToHandler) {
@@ -136,13 +136,13 @@ export const CascadeCallbackHandler = CallbackHandler.extend({
         this.extend({
             /**
              * Gets the primary handler.
-             * @property {miruken.callback.CallbackHandler} handler
+             * @property {CallbackHandler} handler
              * @readOnly
              */
             get handler() { return handler; },
             /**
              * Gets the secondary handler.
-             * @property {miruken.callback.CallbackHandler} cascadeToHandler
+             * @property {CallbackHandler} cascadeToHandler
              * @readOnly
              */
             get cascadeToHandler() { return cascadeToHandler; }                
@@ -163,12 +163,12 @@ export const CascadeCallbackHandler = CallbackHandler.extend({
 
 /**
  * Encapsulates zero or more
- * {{#crossLink "miruken.callback.CallbackHandler"}}{{/crossLink}}.<br/>
+ * {{#crossLink "CallbackHandler"}}{{/crossLink}}.<br/>
  * See [Composite Pattern](http://en.wikipedia.org/wiki/Composite_pattern)
  * @class CompositeCallbackHandler
  * @constructor
  * @param  {Arguments}  arguments  -  callback handlers
- * @extends miruken.callback.CallbackHandler
+ * @extends CallbackHandler
  */
 export const CompositeCallbackHandler = CallbackHandler.extend({
     constructor(...handlers) {
@@ -184,7 +184,7 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
              * Adds the callback handlers to the composite.
              * @method addHandlers
              * @param   {Any}  ...handlers  -  handlers to add
-             * @returns {miruken.callback.CompositeCallbackHandler}  composite
+             * @returns {CompositeCallbackHandler}  composite
              * @chainable
              */
             addHandlers(...handlers) {
@@ -197,7 +197,7 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
              * @method addHandlers
              * @param   {number}  atIndex      -  index to insert at
              * @param   {Any}     ...handlers  -  handlers to insert
-             * @returns {miruken.callback.CompositeCallbackHandler}  composite
+             * @returns {CompositeCallbackHandler}  composite
              * @chainable
              */
             insertHandlers(atIndex, ...handlers) {
@@ -209,7 +209,7 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
              * Removes callback handlers from the composite.
              * @method removeHandlers
              * @param   {Any}  ...handlers  -  handlers to remove
-             * @returns {miruken.callback.CompositeCallbackHandler}  composite
+             * @returns {CompositeCallbackHandler}  composite
              * @chainable
              */
             removeHandlers(...handlers) {
@@ -253,8 +253,8 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
  * @static
  * @param   {Function}  handler     -  handles callbacks
  * @param   {Any}       constraint  -  callback constraint
- * @returns {miruken.callback.CallbackHandler} callback handler.
- * @for miruken.callback.CallbackHandler
+ * @returns {CallbackHandler} callback handler.
+ * @for CallbackHandler
  */
 CallbackHandler.accepting = function (handler, constraint) {
     const accepting = new CallbackHandler();
@@ -268,8 +268,8 @@ CallbackHandler.accepting = function (handler, constraint) {
  * @static
  * @param  {Function}  provider    -  provides callbacks
  * @param  {Any}       constraint  -  callback constraint
- * @returns {miruken.callback.CallbackHandler} callback provider.
- * @for miruken.callback.CallbackHandler
+ * @returns {CallbackHandler} callback provider.
+ * @for CallbackHandler
  */
 CallbackHandler.providing = function (provider, constraint) {
     const providing = new CallbackHandler();
@@ -279,13 +279,13 @@ CallbackHandler.providing = function (provider, constraint) {
 
 /**
  * Shortcut for handling a 
- * {{#crossLink "miruken.callback.HandleMethod"}}{{/crossLink}} callback.
+ * {{#crossLink "HandleMethod"}}{{/crossLink}} callback.
  * @method
  * @static
  * @param  {string}    methodName  -  method name
  * @param  {Function}  method      -  method function
- * @returns {miruken.callback.CallbackHandler} method handler.
- * @for miruken.callback.CallbackHandler
+ * @returns {CallbackHandler} method handler.
+ * @for CallbackHandler
  */
 CallbackHandler.implementing = function (methodName, method) {
     if (!$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
@@ -311,7 +311,7 @@ CallbackHandler.implement({
      * @method defer
      * @param   {Object}  callback  -  callback
      * @returns {Promise} promise to handled callback.
-     * @for miruken.callback.CallbackHandler
+     * @for CallbackHandler
      * @async
      */                        
     defer(callback) {
@@ -324,7 +324,7 @@ CallbackHandler.implement({
      * @method deferAll
      * @param   {Object}  callback  -  callback
      * @returns {Promise} promise to handled callback.
-     * @for miruken.callback.CallbackHandler
+     * @for CallbackHandler
      * @async
      */                                
     deferAll(callback) {
@@ -337,7 +337,7 @@ CallbackHandler.implement({
      * @method resolve
      * @param   {Any}  key  -  key
      * @returns {Any}  resolved key.  Could be a promise.
-     * @for miruken.callback.CallbackHandler
+     * @for CallbackHandler
      * @async
      */                                
     resolve(key) {
@@ -351,7 +351,7 @@ CallbackHandler.implement({
      * @method resolveAll
      * @param   {Any}   key  -  key
      * @returns {Array} resolved key.  Could be a promise.
-     * @for miruken.callback.CallbackHandler
+     * @for CallbackHandler
      * @async
      */                                        
     resolveAll(key) {
@@ -365,7 +365,7 @@ CallbackHandler.implement({
      * @method lookup
      * @param   {Any}  key  -  key
      * @returns {Any}  value of key.
-     * @for miruken.callback.CallbackHandler
+     * @for CallbackHandler
      */                                        
     lookup(key) {
         const lookup = (key instanceof Lookup) ? key : new Lookup(key);
@@ -378,7 +378,7 @@ CallbackHandler.implement({
      * @method lookupAll
      * @param   {Any}  key  -  key
      * @returns {Array}  value(s) of key.
-     * @for miruken.callback.CallbackHandler
+     * @for CallbackHandler
      */                                                
     lookupAll(key) {
         const lookup = (key instanceof Lookup) ? key : new Lookup(key, true);
@@ -390,8 +390,8 @@ CallbackHandler.implement({
      * Decorates the handler.
      * @method decorate
      * @param   {Object}  decorations  -  decorations
-     * @returns {miruken.callback.CallbackHandler} decorated callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler} decorated callback handler.
+     * @for CallbackHandler
      */        
     decorate(decorations) {
         return $decorate(this, decorations);
@@ -401,8 +401,8 @@ CallbackHandler.implement({
      * @method filter
      * @param   {Function}  filter     -  filter
      * @param   {boolean}   reentrant  -  true if reentrant, false otherwise
-     * @returns {miruken.callback.CallbackHandler} filtered callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler} filtered callback handler.
+     * @for CallbackHandler
      */                                                        
     filter(filter, reentrant) {
         if (!$isFunction(filter)) {
@@ -425,9 +425,9 @@ CallbackHandler.implement({
      * @param   {Function}  before     -  before action.  Return false to reject
      * @param   {Function}  action     -  after action
      * @param   {boolean}   reentrant  -  true if reentrant, false otherwise
-     * @returns {miruken.callback.CallbackHandler}  callback handler aspect.
+     * @returns {CallbackHandler}  callback handler aspect.
      * @throws  {RejectedError} An error if before returns an unaccepted promise.
-     * @for miruken.callback.CallbackHandler
+     * @for CallbackHandler
      */
     aspect(before, after, reentrant) {
         return this.filter((callback, composer, proceed) => {
@@ -457,8 +457,8 @@ CallbackHandler.implement({
      * Decorates the handler to handle definitions.
      * @method $handle
      * @param   {Array}  [definitions]  -  handler overrides
-     * @returns {miruken.callback.CallbackHandler}  decorated callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler}  decorated callback handler.
+     * @for CallbackHandler
      */
     $$handle(definitions) {
         return this.decorate({$handle: definitions});
@@ -467,8 +467,8 @@ CallbackHandler.implement({
      * Decorates the handler to provide definitions.
      * @method $handle
      * @param   {Array}  [definitions]  -  provider overrides
-     * @returns {miruken.callback.CallbackHandler}  decorated callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler}  decorated callback handler.
+     * @for CallbackHandler
      */
     $$provide(definitions) {
         return this.decorate({$provide: definitions});
@@ -477,8 +477,8 @@ CallbackHandler.implement({
      * Decorates the handler to conditionally handle callbacks.
      * @method when
      * @param   {Any}  constraint  -  matching constraint
-     * @returns {miruken.callback.ConditionalCallbackHandler}  conditional callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {ConditionalCallbackHandler}  conditional callback handler.
+     * @for CallbackHandler
      */                                                                        
     when(constraint) {
         const when = new Node(constraint),
@@ -501,8 +501,8 @@ CallbackHandler.implement({
      * Builds a handler chain.
      * @method next
      * @param   {Arguments}  arguments  -  handler chain members
-     * @returns {miruken.callback.CallbackHandler}  chaining callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler}  chaining callback handler.
+     * @for CallbackHandler
      */                                                                                
     next(...handlers) {
         switch(handlers.length) {
@@ -516,8 +516,8 @@ CallbackHandler.implement({
      * @method $guard
      * @param   {Object}  target              -  target to guard
      * @param   {string}  [property='guard']  -  property for guard state
-     * @returns {miruken.callback.CallbackHandler}  guarding callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler}  guarding callback handler.
+     * @for CallbackHandler
      */        
     $guard(target, property) {
         if (target) {
@@ -547,8 +547,8 @@ CallbackHandler.implement({
      * @param   {Object}  target                 -  target to track
      * @param   {Object}  [ms=50]                -  delay to wait before tracking
      * @param   {string}  [property='activity']  -  property for activity state
-     * @returns {miruken.callback.CallbackHandler}  activity callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler}  activity callback handler.
+     * @for CallbackHandler
      */                
     $activity(target, ms, property) {
         property = property || "$$activity";
@@ -581,8 +581,8 @@ CallbackHandler.implement({
     /**
      * Ensures all return values are promises..
      * @method $promises
-     * @returns {miruken.callback.CallbackHandler}  promising callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler}  promising callback handler.
+     * @for CallbackHandler
      */                
     $promise() {
         return this.filter((callback, composer, proceed) => {
@@ -603,10 +603,10 @@ CallbackHandler.implement({
     /**
      * Configures the receiver to set timeouts on all promises.
      * @method $timeout
-     * @param   {number}             ms       -  duration before promise times out
-     * @param   {Function | Error}   [error]  -  error instance or custom error class
-     * @returns {miruken.callback.CallbackHandler}  timeout callback handler.
-     * @for miruken.callback.CallbackHandler
+     * @param   {number}            ms       -  duration before promise times out
+     * @param   {Function | Error}  [error]  -  error instance or custom error class
+     * @returns {CallbackHandler}  timeout callback handler.
+     * @for CallbackHandler
      */        
     $timeout(ms, error) {
         return this.filter((callback, composer, proceed) => {

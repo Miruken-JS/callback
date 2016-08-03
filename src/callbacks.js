@@ -11,11 +11,11 @@ export let $composer;
  * Captures the invocation of a method.
  * @class HandleMethod
  * @constructor
- * @param  {number}            type        -  get, set or invoke
- * @param  {miruken.Protocol}  protocol    -  initiating protocol
- * @param  {string}            methodName  -  method name
- * @param  {Array}             [...args]   -  method arguments
- * @param  {boolean}           strict      -  true if strict, false otherwise
+ * @param  {number}    type        -  get, set or invoke
+ * @param  {Protocol}  protocol    -  initiating protocol
+ * @param  {string}    methodName  -  method name
+ * @param  {Array}     [...args]   -  method arguments
+ * @param  {boolean}   strict      -  true if strict, false otherwise
  * @extends Base
  */
 export const HandleMethod = Base.extend({
@@ -33,7 +33,7 @@ export const HandleMethod = Base.extend({
             get type() { return type; },
             /**
              * Gets the Protocol the method belongs to.
-             * @property {miruken.Protocol} protocol
+             * @property {Protocol} protocol
              * @readOnly
              */
             get protocol() { return protocol; },
@@ -70,10 +70,10 @@ export const HandleMethod = Base.extend({
             /**
              * Attempts to invoke the method on the target.<br/>
              * During invocation, the receiver will have access to a global **$composer** property
-             * representing the initiating {{#crossLink "miruken.callback.CallbackHandler"}}{{/crossLink}}.
+             * representing the initiating {{#crossLink "CallbackHandler"}}{{/crossLink}}.
              * @method invokeOn
-             * @param   {Object}                            target    -  method receiver
-             * @param   {miruken.callback.CallbackHandler}  composer  -  composition handler
+             * @param   {Object}           target    -  method receiver
+             * @param   {CallbackHandler}  composer  -  composition handler
              * @returns {boolean} true if the method was accepted.
              */
             invokeOn(target, composer) {
@@ -140,13 +140,13 @@ export const HandleMethod = Base.extend({
  * Captures the invocation of a method using resolution to determine the targets.
  * @class ResolveMethod
  * @constructor
- * @param  {number}            type        -  get, set or invoke
- * @param  {miruken.Protocol}  protocol    -  initiating protocol
- * @param  {string}            methodName  -  method name
- * @param  {Array}             [...args]   -  method arguments
- * @param  {boolean}           strict      -  true if strict, false otherwise
- * @param  {boolean}           all         -  true if invoke all targets
- * @param  {boolean}           required    -  true if at least one target accepts
+ * @param  {number}    type        -  get, set or invoke
+ * @param  {Protocol}  protocol    -  initiating protocol
+ * @param  {string}    methodName  -  method name
+ * @param  {Array}     [...args]   -  method arguments
+ * @param  {boolean}   strict      -  true if strict, false otherwise
+ * @param  {boolean}   all         -  true if invoke all targets
+ * @param  {boolean}   required    -  true if at least one target accepts
  * @extends HandleMethod
  */
 export const ResolveMethod = HandleMethod.extend({
@@ -156,7 +156,7 @@ export const ResolveMethod = HandleMethod.extend({
             /**
              * Attempts to invoke the method on resolved targets.
              * @method invokeResolve
-             * @param   {miruken.callback.CallbackHandler}  composer  - composition handler
+             * @param   {CallbackHandler}  composer  - composition handler
              * @returns {boolean} true if the method was accepted.
              */
             invokeResolve(composer) {
@@ -341,7 +341,7 @@ export const Deferred = Base.extend({
  * Callback representing the covariant resolution of a key.
  * @class Resolution
  * @constructor
- * @param   {any}   key      -  resolution key
+ * @param   {any}      key   -  resolution key
  * @param   {boolean}  many  -  resolution cardinality
  * @extends Base
  */

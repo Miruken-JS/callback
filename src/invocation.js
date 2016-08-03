@@ -11,7 +11,7 @@ import { CallbackHandler } from './handlers';
 /**
  * InvocationOptions flags enum
  * @class InvocationOptions
- * @extends miruken.Flags
+ * @extends Flags
  */
 export const InvocationOptions = Flags({
     /**
@@ -49,7 +49,7 @@ export const InvocationOptions = Flags({
  * Captures invocation semantics.
  * @class InvocationSemantics
  * @constructor
- * @param  {miruken.callback.InvocationOptions}  options  -  invocation options.
+ * @param  {InvocationOptions}  options  -  invocation options.
  * @extends Base
  */
 export const InvocationSemantics = Composition.extend({
@@ -60,7 +60,7 @@ export const InvocationSemantics = Composition.extend({
             /**
              * Gets the invocation option.
              * @method getOption
-             * @param   {miruken.callback.InvocationOption} option  -  option to test
+             * @param   {InvocationOption} option  -  option to test
              * @returns {boolean} true if invocation option enabled, false otherwise.
              */
             getOption(option) {
@@ -69,7 +69,7 @@ export const InvocationSemantics = Composition.extend({
             /**
              * Sets the invocation option.
              * @method setOption
-             * @param   {miruken.callback.InvocationOption} option  -  option to set
+             * @param   {InvocationOption} option  -  option to set
              * @param   {boolean}  enabled  -  true if enable option, false to clear.
              */                
             setOption(option, enabled) {
@@ -81,7 +81,7 @@ export const InvocationSemantics = Composition.extend({
             /**
              * Determines if the invocation option was specified.
              * @method getOption
-             * @param   {miruken.callback.InvocationOption} option  -  option to test
+             * @param   {InvocationOption} option  -  option to test
              * @returns {boolean} true if invocation option specified, false otherwise.
              */                
             isSpecified(option) {
@@ -92,7 +92,7 @@ export const InvocationSemantics = Composition.extend({
     /**
      * Merges invocation options into the supplied constraints. 
      * @method mergeInto
-     * @param   {miruken.callback.InvocationSemantics}  semantics  -  receives invocation semantics
+     * @param   {InvocationSemantics}  semantics  -  receives invocation semantics
      */                
     mergeInto(semantics) {
         const items = InvocationOptions.items;
@@ -107,11 +107,11 @@ export const InvocationSemantics = Composition.extend({
 
 /**
  * Delegates properties and methods to a callback handler using 
- * {{#crossLink "miruken.callback.HandleMethod"}}{{/crossLink}}.
+ * {{#crossLink "HandleMethod"}}{{/crossLink}}.
  * @class InvocationDelegate
  * @constructor
- * @param   {miruken.callback.CallbackHandler}  handler  -  forwarding handler 
- * @extends miruken.Delegate
+ * @param   {CallbackHandler}  handler  -  forwarding handler 
+ * @extends Delegate
  */
 export const InvocationDelegate = Delegate.extend({
     constructor(handler) {
@@ -157,52 +157,52 @@ function delegate(delegate, type, protocol, methodName, args, strict) {
 
 CallbackHandler.implement({
     /**
-     * Converts the callback handler to a {{#crossLink "miruken.Delegate"}}{{/crossLink}}.
+     * Converts the callback handler to a {{#crossLink "Delegate"}}{{/crossLink}}.
      * @method toDelegate
-     * @returns {miruken.callback.InvocationDelegate}  delegate for this callback handler.
+     * @returns {InvocationDelegate}  delegate for this callback handler.
      */            
     toDelegate() { return new InvocationDelegate(this); },
     /**
      * Establishes strict invocation semantics.
      * @method $strict
-     * @returns {miruken.callback.CallbackHandler} strict semantics.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler} strict semantics.
+     * @for CallbackHandler
      */
     $strict() { return this.$callOptions(InvocationOptions.Strict); },
     /**
      * Establishes broadcast invocation semantics.
      * @method $broadcast
-     * @returns {miruken.callback.CallbackHandler} broadcast semanics.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler} broadcast semanics.
+     * @for CallbackHandler
      */        
     $broadcast() { return this.$callOptions(InvocationOptions.Broadcast); },
     /**
      * Establishes best-effort invocation semantics.
      * @method $bestEffort
-     * @returns {miruken.callback.CallbackHandler} best-effort semanics.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler} best-effort semanics.
+     * @for CallbackHandler
      */                
     $bestEffort() { return this.$callOptions(InvocationOptions.BestEffort); },
     /**
      * Establishes notification invocation semantics.
      * @method $notify
-     * @returns {miruken.callback.InvocationOptionsHandler} notification semanics.
-     * @for miruken.callback.CallbackHandler
+     * @returns {InvocationOptionsHandler} notification semanics.
+     * @for CallbackHandler
      */
     $notify() { return this.$callOptions(InvocationOptions.Notify); },
     /**
      * Establishes resolve invocation semantics.
      * @method $resolve
-     * @returns {miruken.callback.CallbackHandler} resolved semantics.
-     * @for miruken.callback.CallbackHandler
+     * @returns {CallbackHandler} resolved semantics.
+     * @for CallbackHandler
      */
     $resolve() { return this.$callOptions(InvocationOptions.Resolve); },        
     /**
      * Establishes custom invocation semantics.
      * @method $callOptions
-     * @param  {miruken.callback.InvocationOptions}  options  -  invocation semantics
-     * @returns {miruken.callback.CallbackHandler} custom invocation semanics.
-     * @for miruken.callback.CallbackHandler
+     * @param  {InvocationOptions}  options  -  invocation semantics
+     * @returns {CallbackHandler} custom invocation semanics.
+     * @for CallbackHandler
      */                        
     $callOptions(options) {
         const semantics = new InvocationSemantics(options);

@@ -11,25 +11,21 @@ const _definitions = {};
 /**
  * Definition for handling callbacks contravariantly.
  * @method $handle
- * @for miruken.callback.$
  */
 export const $handle = $define('$handle', Variance.Contravariant);
 /**
  * Definition for providing callbacks covariantly.
  * @method $provide  
- * @for miruken.callback.$
  */        
 export const $provide = $define('$provide', Variance.Covariant);
 /**
  * Definition for matching callbacks invariantly.
  * @method $lookup  
- * @for miruken.callback.$
  */                
 export const $lookup = $define('$lookup', Variance.Invariant);
 /**
  * return value to indicate a callback was not handled.
  * @property {Object} $NOT_HANDLED
- * @for miruken.callback.$
  */                
 export const $NOT_HANDLED = Object.freeze({});
 
@@ -46,7 +42,7 @@ export const $NOT_HANDLED = Object.freeze({});
  * </pre>
  * would register a handler in the Bank class for Deposit callbacks.
  * @class $callbacks
- * @extends miruken.MetaMacro
+ * @extends MetaMacro
  */
 export const $callbacks = MetaMacro.extend({
     get active() { return true; },
@@ -82,9 +78,9 @@ export const $callbacks = MetaMacro.extend({
  * Defines a new handler grouping.
  * This is the main extensibility point for handling callbacks.
  * @method $define
- * @param   {string}           tag       - group tag
- * @param   {miruken.Variance} variance  - group variance
- * @return  {Function} function to add to a group.
+ * @param   {string}    tag       - group tag
+ * @param   {Variance}  variance  - group variance
+ * @return  {Function}  function to add to a group.
  * @throws  {TypeError} if group already defined.
  * @for $
  */
