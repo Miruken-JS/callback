@@ -33,6 +33,9 @@ export function build(definition) {
 }
 
 export function callback(definition, ...args) {
+    if (definition == null) {
+        definition = $handle;
+    }
     return decorate(build(definition), args);
 }
 
