@@ -2,46 +2,44 @@ import {
     $handle, $provide, $NOT_HANDLED
 } from './meta';
 
-import { $isFunction } from 'miruken-core';
+import {
+    Variance, decorate, $isFunction
+} from 'miruken-core';
 
 const Everything = [null];
 
-export function callback(definition, ...constraints) {
-    function decorate(target, key, descriptor) {
-        if (definition && definition.tag &&
-            descriptor && descriptor.value) {
+export function build(definition) {
+    return function decorate(target, key, descriptor, constraints) {
+        if (constraints.length === 0) {
+            constraints = Everything;
+        }
+        if (definition && definition.tag) {
             const spec = target[definition.tag]
                       || (target[definition.tag] = []);
-            function lateBinding(...args) {
-                const method = this[key];
-                return $isFunction(method)
-                     ? method.apply(this, args)
-                     : $NOT_HANDLED;
+            function lateBinding() {
+                const result = this[key];
+                if ($isFunction(result)) {
+                    return result.apply(this, arguments);
+                }
+                if (definition.variance == Variance.Covariant) {
+                    return result;
+                }
+                return $NOT_HANDLED;
             }
             spec.push(constraints, lateBinding);
         }
         return descriptor;
     };
-    if (constraints.length == 0) {
-        constraints = Everything;
-    } else if (constraints.length === 3 &&  isDescriptor(constraints[2])) {
-        const [target, key, descriptor] = constraints; 
-        constraints = Everything;
-        return decorate(target, key, descriptor);
-    }
-    return decorate;
 }
 
-export function handle(...constraints) {
-    return callback($handle, ...constraints);
+export function callback(definition, ...args) {
+    return decorate(build(definition), args);
 }
 
-export function provide(...constraints) {
-    return callback($provide, ...constraints);
+export function handle(...args) {
+    return decorate(build($handle), args);
 }
 
-function isDescriptor(descriptor) {
-    return 'value' in descriptor &&
-           'enumerable' in descriptor &&
-           'writable' in descriptor;
+export function provide(...args) {
+    return decorate(build($provide), args);    
 }

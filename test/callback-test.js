@@ -19,9 +19,9 @@ import '../src/invocation';
 
 import {
     True, False, Undefined, Base, Protocol,
-    StrictProtocol, Metadata, Variance, Resolving,
-    assignID, $isPromise, $eq, $copy, $instant,
-    $using, $flatten
+    StrictProtocol, Variance, Resolving,
+    assignID, copy, $meta, $isPromise, $eq,
+    $copy, $instant, $using, $flatten
 } from 'miruken-core';
 
 import { expect } from 'chai';
@@ -281,10 +281,10 @@ describe("Definitions", () => {
     });
 
     describe("#list", () => {
-        it("should create [Metadata].$handle key when first handler registered", () => {
+        it("should create $meta($handle) key when first handler registered", () => {
             const handler  = new CallbackHandler();
             $handle(handler, True, True);
-            expect(handler[Metadata].$handle).to.be.ok;
+            expect($meta(handler).$handle).to.be.ok;
         });
 
         it("should maintain linked-list of handlers", () => {
@@ -292,58 +292,58 @@ describe("Definitions", () => {
             $handle(handler, Activity, Undefined);
             $handle(handler, Accountable, Undefined);
             $handle(handler, Game, Undefined);
-            expect(handler[Metadata].$handle.head.constraint).to.equal(Activity);
-            expect(handler[Metadata].$handle.head.next.constraint).to.equal(Accountable);
-            expect(handler[Metadata].$handle.tail.prev.constraint).to.equal(Accountable);
-            expect(handler[Metadata].$handle.tail.constraint).to.equal(Game);
+            expect($meta(handler).$handle.head.constraint).to.equal(Activity);
+            expect($meta(handler).$handle.head.next.constraint).to.equal(Accountable);
+            expect($meta(handler).$handle.tail.prev.constraint).to.equal(Accountable);
+            expect($meta(handler).$handle.tail.constraint).to.equal(Game);
         });
 
         it("should order $handle contravariantly", () => {
             const handler = new CallbackHandler();
             $handle(handler, Accountable, Undefined);
             $handle(handler, Activity, Undefined);
-            expect(handler[Metadata].$handle.head.constraint).to.equal(Activity);
-            expect(handler[Metadata].$handle.tail.constraint).to.equal(Accountable);
+            expect($meta(handler).$handle.head.constraint).to.equal(Activity);
+            expect($meta(handler).$handle.tail.constraint).to.equal(Accountable);
         });
 
         it("should order $handle invariantly", () => {
             const handler = new CallbackHandler();
             $handle(handler, Activity, Undefined);
             $handle(handler, Activity, True);
-            expect(handler[Metadata].$handle.head.handler).to.equal(Undefined);
-            expect(handler[Metadata].$handle.tail.handler).to.equal(True);
+            expect($meta(handler).$handle.head.handler).to.equal(Undefined);
+            expect($meta(handler).$handle.tail.handler).to.equal(True);
         });
 
         it("should order $provide covariantly", () => {
             const handler = new CallbackHandler();
             $provide(handler, Activity, Undefined);
             $provide(handler, Accountable, Undefined);
-            expect(handler[Metadata].$provide.head.constraint).to.equal(Accountable);
-            expect(handler[Metadata].$provide.tail.constraint).to.equal(Activity);
+            expect($meta(handler).$provide.head.constraint).to.equal(Accountable);
+            expect($meta(handler).$provide.tail.constraint).to.equal(Activity);
         });
 
         it("should order $provide invariantly", () => {
             const handler = new CallbackHandler();
             $provide(handler, Activity, Undefined);
             $provide(handler, Activity, True);
-            expect(handler[Metadata].$provide.head.handler).to.equal(Undefined);
-            expect(handler[Metadata].$provide.tail.handler).to.equal(True);
+            expect($meta(handler).$provide.head.handler).to.equal(Undefined);
+            expect($meta(handler).$provide.tail.handler).to.equal(True);
         });
 
         it("should order $lookup invariantly", () => {
             const handler = new CallbackHandler();
             $lookup(handler, Activity, Undefined);
             $lookup(handler, Activity, True);
-            expect(handler[Metadata].$lookup.head.handler).to.equal(Undefined);
-            expect(handler[Metadata].$lookup.tail.handler).to.equal(True);
+            expect($meta(handler).$lookup.head.handler).to.equal(Undefined);
+            expect($meta(handler).$lookup.tail.handler).to.equal(True);
         });
 
         it("should index first registered handler with head and tail", () => {
             const handler  = new CallbackHandler,
                 unregister = $handle(handler, True, Undefined);
             expect(unregister).to.be.a('function');
-            expect(handler[Metadata].$handle.head.handler).to.equal(Undefined);
-            expect(handler[Metadata].$handle.tail.handler).to.equal(Undefined);
+            expect($meta(handler).$handle.head.handler).to.equal(Undefined);
+            expect($meta(handler).$handle.tail.handler).to.equal(Undefined);
         });
 
         it("should call function when handler removed", () => {
@@ -354,7 +354,7 @@ describe("Definitions", () => {
                 });
             unregister();
             expect(handlerRemoved).to.be.true;
-            expect(handler[Metadata].$handle).to.be.undefined;
+            expect($meta(handler).$handle).to.be.undefined;
         });
 
         it("should suppress handler removed if requested", () => {
@@ -365,14 +365,14 @@ describe("Definitions", () => {
                 });
             unregister(false);
             expect(handlerRemoved).to.be.false;
-            expect(handler[Metadata].$handle).to.be.undefined;
+            expect($meta(handler).$handle).to.be.undefined;
         });
 
         it("should remove $handle when no handlers remain", () => {
             const handler    = new CallbackHandler,
                   unregister = $handle(handler, True, Undefined);
             unregister();
-            expect(handler[Metadata].$handle).to.be.undefined;
+            expect($meta(handler).$handle).to.be.undefined;
         });
     });
 
@@ -381,20 +381,20 @@ describe("Definitions", () => {
             const handler = new CallbackHandler,
                   index   = assignID(Activity);
             $handle(handler, Activity, Undefined);
-            expect(handler[Metadata].$handle.getIndex(index).constraint).to.equal(Activity);
+            expect($meta(handler).$handle.getIndex(index).constraint).to.equal(Activity);
         });
 
         it("should index protocol constraints using assignID", () => {
             const handler   = new CallbackHandler,
                   index     = assignID(Game);
             $handle(handler, Game, Undefined);
-            expect(handler[Metadata].$handle.getIndex(index).constraint).to.equal(Game);
+            expect($meta(handler).$handle.getIndex(index).constraint).to.equal(Game);
         });
 
         it("should index string constraints using string", () => {
             const handler   = new CallbackHandler();
             $handle(handler, "something", Undefined);
-            expect(handler[Metadata].$handle.getIndex("something").handler).to.equal(Undefined);
+            expect($meta(handler).$handle.getIndex("something").handler).to.equal(Undefined);
         });
 
         it("should move index to next match", () => {
@@ -402,9 +402,9 @@ describe("Definitions", () => {
                 index       = assignID(Activity),
                 unregister  = $handle(handler, Activity, Undefined);
             $handle(handler, Activity, True);
-            expect(handler[Metadata].$handle.getIndex(index).handler).to.equal(Undefined);
+            expect($meta(handler).$handle.getIndex(index).handler).to.equal(Undefined);
             unregister();
-            expect(handler[Metadata].$handle.getIndex(index).handler).to.equal(True);
+            expect($meta(handler).$handle.getIndex(index).handler).to.equal(True);
         });
 
         it("should remove index when no more matches", () => {
@@ -413,7 +413,7 @@ describe("Definitions", () => {
             $handle(handler, Accountable, Undefined);
             const unregister  = $handle(handler, Activity, Undefined);
             unregister();
-            expect(handler[Metadata].$handle.getIndex(index)).to.be.undefined;
+            expect($meta(handler).$handle.getIndex(index)).to.be.undefined;
         });
     });
 
@@ -426,7 +426,7 @@ describe("Definitions", () => {
             $handle(handler, Activity, Undefined, removed);
         $handle.removeAll(handler);
         expect(removeCount).to.equal(2);
-            expect(handler[Metadata].$handle).to.be.undefined;
+            expect($meta(handler).$handle).to.be.undefined;
         });
 
         it("should remove all $provider definitions", () => {
@@ -437,7 +437,7 @@ describe("Definitions", () => {
             $provide(handler, Accountable, Undefined, removed);
         $provide.removeAll(handler);
         expect(removeCount).to.equal(2);
-            expect(handler[Metadata].$provide).to.be.undefined;
+            expect($meta(handler).$provide).to.be.undefined;
         });
     });
 });
@@ -779,12 +779,21 @@ describe("CallbackHandler", () => {
                   }),
                   circle = new Circle(2),
                   shapes = new (CallbackHandler.extend({
-                      @provide(Circle)
-                      circle() { return $copy(circle); }
-                  }));
-           const shape = shapes.resolve(Circle);
+                      @copy
+                      @provide(Circle)                      
+                      circle() { return circle; }
+                  })),
+                  shapesG = new (CallbackHandler.extend({
+                      @copy
+                      @provide(Circle)                      
+                      get circle() { return circle; }
+                  }));                  
+           const shape  = shapes.resolve(Circle),
+                 shapeG = shapesG.resolve(Circle);
            expect(shape).to.not.equal(circle);
            expect(shape.radius).to.equal(2);
+           expect(shapeG).to.not.equal(circle);
+           expect(shapeG.radius).to.equal(2);            
         });
 
         it("should resolve objects by class implicitly", () => {

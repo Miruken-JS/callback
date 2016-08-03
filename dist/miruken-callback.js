@@ -1,4 +1,4 @@
-import {False,True,Undefined,Base,Abstract,extend,typeOf,assignID,Variance,MetaMacro,Metadata,$isClass,$isString,$isFunction,$isNothing,$isProtocol,$classOf,Modifier,IndexedList,$eq,$use,$copy,$lift,$isPromise,$instant,$flatten,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
+import {False,True,Undefined,Base,Abstract,extend,typeOf,assignID,Variance,MetaMacro,$meta,$isClass,$isString,$isFunction,$isNothing,$isProtocol,$classOf,Modifier,IndexedList,$eq,$use,$copy,$lift,$isPromise,$instant,$flatten,decorate,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
 
 const _definitions = {};
 
@@ -93,7 +93,8 @@ export function $define(tag, variance) {
     variance = variance || Variance.Contravariant;
     if (!(variance instanceof Variance)) {
         throw new TypeError("Invalid variance type supplied");
-    }        
+    }
+    
     switch (variance) {
     case Variance.Covariant:
         handled  = requiresResult;
@@ -150,7 +151,7 @@ export function $define(tag, variance) {
                 handler = $lift(source);
             }
         }
-        const meta  = owner[Metadata],
+        const meta  = $meta(owner),
               node  = new Node(constraint, handler, removed),
               index = createIndex(node.constraint),
               list  = meta[tag] || (meta[tag] = new IndexedList(comparer));
@@ -166,7 +167,7 @@ export function $define(tag, variance) {
         };
     };
     definition.removeAll = function (owner) {
-        const meta = owner[Metadata],
+        const meta = $meta(owner),
               list = meta[tag];
         let   head = list.head;
         while (head) {
@@ -190,9 +191,9 @@ export function $define(tag, variance) {
                 constraint = $classOf(constraint);
             }
         }
-        let ok = delegate && _dispatch(delegate, delegate[Metadata], callback, constraint, v, composer, all, results);
+        let ok = delegate && _dispatch(delegate, $meta(delegate), callback, constraint, v, composer, all, results);
         if (!ok || all) {
-            ok = ok || _dispatch(handler, handler[Metadata], callback, constraint, v, composer, all, results);
+            ok = ok || _dispatch(handler, $meta(handler), callback, constraint, v, composer, all, results);
         }
         return ok;
     };
@@ -243,7 +244,8 @@ export function $define(tag, variance) {
         }
         return dispatched;
     }
-    definition.tag = tag;
+    definition.tag      = tag;
+    definition.variance = variance;
     Object.freeze(definition);
     _definitions[tag] = definition;
     return definition;
@@ -856,44 +858,40 @@ TimeoutError.prototype.constructor = TimeoutError;
 
 const Everything = [null];
 
-export function callback(definition, ...constraints) {
-    function decorate(target, key, descriptor) {
-        if (definition && definition.tag &&
-            descriptor && descriptor.value) {
+export function build(definition) {
+    return function decorate(target, key, descriptor, constraints) {
+        if (constraints.length === 0) {
+            constraints = Everything;
+        }
+        if (definition && definition.tag) {
             const spec = target[definition.tag]
                       || (target[definition.tag] = []);
-            function lateBinding(...args) {
-                const method = this[key];
-                return $isFunction(method)
-                     ? method.apply(this, args)
-                     : $NOT_HANDLED;
+            function lateBinding() {
+                const result = this[key];
+                if ($isFunction(result)) {
+                    return result.apply(this, arguments);
+                }
+                if (definition.variance == Variance.Covariant) {
+                    return result;
+                }
+                return $NOT_HANDLED;
             }
             spec.push(constraints, lateBinding);
         }
         return descriptor;
     };
-    if (constraints.length == 0) {
-        constraints = Everything;
-    } else if (constraints.length === 3 &&  isDescriptor(constraints[2])) {
-        const [target, key, descriptor] = constraints; 
-        constraints = Everything;
-        return decorate(target, key, descriptor);
-    }
-    return decorate;
 }
 
-export function handle(...constraints) {
-    return callback($handle, ...constraints);
+export function callback(definition, ...args) {
+    return decorate(build(definition), args);
 }
 
-export function provide(...constraints) {
-    return callback($provide, ...constraints);
+export function handle(...args) {
+    return decorate(build($handle), args);
 }
 
-function isDescriptor(descriptor) {
-    return 'value' in descriptor &&
-           'enumerable' in descriptor &&
-           'writable' in descriptor;
+export function provide(...args) {
+    return decorate(build($provide), args);    
 }
 
 /**

@@ -1,6 +1,6 @@
 import {
     False, True, Undefined, Base, Abstract, extend,
-    typeOf, assignID, Variance, MetaMacro, Metadata,
+    typeOf, assignID, Variance, MetaMacro, $meta,
     $isClass, $isString, $isFunction, $isNothing,
     $isProtocol, $classOf, Modifier, IndexedList,
     $eq, $use, $copy, $lift
@@ -99,7 +99,8 @@ export function $define(tag, variance) {
     variance = variance || Variance.Contravariant;
     if (!(variance instanceof Variance)) {
         throw new TypeError("Invalid variance type supplied");
-    }        
+    }
+    
     switch (variance) {
     case Variance.Covariant:
         handled  = requiresResult;
@@ -156,7 +157,7 @@ export function $define(tag, variance) {
                 handler = $lift(source);
             }
         }
-        const meta  = owner[Metadata],
+        const meta  = $meta(owner),
               node  = new Node(constraint, handler, removed),
               index = createIndex(node.constraint),
               list  = meta[tag] || (meta[tag] = new IndexedList(comparer));
@@ -172,7 +173,7 @@ export function $define(tag, variance) {
         };
     };
     definition.removeAll = function (owner) {
-        const meta = owner[Metadata],
+        const meta = $meta(owner),
               list = meta[tag];
         let   head = list.head;
         while (head) {
@@ -196,9 +197,9 @@ export function $define(tag, variance) {
                 constraint = $classOf(constraint);
             }
         }
-        let ok = delegate && _dispatch(delegate, delegate[Metadata], callback, constraint, v, composer, all, results);
+        let ok = delegate && _dispatch(delegate, $meta(delegate), callback, constraint, v, composer, all, results);
         if (!ok || all) {
-            ok = ok || _dispatch(handler, handler[Metadata], callback, constraint, v, composer, all, results);
+            ok = ok || _dispatch(handler, $meta(handler), callback, constraint, v, composer, all, results);
         }
         return ok;
     };
@@ -249,7 +250,8 @@ export function $define(tag, variance) {
         }
         return dispatched;
     }
-    definition.tag = tag;
+    definition.tag      = tag;
+    definition.variance = variance;
     Object.freeze(definition);
     _definitions[tag] = definition;
     return definition;
