@@ -24,51 +24,6 @@ export const $lookup = $define('$lookup', Variance.Invariant);
 export const $NOT_HANDLED = Object.freeze({});
 
 /**
- * Metamacro to process callback handler definitions.
- * <pre>
- *    const Bank = Base.extend(**$callbacks**, {
- *        $handle: [
- *            Deposit, function (deposit, composer) {
- *                // perform the deposit
- *            }
- *        ]
- *    })
- * </pre>
- * would register a handler in the Bank class for Deposit callbacks.
- * @class $callbacks
- * @extends MetaMacro
- */
-export const $callbacks = MetaMacro.extend({
-    get active() { return true; },
-    get inherit() { return true; },
-    execute(step, metadata, target, definition) {
-        if ($isNothing(definition)) {
-            return;
-        }
-        const source = target,
-              type   = metadata.type;
-        if (target === type.prototype) {
-            target = type;
-        }
-        for (let tag in _definitions) {
-            const list = this.extractProperty(tag, source, definition);
-            if (!list || list.length == 0) {
-                continue;
-            }
-            const define = _definitions[tag];
-            for (let idx = 0; idx < list.length; ++idx) {
-                const constraint = list[idx];
-                if (++idx >= list.length) {
-                    throw new Error(
-                        `Incomplete ${tag} definition: missing handler for constraint ${constraint}.`);
-                }
-                define(target, constraint, list[idx]);
-            }
-        }
-    }
-});
-
-/**
  * Defines a new handler grouping.
  * This is the main extensibility point for handling callbacks.
  * @method $define
@@ -852,15 +807,13 @@ export function TimeoutError(callback, message) {
 TimeoutError.prototype             = new Error;
 TimeoutError.prototype.constructor = TimeoutError;
 
-const Everything = [null];
-
 export function addDefinition(def, allowGets) {
-    return function decorate(target, key, descriptor, constraints) {
-        if (def && def.tag) { 
+    return function (target, key, descriptor, constraints) {
+        if (def && def.tag) {
             if (constraints.length === 0) {
-                constraints = Everything;
+                constraints = null;
             }
-            const spec = target[def.tag] || (target[def.tag] = []);
+            def(target, constraints, lateBinding);
             function lateBinding() {
                 const result = this[key];
                 if ($isFunction(result)) {
@@ -868,7 +821,6 @@ export function addDefinition(def, allowGets) {
                 }
                 return allowGets ? result : $NOT_HANDLED;
             }
-            spec.push(constraints, lateBinding);
         }
         return descriptor;
     };
@@ -890,7 +842,7 @@ export function provide(...args) {
  * @param  {Object}  [delegate]  -  delegate
  * @extends Base
  */
-export const CallbackHandler = Base.extend($callbacks, {
+export const CallbackHandler = Base.extend({
     constructor(delegate) {
         this.extend({
             /**
@@ -929,42 +881,46 @@ export const CallbackHandler = Base.extend($callbacks, {
     handleCallback(callback, greedy, composer) {
         return $handle.dispatch(this, callback, null, composer, greedy);
     },
-    $handle:[
-        Lookup, function (lookup, composer) {
-            return $lookup.dispatch(this, lookup,lookup.key, composer, lookup.isMany, lookup.addResult);
-        },
-        Deferred, function (deferred, composer) {
-            return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);
-        },
-        Resolution, function (resolution, composer) {
-            const key      = resolution.key,
-                  many     = resolution.isMany;
-            let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
-            if (!resolved) { // check if delegate or handler implicitly satisfy key
-                const implied  = new Node(key),
-                    delegate = this.delegate;
-                if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
-                    resolution.resolve($decorated(delegate, true));
-                    resolved = true;
-                }
-                if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
-                    resolution.resolve($decorated(this, true));
-                    resolved = true;
-                }
+    @handle(Lookup)
+    _lookup(lookup, composer) {
+        return $lookup.dispatch(this, lookup,lookup.key, composer, lookup.isMany, lookup.addResult);        
+    },
+    @handle(Deferred)
+    _defered(deferred, composer) {
+        return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);        
+    },
+    @handle(Resolution)
+    _resolution(resolution, composer) {
+        const key      = resolution.key,
+              many     = resolution.isMany;
+        let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
+        if (!resolved) { // check if delegate or handler implicitly satisfy key
+            const implied  = new Node(key),
+                  delegate = this.delegate;
+            if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
+                resolution.resolve($decorated(delegate, true));
+                resolved = true;
             }
-            return resolved;
-        },
-        HandleMethod, function (method, composer) {
-            return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
-        },
-        ResolveMethod, function (method, composer) {
-            return method.invokeResolve(composer);
-        },
-        Composition, function (composable, composer) {
-            const callback = composable.callback;
-            return callback && $handle.dispatch(this, callback, null, composer);
+            if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
+                resolution.resolve($decorated(this, true));
+                resolved = true;
+            }
         }
-    ]
+        return resolved;
+    },
+    @handle(HandleMethod)
+    _handleMethod(method, composer) {
+        return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
+    },
+    @handle(ResolveMethod)
+    _resolveMethod(method, composer) {
+        return method.invokeResolve(composer);
+    },
+    @handle(Composition)
+    _composition(composable, composer) {
+        const callback = composable.callback;
+        return callback && $handle.dispatch(this, callback, null, composer);
+    }
 }, {
     coerce(object) { return new this(object); }
 });

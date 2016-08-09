@@ -1,6 +1,8 @@
 import {
-    $handle, $provide, $lookup, $callbacks, Node
+    $handle, $provide, $lookup, Node
 } from './meta';
+
+import { handle } from './define';
 
 import {
     Lookup, Deferred, Resolution, $composer,
@@ -22,7 +24,7 @@ import {
  * @param  {Object}  [delegate]  -  delegate
  * @extends Base
  */
-export const CallbackHandler = Base.extend($callbacks, {
+export const CallbackHandler = Base.extend({
     constructor(delegate) {
         this.extend({
             /**
@@ -61,42 +63,46 @@ export const CallbackHandler = Base.extend($callbacks, {
     handleCallback(callback, greedy, composer) {
         return $handle.dispatch(this, callback, null, composer, greedy);
     },
-    $handle:[
-        Lookup, function (lookup, composer) {
-            return $lookup.dispatch(this, lookup,lookup.key, composer, lookup.isMany, lookup.addResult);
-        },
-        Deferred, function (deferred, composer) {
-            return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);
-        },
-        Resolution, function (resolution, composer) {
-            const key      = resolution.key,
-                  many     = resolution.isMany;
-            let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
-            if (!resolved) { // check if delegate or handler implicitly satisfy key
-                const implied  = new Node(key),
-                    delegate = this.delegate;
-                if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
-                    resolution.resolve($decorated(delegate, true));
-                    resolved = true;
-                }
-                if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
-                    resolution.resolve($decorated(this, true));
-                    resolved = true;
-                }
+    @handle(Lookup)
+    _lookup(lookup, composer) {
+        return $lookup.dispatch(this, lookup,lookup.key, composer, lookup.isMany, lookup.addResult);        
+    },
+    @handle(Deferred)
+    _defered(deferred, composer) {
+        return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);        
+    },
+    @handle(Resolution)
+    _resolution(resolution, composer) {
+        const key      = resolution.key,
+              many     = resolution.isMany;
+        let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
+        if (!resolved) { // check if delegate or handler implicitly satisfy key
+            const implied  = new Node(key),
+                  delegate = this.delegate;
+            if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
+                resolution.resolve($decorated(delegate, true));
+                resolved = true;
             }
-            return resolved;
-        },
-        HandleMethod, function (method, composer) {
-            return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
-        },
-        ResolveMethod, function (method, composer) {
-            return method.invokeResolve(composer);
-        },
-        Composition, function (composable, composer) {
-            const callback = composable.callback;
-            return callback && $handle.dispatch(this, callback, null, composer);
+            if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
+                resolution.resolve($decorated(this, true));
+                resolved = true;
+            }
         }
-    ]
+        return resolved;
+    },
+    @handle(HandleMethod)
+    _handleMethod(method, composer) {
+        return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
+    },
+    @handle(ResolveMethod)
+    _resolveMethod(method, composer) {
+        return method.invokeResolve(composer);
+    },
+    @handle(Composition)
+    _composition(composable, composer) {
+        const callback = composable.callback;
+        return callback && $handle.dispatch(this, callback, null, composer);
+    }
 }, {
     coerce(object) { return new this(object); }
 });

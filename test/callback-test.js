@@ -9,11 +9,11 @@ import {
 } from '../src/handlers';
 
 import {
-    $define, $handle, $provide, $lookup, $callbacks,
+    $define, $handle, $provide, $lookup,
     $NOT_HANDLED
 } from '../src/meta'
 
-import { handle, provide } from '../src/decorators';
+import { handle, provide, lookup } from '../src/define';
 import { Batching } from '../src/batch';
 import '../src/invocation';
 
@@ -98,7 +98,7 @@ const CountMoney = Base.extend({
     }
 });
 
-const Accountable = Base.extend($callbacks, {
+const Accountable = Base.extend({
     constructor(assets, liabilities) {
         assets      = Number(assets || 0);
         liabilities = Number(liabilities || 0);
@@ -456,6 +456,13 @@ describe("CallbackHandler", () => {
         });
 
         it("should handle callbacks", () => {
+            const cashier    = new CallbackHandler(new Cashier(1000000.00)),
+                  countMoney = new CountMoney();
+            expect(cashier.handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(1000000.00);
+        });
+
+        it("should handle callback chain", () => {
             const cashier    = new Cashier(1000000.00),
                   casino     = new Casino('Belagio').addHandlers(cashier),
                   countMoney = new CountMoney;
@@ -512,14 +519,15 @@ describe("CallbackHandler", () => {
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
         });
-
+        
         it("should stop early if handle callback invariantly", () => {
             const cashier     = new Cashier(1000000.00),
                   accountable = new Accountable(1.00),
                   inventory   = new (CallbackHandler.extend({
-                      $handle:[
-                          Accountable, Undefined,
-                          null, Undefined]
+                      @handle(Accountable)
+                      ignore(accountable) {},
+                      @handle
+                      everything(callback) {}
                   }));
             expect(inventory.handle($eq(accountable))).to.be.true;
             expect(inventory.handle($eq(cashier))).to.be.false;
@@ -586,7 +594,7 @@ describe("CallbackHandler", () => {
 
         it("should handle unknown callback via delegate", () => {
             const blackjack = new CardTable('Blackjack'),
-                  inventory = new (Base.extend($callbacks, {
+                  inventory = new (Base.extend({
                       @handle
                       everything(callback) {
                           callback.check = true;
@@ -825,9 +833,8 @@ describe("CallbackHandler", () => {
         it("should resolve objects by class invariantly", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (CallbackHandler.extend({
-                      $provide:[
-                          $eq(Cashier), () => cashier
-                      ]
+                      @provide($eq(Cashier))
+                      cashier() { return cashier; }
                   }));
             expect(inventory.resolve(Accountable)).to.be.undefined;
             expect(inventory.resolve(Cashier)).to.equal(cashier);
@@ -838,9 +845,8 @@ describe("CallbackHandler", () => {
         it("should resolve objects by protocol invariantly", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $provide:[
-                          $eq(Game), () => blackjack
-                      ]
+                      @provide($eq(Game))
+                      game() { return blackjack; }
                   }));
             expect(cardGames.resolve(CardTable)).to.be.undefined;
             expect(cardGames.resolve(Game)).to.equal(blackjack);
@@ -850,10 +856,10 @@ describe("CallbackHandler", () => {
             const cashier   = new Cashier(1000000.00),
                   blackjack = new CardTable("BlackJack", 1, 5),
                   inventory = new (CallbackHandler.extend({
-                      $provide:[
-                          Cashier, () => cashier,
-                          CardTable, () => Promise.resolve(blackjack)
-                      ]
+                      @provide(Cashier)
+                      cashier() { return cashier; },
+                      @provide(CardTable)
+                      blackjack() { return Promise.resolve(blackjack); }                      
                   }));
             expect(inventory.resolve($instant(Cashier))).to.equal(cashier);
             expect($isPromise(inventory.resolve(CardTable))).to.be.true;
@@ -863,9 +869,8 @@ describe("CallbackHandler", () => {
         it("should resolve objects by protocol instantly", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $provide:[
-                          Game, () => Promise.resolve(blackjack)
-                      ]
+                      @provide(Game)
+                      game() { return Promise.resolve(blackjack); }
                   }));
             expect($isPromise(cardGames.resolve(Game))).to.be.true;
             expect(cardGames.resolve($instant(Game))).to.be.undefined;
@@ -874,9 +879,8 @@ describe("CallbackHandler", () => {
         it("should resolve by string literal", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $provide:[
-                          'BlackJack', () =>  blackjack
-                      ]
+                      @provide('BlackJack')
+                      blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve('BlackJack')).to.equal(blackjack);
         });
@@ -884,9 +888,8 @@ describe("CallbackHandler", () => {
         it("should resolve by string instance", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                     $provide:[
-                         'BlackJack', () =>  blackjack
-                     ]
+                      @provide('BlackJack')
+                      blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve(new String("BlackJack"))).to.equal(blackjack);
         });
@@ -894,9 +897,8 @@ describe("CallbackHandler", () => {
         it("should resolve string by regular expression", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $provide:[
-                          /black/i, () =>  blackjack
-                      ]
+                      @provide(/black/i)
+                      blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve('BlackJack')).to.equal(blackjack);
         });
@@ -910,16 +912,16 @@ describe("CallbackHandler", () => {
                       }
                   }), 
                   settings = new (CallbackHandler.extend({
-                      $provide:[
-                          Config, resolution => {
-                              const config = resolution.key,
-                                    key    = config.key;
-                              if (key == "url") {
-                                  return "my.server.com";
-                              } else if (key == "user") {
-                                  return "dba";
-                              }
-                          }]
+                      @provide(Config)
+                      config(resolution) {
+                          const config = resolution.key,
+                                key    = config.key;
+                          if (key == "url") {
+                              return "my.server.com";
+                          } else if (key == "user") {
+                              return "dba";
+                          }
+                      }
                   }));
                 expect(settings.resolve(new Config("user"))).to.equal("dba");
                 expect(settings.resolve(new Config("name"))).to.be.undefined;
@@ -929,15 +931,15 @@ describe("CallbackHandler", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cashier   = new Cashier(1000000.00),
                   cardGames = new (CallbackHandler.extend({
-                      $provide:[
-                          [CardTable, Cashier], resolution => {
-                              const key = resolution.key;
-                              if (key.conformsTo(Game)) {
-                                  return blackjack;
-                              } else if (key === Cashier) {
-                                  return cashier;
-                              }
-                          }]
+                      @provide(CardTable, Cashier)
+                      stuff(resolution) {
+                          const key = resolution.key;
+                          if (key.conformsTo(Game)) {
+                              return blackjack;
+                          } else if (key === Cashier) {
+                              return cashier;
+                          }
+                      }
                   }));
             expect(cardGames.resolve(Game)).to.equal(blackjack);
             expect(cardGames.resolve(Cashier)).to.equal(cashier);
@@ -968,21 +970,21 @@ describe("CallbackHandler", () => {
 
         it("should not resolve objects if $NOT_HANDLED", () => {
             const inventory = new (CallbackHandler.extend({
-                      $provide:[
-                          Cashier, resolution => $NOT_HANDLED]
-                  }));
+                @provide(Cashier)
+                notHandled() { return $NOT_HANDLED; }
+            }));
             expect(inventory.resolve(Cashier)).to.be.undefined;
         });
 
         it("should resolve unknown objects", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $provide:[
-                          True, resolution => {
-                              if (resolution.key === CardTable) {
-                                  return blackjack;
-                              }
-                          }]
+                      @provide(True)
+                      unknown(resolution) {
+                          if (resolution.key === CardTable) {
+                              return blackjack;
+                          }
+                      }
                   }));
             expect(cardGames.resolve(CardTable)).to.equal(blackjack);
             expect(cardGames.resolve(Game)).to.be.undefined;
@@ -1004,15 +1006,20 @@ describe("CallbackHandler", () => {
         it("should resolve with precedence rules", () => {
             const Checkers  = Base.extend(Game),
                   inventory = new (CallbackHandler.extend({
-                      $provide:[
-                          constraint => constraint === PitBoss,() => 0,
-                          null, () => 1,
-                          Checkers, () => 2,
-                          Level1Security, () => 3,
-                          Activity, () => 5,
-                          Accountable, () => 4,
-                          CardTable, () => 6
-                          ]
+                      @provide(constraint => constraint === PitBoss)
+                      predicate() { return 0; },
+                      @provide
+                      anything() { return 1; },
+                      @provide(Checkers)
+                      anonymousType() { return 2; },
+                      @provide(Level1Security)
+                      type() { return 3; },
+                      @provide(Activity)
+                      derivedType() { return 5; },
+                      @provide(Accountable)
+                      baseType() { return 4; },
+                      @provide(CardTable)
+                      deepType() { return 6; }
                   }));
             expect(inventory.resolve(CardTable)).to.equal(6);
             expect(inventory.resolve(Activity)).to.equal(5);
@@ -1041,22 +1048,25 @@ describe("CallbackHandler", () => {
                   stop2 = [ new PitBoss("Brenda"), new PitBoss("Lauren"), new PitBoss("Kaitlyn") ],
                   stop3 = [ new PitBoss("Phil") ],
                   bus1  = new (CallbackHandler.extend({
-                      $provide:[ PitBoss, resolution => {
+                      @provide(PitBoss)
+                      pitBoss(resolution) {
                           expect(resolution.isMany).to.be.true;
                           return Promise.delay(75).then(() => stop1);
-                      }]
+                      }
                   })),
-                  bus2  = new (CallbackHandler.extend({
-                      $provide:[ PitBoss, resolution => {
+           bus2  = new (CallbackHandler.extend({
+                      @provide(PitBoss)
+                      pitBoss(resolution) {               
                           expect(resolution.isMany).to.be.true;
                           return Promise.delay(100).then(() => stop2);
-                      }]
+                      }
                   })),
                   bus3  = new (CallbackHandler.extend({
-                      $provide:[ PitBoss, resolution => {
+                      @provide(PitBoss)
+                      pitBoss(resolution) {               
                           expect(resolution.isMany).to.be.true;
                           return Promise.delay(50).then(() => stop3);
-                      }]
+                      }
                   })),
                   company = bus1.next(bus2, bus3);
             Promise.resolve(company.resolveAll(PitBoss)).then(pitBosses => {
@@ -1070,11 +1080,12 @@ describe("CallbackHandler", () => {
                   venetian = new Casino('Venetian'),
                   paris    = new Casino('Paris'),
                   strip    = new (CallbackHandler.extend({
-                      $provide:[
-                          Casino, () => venetian,
-                          Casino, () => Promise.resolve(belagio),
-                          Casino, () => paris
-                      ]
+                      @provide(Casino)
+                      venetion() { return venetian; },
+                      @provide(Casino)
+                      belagio() { return Promise.resolve(belagio); },
+                      @provide(Casino)
+                      paris() { return paris; }
                   }));
             const casinos = strip.resolveAll($instant(Casino));
             expect(casinos).to.eql([venetian, paris]);
@@ -1090,9 +1101,8 @@ describe("CallbackHandler", () => {
         it("should return empty array instantly if none resolved", () => {
             const belagio = new Casino('Belagio'),
                   strip   = new (CallbackHandler.extend({
-                      $provide:[
-                          Casino, () => Promise.resolve(belagio)
-                      ]
+                      @provide(Casino)
+                      casino() { return Promise.resolve(belagio); }
                   }));
             const casinos = strip.resolveAll($instant(Casino));
             expect(casinos).to.have.length(0);
@@ -1103,10 +1113,10 @@ describe("CallbackHandler", () => {
         it("should lookup by class", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $lookup:[
-                          CardTable, () => blackjack,
-                          null, () => blackjack
-                      ]
+                      @lookup(CardTable)
+                      cardTable() { return blackjack; },
+                      @lookup
+                      everything() { return blackjack; }
                   }));
             expect(cardGames.lookup(CardTable)).to.equal(blackjack);
             expect(cardGames.lookup(Game)).to.be.undefined;
@@ -1115,10 +1125,10 @@ describe("CallbackHandler", () => {
         it("should lookup by protocol", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $lookup:[
-                          Game, () => blackjack, 
-                          null, () => blackjack
-                      ]
+                      @lookup(Game)
+                      game() { return blackjack; },
+                      @lookup
+                      everything() { return blackjack; }
                   }));
             expect(cardGames.lookup(Game)).to.equal(blackjack);
             expect(cardGames.lookup(CardTable)).to.be.undefined;
@@ -1127,10 +1137,10 @@ describe("CallbackHandler", () => {
         it("should lookup by string", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (CallbackHandler.extend({
-                      $lookup:[
-                          'blackjack', () => blackjack,
-                              /game/, () => blackjack,
-                      ]
+                      @lookup('blackjack')
+                      blackjack() { return blackjack; },
+                      @lookup(/game/)
+                      blackjack() { return blackjack; },
                   }));
             expect(cardGames.lookup('blackjack')).to.equal(blackjack);
             expect(cardGames.lookup('game')).to.be.undefined;
@@ -1338,9 +1348,8 @@ describe("CallbackHandler", () => {
         it("should restrict providers using short syntax", () => {
             const blackjack  = new CardTable("BlackJack", 1, 5),
                   cardGames  = (new (CallbackHandler.extend({
-                      $provide:[
-                          True, () => blackjack
-                          ]
+                      @provide(True)
+                      blackjack() { return blackjack; }
                   }))).when(CardTable);
             expect(cardGames.resolve(CardTable)).to.equal(blackjack);
             expect(cardGames.resolve(Cashier)).to.be.undefined;
@@ -1349,9 +1358,8 @@ describe("CallbackHandler", () => {
         it("should restrict providers invariantly using short syntax", () => {
             const blackjack  = new CardTable("BlackJack", 1, 5),
                   cardGames  = (new (CallbackHandler.extend({
-                      $provide:[
-                          True, () => blackjack
-                      ]
+                      @provide(True)
+                      blackjack() { return blackjack; }
                   }))).when($eq(Activity));
             expect(cardGames.resolve(Activity)).to.equal(blackjack);
             expect(cardGames.resolve(CardTable)).to.be.undefined;
@@ -1531,9 +1539,8 @@ describe("InvocationCallbackHandler", () => {
                       }
                   }),
                   handler = new (CallbackHandler.extend({
-                      $provide: [
-                          Game, () => Promise.delay(10).then(() => new Poker())
-                      ]
+                      @provide(Game)
+                      game() { return Promise.delay(10).then(() => new Poker()); }
                   }));
             Game(handler.$resolve()).open(5).then(id => {
                 expect(id).to.equal("poker5");
@@ -1571,9 +1578,8 @@ describe("InvocationCallbackHandler", () => {
         it("should fail invocation promise if method not found", done => {
             const Poker   = Base.extend(Game),
                   handler = new (CallbackHandler.extend({
-                      $provide: [
-                          Game, () => Promise.delay(10).then(() => new Poker())
-                      ]
+                      @provide(Game)
+                      game() { return Promise.delay(10).then(() => new Poker()); }
                   }));
             Game(handler.$resolve()).open(5).catch(error => {
                 expect(error).to.be.instanceOf(TypeError);
@@ -1590,10 +1596,8 @@ describe("InvocationCallbackHandler", () => {
 
         it("should ignore invocation if unable to resolve promise", done => {
             const handler = new (CallbackHandler.extend({
-                      $provide: [
-                          Game, () => {
-                              return Promise.delay(10).then(() => $NOT_HANDLED);
-                          }]
+                @provide(Game)
+                game() { return Promise.delay(10).then(() => $NOT_HANDLED); }
               }));
             Game(handler.$resolve().$bestEffort()).open(5).then(id => {
                 expect(id).to.be.undefiend;
@@ -1637,14 +1641,12 @@ describe("InvocationCallbackHandler", () => {
                   }),                
                   handler = new CascadeCallbackHandler(
                       new (CallbackHandler.extend({
-                          $provide: [
-                              Game, () => Promise.delay(10).then(() => new Poker())
-                          ]
+                          @provide(Game)
+                          game() { return Promise.delay(10).then(() => new Poker()); }
                       })),
                       new (CallbackHandler.extend({
-                          $provide: [
-                              Game, () => Promise.delay(5).then(() => new Slots())
-                          ]
+                          @provide(Game)
+                          game() { return Promise.delay(5).then(() => new Slots()); }
                       }))
                 );
             Game(handler.$resolve().$broadcast()).open(5).then(id => {

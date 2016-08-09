@@ -30,51 +30,6 @@ export const $lookup = $define('$lookup', Variance.Invariant);
 export const $NOT_HANDLED = Object.freeze({});
 
 /**
- * Metamacro to process callback handler definitions.
- * <pre>
- *    const Bank = Base.extend(**$callbacks**, {
- *        $handle: [
- *            Deposit, function (deposit, composer) {
- *                // perform the deposit
- *            }
- *        ]
- *    })
- * </pre>
- * would register a handler in the Bank class for Deposit callbacks.
- * @class $callbacks
- * @extends MetaMacro
- */
-export const $callbacks = MetaMacro.extend({
-    get active() { return true; },
-    get inherit() { return true; },
-    execute(step, metadata, target, definition) {
-        if ($isNothing(definition)) {
-            return;
-        }
-        const source = target,
-              type   = metadata.type;
-        if (target === type.prototype) {
-            target = type;
-        }
-        for (let tag in _definitions) {
-            const list = this.extractProperty(tag, source, definition);
-            if (!list || list.length == 0) {
-                continue;
-            }
-            const define = _definitions[tag];
-            for (let idx = 0; idx < list.length; ++idx) {
-                const constraint = list[idx];
-                if (++idx >= list.length) {
-                    throw new Error(
-                        `Incomplete ${tag} definition: missing handler for constraint ${constraint}.`);
-                }
-                define(target, constraint, list[idx]);
-            }
-        }
-    }
-});
-
-/**
  * Defines a new handler grouping.
  * This is the main extensibility point for handling callbacks.
  * @method $define

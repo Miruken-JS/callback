@@ -1,20 +1,19 @@
 import {
-    $handle, $provide, $NOT_HANDLED
+    $handle, $provide, $lookup,
+    $NOT_HANDLED
 } from './meta';
 
 import {
-    Variance, decorate, $isFunction
+    decorate, $isFunction
 } from 'miruken-core';
 
-const Everything = [null];
-
 export function addDefinition(def, allowGets) {
-    return function decorate(target, key, descriptor, constraints) {
-        if (def && def.tag) { 
+    return function (target, key, descriptor, constraints) {
+        if (def && def.tag) {
             if (constraints.length === 0) {
-                constraints = Everything;
+                constraints = null;
             }
-            const spec = target[def.tag] || (target[def.tag] = []);
+            def(target, constraints, lateBinding);
             function lateBinding() {
                 const result = this[key];
                 if ($isFunction(result)) {
@@ -22,7 +21,6 @@ export function addDefinition(def, allowGets) {
                 }
                 return allowGets ? result : $NOT_HANDLED;
             }
-            spec.push(constraints, lateBinding);
         }
         return descriptor;
     };
@@ -34,4 +32,8 @@ export function handle(...args) {
 
 export function provide(...args) {
     return decorate(addDefinition($provide, true), args);    
+}
+
+export function lookup(...args) {
+    return decorate(addDefinition($lookup, true), args);    
 }

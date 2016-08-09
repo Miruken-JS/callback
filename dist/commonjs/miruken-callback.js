@@ -3,9 +3,11 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeCallbackHandler = exports.CascadeCallbackHandler = exports.CallbackHandler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$callbacks = exports.$NOT_HANDLED = exports.$lookup = exports.$provide = exports.$handle = undefined;
+exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeCallbackHandler = exports.CascadeCallbackHandler = exports.CallbackHandler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$NOT_HANDLED = exports.$lookup = exports.$provide = exports.$handle = undefined;
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
+var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj;
 
 exports.$define = $define;
 exports.Node = Node;
@@ -19,45 +21,41 @@ var _mirukenCore = require('miruken-core');
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
+function _applyDecoratedDescriptor(target, property, decorators, descriptor, context) {
+    var desc = {};
+    Object['ke' + 'ys'](descriptor).forEach(function (key) {
+        desc[key] = descriptor[key];
+    });
+    desc.enumerable = !!desc.enumerable;
+    desc.configurable = !!desc.configurable;
+
+    if ('value' in desc || desc.initializer) {
+        desc.writable = true;
+    }
+
+    desc = decorators.slice().reverse().reduce(function (desc, decorator) {
+        return decorator(target, property, desc) || desc;
+    }, desc);
+
+    if (context && desc.initializer !== void 0) {
+        desc.value = desc.initializer ? desc.initializer.call(context) : void 0;
+        desc.initializer = undefined;
+    }
+
+    if (desc.initializer === void 0) {
+        Object['define' + 'Property'](target, property, desc);
+        desc = null;
+    }
+
+    return desc;
+}
+
 var _definitions = {};
 
 var $handle = exports.$handle = $define('$handle', _mirukenCore.Variance.Contravariant);
 var $provide = exports.$provide = $define('$provide', _mirukenCore.Variance.Covariant);
 var $lookup = exports.$lookup = $define('$lookup', _mirukenCore.Variance.Invariant);
 var $NOT_HANDLED = exports.$NOT_HANDLED = Object.freeze({});
-
-var $callbacks = exports.$callbacks = _mirukenCore.MetaMacro.extend({
-    get active() {
-        return true;
-    },
-    get inherit() {
-        return true;
-    },
-    execute: function execute(step, metadata, target, definition) {
-        if ((0, _mirukenCore.$isNothing)(definition)) {
-            return;
-        }
-        var source = target,
-            type = metadata.type;
-        if (target === type.prototype) {
-            target = type;
-        }
-        for (var tag in _definitions) {
-            var list = this.extractProperty(tag, source, definition);
-            if (!list || list.length == 0) {
-                continue;
-            }
-            var define = _definitions[tag];
-            for (var idx = 0; idx < list.length; ++idx) {
-                var constraint = list[idx];
-                if (++idx >= list.length) {
-                    throw new Error('Incomplete ' + tag + ' definition: missing handler for constraint ' + constraint + '.');
-                }
-                define(target, constraint, list[idx]);
-            }
-        }
-    }
-});
 
 function $define(tag, variance) {
     if (!(0, _mirukenCore.$isString)(tag) || tag.length === 0 || /\s/.test(tag)) {
@@ -681,10 +679,8 @@ function TimeoutError(callback, message) {
 TimeoutError.prototype = new Error();
 TimeoutError.prototype.constructor = TimeoutError;
 
-var Everything = [null];
-
 function addDefinition(def, allowGets) {
-    return function decorate(target, key, descriptor, constraints) {
+    return function (target, key, descriptor, constraints) {
         if (def && def.tag) {
             var lateBinding = function lateBinding() {
                 var result = this[key];
@@ -695,11 +691,9 @@ function addDefinition(def, allowGets) {
             };
 
             if (constraints.length === 0) {
-                constraints = Everything;
+                constraints = null;
             }
-            var spec = target[def.tag] || (target[def.tag] = []);
-
-            spec.push(constraints, lateBinding);
+            def(target, constraints, lateBinding);
         }
         return descriptor;
     };
@@ -721,7 +715,7 @@ function provide() {
     return (0, _mirukenCore.decorate)(addDefinition($provide, true), args);
 }
 
-var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend($callbacks, {
+var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
     constructor: function constructor(delegate) {
         this.extend({
             get delegate() {
@@ -741,12 +735,13 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend($callba
     handleCallback: function handleCallback(callback, greedy, composer) {
         return $handle.dispatch(this, callback, null, composer, greedy);
     },
-
-    $handle: [Lookup, function (lookup, composer) {
+    _lookup: function _lookup(lookup, composer) {
         return $lookup.dispatch(this, lookup, lookup.key, composer, lookup.isMany, lookup.addResult);
-    }, Deferred, function (deferred, composer) {
+    },
+    _defered: function _defered(deferred, composer) {
         return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);
-    }, Resolution, function (resolution, composer) {
+    },
+    _resolution: function _resolution(resolution, composer) {
         var key = resolution.key,
             many = resolution.isMany;
         var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
@@ -763,15 +758,18 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend($callba
             }
         }
         return resolved;
-    }, HandleMethod, function (method, composer) {
+    },
+    _handleMethod: function _handleMethod(method, composer) {
         return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
-    }, ResolveMethod, function (method, composer) {
+    },
+    _resolveMethod: function _resolveMethod(method, composer) {
         return method.invokeResolve(composer);
-    }, Composition, function (composable, composer) {
+    },
+    _composition: function _composition(composable, composer) {
         var callback = composable.callback;
         return callback && $handle.dispatch(this, callback, null, composer);
-    }]
-}, {
+    }
+}, (_applyDecoratedDescriptor(_obj, '_lookup', [_dec], Object.getOwnPropertyDescriptor(_obj, '_lookup'), _obj), _applyDecoratedDescriptor(_obj, '_defered', [_dec2], Object.getOwnPropertyDescriptor(_obj, '_defered'), _obj), _applyDecoratedDescriptor(_obj, '_resolution', [_dec3], Object.getOwnPropertyDescriptor(_obj, '_resolution'), _obj), _applyDecoratedDescriptor(_obj, '_handleMethod', [_dec4], Object.getOwnPropertyDescriptor(_obj, '_handleMethod'), _obj), _applyDecoratedDescriptor(_obj, '_resolveMethod', [_dec5], Object.getOwnPropertyDescriptor(_obj, '_resolveMethod'), _obj), _applyDecoratedDescriptor(_obj, '_composition', [_dec6], Object.getOwnPropertyDescriptor(_obj, '_composition'), _obj)), _obj)), {
     coerce: function coerce(object) {
         return new this(object);
     }
