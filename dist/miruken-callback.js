@@ -809,7 +809,7 @@ TimeoutError.prototype.constructor = TimeoutError;
 
 export function addDefinition(def, allowGets) {
     return function (target, key, descriptor, constraints) {
-        if (def && def.tag) {
+        if (def && def.tag && key !== 'constructor') {
             if (constraints.length === 0) {
                 constraints = null;
             }
@@ -832,6 +832,10 @@ export function handle(...args) {
 
 export function provide(...args) {
     return decorate(addDefinition($provide, true), args);    
+}
+
+export function lookup(...args) {
+    return decorate(addDefinition($lookup, true), args);    
 }
 
 /**

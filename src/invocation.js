@@ -4,9 +4,9 @@ import {
 
 import {
     Composition, HandleMethod, ResolveMethod
-} from './callbacks';
+} from './callback';
 
-import { CallbackHandler } from './handlers';
+import { CallbackHandler } from './handler';
 
 /**
  * InvocationOptions flags enum

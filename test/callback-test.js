@@ -1,12 +1,12 @@
 import {
     HandleMethod, RejectedError, TimeoutError,
     $composer
-} from '../src/callbacks';
+} from '../src/callback';
 
 import {
     CallbackHandler, CascadeCallbackHandler,
     CompositeCallbackHandler
-} from '../src/handlers';
+} from '../src/handler';
 
 import {
     $define, $handle, $provide, $lookup,
@@ -27,9 +27,6 @@ import {
 import { expect } from 'chai';
 
 const Guest = Base.extend({
-    $properties: {
-        age: 0
-    },
     constructor(age) {
         this.age = age;
     }
@@ -42,9 +39,6 @@ const Dealer = Base.extend({
 });
 
 const PitBoss = Base.extend({
-    $properties: {
-        name: ''
-    },
     constructor(name) {
         this.name = name;
     }
@@ -79,10 +73,6 @@ const Level2Security = Base.extend(Security, {
 });
 
 const WireMoney = Base.extend({
-    $properties: {
-        requested: 0.0,
-        received:  0.0
-    },
     constructor(requested) {
         this.requested = requested;
     }
@@ -135,9 +125,6 @@ const Cashier = Accountable.extend({
 });
 
 const Activity = Accountable.extend({
-    $properties: {
-        name: ''
-    },
     constructor(name) {
         this.base();
         this.name = name;
@@ -158,9 +145,6 @@ const CardTable = Activity.extend(Game, {
 });
 
 const Casino = CompositeCallbackHandler.extend({
-    $properties: {
-        name: ''
-    },
     constructor(name) {
         this.base();
         this.name = name;

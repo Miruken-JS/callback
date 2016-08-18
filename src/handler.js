@@ -8,7 +8,7 @@ import {
     Lookup, Deferred, Resolution, $composer,
     HandleMethod, ResolveMethod, Composition,
     RejectedError, TimeoutError
-} from './callbacks'; 
+} from './callback'; 
          
 import {
     Base, Variance, $isNothing, $isFunction,

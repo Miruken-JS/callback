@@ -2,11 +2,11 @@ import {
     StrictProtocol, $isPromise, $flatten
 } from 'miruken-core';
 
-import { Composition } from './callbacks';
+import { Composition } from './callback';
 
 import {
     CallbackHandler, CompositeCallbackHandler
-} from './handlers';
+} from './handler';
 
 /**
  * Protocol to participate in batched operations.

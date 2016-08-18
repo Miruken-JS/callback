@@ -1,15 +1,12 @@
 import {
-    $handle, $provide, $lookup,
-    $NOT_HANDLED
+    $handle, $provide, $lookup, $NOT_HANDLED
 } from './meta';
 
-import {
-    decorate, $isFunction
-} from 'miruken-core';
+import { decorate, $isFunction } from 'miruken-core';
 
 export function addDefinition(def, allowGets) {
     return function (target, key, descriptor, constraints) {
-        if (def && def.tag) {
+        if (def && def.tag && key !== 'constructor') {
             if (constraints.length === 0) {
                 constraints = null;
             }

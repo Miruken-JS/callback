@@ -1,8 +1,8 @@
 import {
     False, True, Undefined, Base, Abstract, extend,
-    typeOf, assignID, Variance, MetaMacro, $meta,
-    $isClass, $isString, $isFunction, $isNothing,
-    $isProtocol, $classOf, Modifier, IndexedList,
+    typeOf, assignID, Variance, $meta, $isClass,
+    $isString, $isFunction, $isNothing, $isProtocol,
+    $classOf, Modifier, IndexedList,
     $eq, $use, $copy, $lift
 } from 'miruken-core';
 

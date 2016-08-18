@@ -802,7 +802,7 @@ System.register(['miruken-core'], function (_export, _context) {
 
             function addDefinition(def, allowGets) {
                 return function (target, key, descriptor, constraints) {
-                    if (def && def.tag) {
+                    if (def && def.tag && key !== 'constructor') {
                         var lateBinding = function lateBinding() {
                             var result = this[key];
                             if ($isFunction(result)) {
@@ -841,6 +841,16 @@ System.register(['miruken-core'], function (_export, _context) {
             }
 
             _export('provide', provide);
+
+            function lookup() {
+                for (var _len3 = arguments.length, args = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+                    args[_key3] = arguments[_key3];
+                }
+
+                return decorate(addDefinition($lookup, true), args);
+            }
+
+            _export('lookup', lookup);
 
             _export('CallbackHandler', CallbackHandler = Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
                 constructor: function constructor(delegate) {
@@ -954,8 +964,8 @@ System.register(['miruken-core'], function (_export, _context) {
 
             _export('CompositeCallbackHandler', CompositeCallbackHandler = CallbackHandler.extend({
                 constructor: function constructor() {
-                    for (var _len3 = arguments.length, handlers = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
-                        handlers[_key3] = arguments[_key3];
+                    for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+                        handlers[_key4] = arguments[_key4];
                     }
 
                     var _handlers = [];
@@ -964,8 +974,8 @@ System.register(['miruken-core'], function (_export, _context) {
                             return _handlers.slice();
                         },
                         addHandlers: function addHandlers() {
-                            for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
-                                handlers[_key4] = arguments[_key4];
+                            for (var _len5 = arguments.length, handlers = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+                                handlers[_key5] = arguments[_key5];
                             }
 
                             handlers = $flatten(handlers, true).map(function (h) {
@@ -975,8 +985,8 @@ System.register(['miruken-core'], function (_export, _context) {
                             return this;
                         },
                         insertHandlers: function insertHandlers(atIndex) {
-                            for (var _len5 = arguments.length, handlers = Array(_len5 > 1 ? _len5 - 1 : 0), _key5 = 1; _key5 < _len5; _key5++) {
-                                handlers[_key5 - 1] = arguments[_key5];
+                            for (var _len6 = arguments.length, handlers = Array(_len6 > 1 ? _len6 - 1 : 0), _key6 = 1; _key6 < _len6; _key6++) {
+                                handlers[_key6 - 1] = arguments[_key6];
                             }
 
                             handlers = $flatten(handlers, true).map(function (h) {
@@ -986,8 +996,8 @@ System.register(['miruken-core'], function (_export, _context) {
                             return this;
                         },
                         removeHandlers: function removeHandlers() {
-                            for (var _len6 = arguments.length, handlers = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
-                                handlers[_key6] = arguments[_key6];
+                            for (var _len7 = arguments.length, handlers = Array(_len7), _key7 = 0; _key7 < _len7; _key7++) {
+                                handlers[_key7] = arguments[_key7];
                             }
 
                             $flatten(handlers).forEach(function (handler) {
@@ -1162,8 +1172,8 @@ System.register(['miruken-core'], function (_export, _context) {
                     });
                 },
                 next: function next() {
-                    for (var _len7 = arguments.length, handlers = Array(_len7), _key7 = 0; _key7 < _len7; _key7++) {
-                        handlers[_key7] = arguments[_key7];
+                    for (var _len8 = arguments.length, handlers = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
+                        handlers[_key8] = arguments[_key8];
                     }
 
                     switch (handlers.length) {
@@ -1297,8 +1307,8 @@ System.register(['miruken-core'], function (_export, _context) {
 
             _export('Batcher', Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
                 constructor: function constructor() {
-                    for (var _len8 = arguments.length, protocols = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
-                        protocols[_key8] = arguments[_key8];
+                    for (var _len9 = arguments.length, protocols = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
+                        protocols[_key9] = arguments[_key9];
                     }
 
                     this.base();
