@@ -19,9 +19,10 @@ import '../src/invocation';
 
 import {
     True, False, Undefined, Base, Protocol,
-    StrictProtocol, Variance, Resolving,
-    assignID, copy, $meta, $isPromise, $eq,
-    $copy, $instant, $using, $flatten
+    StrictProtocol, Variance, MethodType,
+    Resolving, assignID, copy, $meta,
+    $isPromise, $eq, $copy, $instant,
+    $using, $flatten
 } from 'miruken-core';
 
 import { expect } from 'chai';
@@ -159,53 +160,51 @@ const Casino = CompositeCallbackHandler.extend({
 });
 
 describe("HandleMethod", () => {
-    describe("#getType", () => {
+    describe("#type", () => {
         it("should get the method type", () => {
-            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
-            expect(method.type).to.equal(HandleMethod.Invoke);
+            const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
+            expect(method.methodType).to.equal(MethodType.Invoke);
         });
     });
 
-    describe("#getMethodName", () => {
+    describe("#methodName", () => {
         it("should get the method name", () => {
-            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+            const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
             expect(method.methodName).to.equal("deal");
         });
     });
 
-    describe("#getArguments", () => {
+    describe("#methodArgs", () => {
         it("should get the method arguments", () => {
-            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
-            expect(method.arguments).to.eql([[1,3,8], 2]);
+            const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
+            expect(method.methodArgs).to.eql([[1,3,8], 2]);
         });
 
         it("should be able to change arguments", () => {
-            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
-            method.arguments[0] = [2,4,8];
-            expect(method.arguments).to.eql([[2,4,8], 2]);
+            const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
+            method.methodArgs[0] = [2,4,8];
+            expect(method.methodArgs).to.eql([[2,4,8], 2]);
         });
     });
 
-    describe("#getReturnValue", () => {
+    describe("#returnValue", () => {
         it("should get the return value", () => {
-            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+            const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
             method.returnValue = [1,8];
             expect(method.returnValue).to.eql([1,8]);
         });
-    });
 
-    describe("#setReturnValue", () => {
         it("should set the return value", () => {
-            const method = new HandleMethod(HandleMethod.Invoke, undefined, "deal", [[1,3,8], 2]);
+            const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
             method.returnValue = [1,8];
             expect(method.returnValue).to.eql([1,8]);
-        });
+        });        
     });
 
     describe("#invokeOn", () => {
         it("should invoke method on target", () => {
             const dealer  = new Dealer(),
-                  method  = new HandleMethod(HandleMethod.Invoke, undefined, "shuffle", [[22,19,9,14,29]]),
+                  method  = new HandleMethod(MethodType.Invoke, undefined, "shuffle", [[22,19,9,14,29]]),
                   handled = method.invokeOn(dealer);
             expect(handled).to.be.true;
             expect(method.returnValue).to.have.members([22,19,9,14,29]);
@@ -213,7 +212,7 @@ describe("HandleMethod", () => {
 
         it("should call getter on target", () => {
             const guest   = new Guest(12),
-                  method  = new HandleMethod(HandleMethod.Get, undefined, "age"),
+                  method  = new HandleMethod(MethodType.Get, undefined, "age"),
                   handled = method.invokeOn(guest);
             expect(handled).to.be.true;
             expect(method.returnValue).to.equal(12);
@@ -221,7 +220,7 @@ describe("HandleMethod", () => {
 
         it("should call setter on target", () => {
             const guest   = new Guest(12),
-                  method  = new HandleMethod(HandleMethod.Set, undefined, "age", 18),
+                  method  = new HandleMethod(MethodType.Set, undefined, "age", 18),
                   handled = method.invokeOn(guest);
             expect(handled).to.be.true;
             expect(method.returnValue).to.equal(18);
@@ -460,6 +459,30 @@ describe("CallbackHandler", () => {
             $handle(handler, Cashier, function (cashier) {
                 this.cashier = cashier;
             });
+            expect(handler.handle(cashier)).to.be.true;
+            expect(handler.cashier).to.equal(cashier);
+        });
+
+        it("should handle callbacks per instance with extend", () => {
+            const cashier    = new Cashier(1000000.00),
+                  handler    = (new CallbackHandler()).extend({
+                      @handle(Cashier)
+                      account(cashier) {
+                          this.cashier = cashier;                          
+                      }
+                  });
+            expect(handler.handle(cashier)).to.be.true;
+            expect(handler.cashier).to.equal(cashier);
+        });
+
+        it("should handle callbacks with extension", () => {
+            const cashier    = new Cashier(1000000.00),
+                  handler    = new (CallbackHandler.extend().implement({
+                      @handle(Cashier)
+                      account(cashier) {
+                          this.cashier = cashier;                          
+                      }                      
+                  }));
             expect(handler.handle(cashier)).to.be.true;
             expect(handler.cashier).to.equal(cashier);
         });

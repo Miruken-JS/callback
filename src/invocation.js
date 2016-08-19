@@ -1,5 +1,5 @@
 import {
-    Base, Flags, Delegate, Resolving
+    Base, Flags, MethodType, Delegate, Resolving
 } from 'miruken-core';
 
 import {
@@ -120,17 +120,17 @@ export const InvocationDelegate = Delegate.extend({
         });
     },
     get(protocol, propertyName, strict) {
-        return delegate(this, HandleMethod.Get, protocol, propertyName, null, strict);
+        return delegate(this, MethodType.Get, protocol, propertyName, null, strict);
     },
     set(protocol, propertyName, propertyValue, strict) {
-        return delegate(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
+        return delegate(this, MethodType.Set, protocol, propertyName, propertyValue, strict);
     },
     invoke(protocol, methodName, args, strict) {
-        return delegate(this, HandleMethod.Invoke, protocol, methodName, args, strict);
+        return delegate(this, MethodType.Invoke, protocol, methodName, args, strict);
     }
 });
 
-function delegate(delegate, type, protocol, methodName, args, strict) {
+function delegate(delegate, methodType, protocol, methodName, args, strict) {
     let broadcast  = false,
         useResolve = false,
         bestEffort = false,
@@ -147,8 +147,8 @@ function delegate(delegate, type, protocol, methodName, args, strict) {
         }
     }
     const handleMethod = useResolve
-        ? new ResolveMethod(type, protocol, methodName, args, strict, broadcast, !bestEffort)
-        : new HandleMethod(type, protocol, methodName, args, strict);
+        ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort)
+        : new HandleMethod(methodType, protocol, methodName, args, strict);
     if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
         throw new TypeError(`Object ${handler} has no method '${methodName}'`);
     }

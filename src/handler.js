@@ -26,13 +26,14 @@ import {
  */
 export const CallbackHandler = Base.extend({
     constructor(delegate) {
-        this.extend({
-            /**
-             * Gets the delegate.
-             * @property {Object} delegate
-             * @readOnly
-             */            
-            get delegate() { return delegate; }
+        /**
+         * Gets the delegate.
+         * @property {Object} delegate
+         * @readOnly
+         */            
+        Object.defineProperty(this, "delegate", {
+            value:    delegate,
+            writable: false
         });
     },
     /**
@@ -137,21 +138,25 @@ export const CascadeCallbackHandler = CallbackHandler.extend({
         } else if ($isNothing(cascadeToHandler)) {
             throw new TypeError("No cascadeToHandler specified.");
         }
-        handler          = handler.toCallbackHandler();
-        cascadeToHandler = cascadeToHandler.toCallbackHandler();
-        this.extend({
+        Object.defineProperties(this, {
             /**
              * Gets the primary handler.
              * @property {CallbackHandler} handler
              * @readOnly
              */
-            get handler() { return handler; },
+            handler:  {
+                value:     handler.toCallbackHandler(),
+                writable: false
+            },
             /**
              * Gets the secondary handler.
              * @property {CallbackHandler} cascadeToHandler
              * @readOnly
-             */
-            get cascadeToHandler() { return cascadeToHandler; }                
+             */            
+            cascadeToHandler: {
+                value:    cascadeToHandler.toCallbackHandler(),
+                writable: false
+            }
         });
     },
     handleCallback(callback, greedy, composer) {

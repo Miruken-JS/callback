@@ -33,6 +33,7 @@ export const Batching = StrictProtocol.extend({
  * @uses Batching
  */
 const BatchingComplete = Batching.extend();
+
 export const Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
     constructor(...protocols) {
         this.base();

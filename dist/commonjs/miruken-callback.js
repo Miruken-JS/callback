@@ -158,6 +158,7 @@ function $define(tag, variance) {
         var v = variance;
         var delegate = handler.delegate;
         constraint = constraint || callback;
+
         if (constraint) {
             if (_mirukenCore.$eq.test(constraint)) {
                 v = _mirukenCore.Variance.Invariant;
@@ -167,57 +168,47 @@ function $define(tag, variance) {
                 constraint = (0, _mirukenCore.$classOf)(constraint);
             }
         }
-        var ok = delegate && _dispatch(delegate, (0, _mirukenCore.$meta)(delegate), callback, constraint, v, composer, all, results);
-        if (!ok || all) {
-            ok = ok || _dispatch(handler, (0, _mirukenCore.$meta)(handler), callback, constraint, v, composer, all, results);
+
+        var ok = traverse(delegate);
+        if (!ok || all) ok = traverse(handler) || ok;
+
+        function traverse(target) {
+            if (!target) return false;
+            var ok = false,
+                meta = (0, _mirukenCore.$meta)(target);
+            if (meta) {
+                meta.traverseTopDown(function (m) {
+                    ok = _dispatch(target, m, callback, constraint, v, composer, all, results) || ok;
+                    if (ok && !all) return true;
+                });
+            }
+            return ok;
         }
+
         return ok;
     };
     function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
         var dispatched = false;
         var invariant = v === _mirukenCore.Variance.Invariant,
-            index = meta && createIndex(constraint);
-        while (meta) {
-            var list = meta[tag];
-            if (list && (!invariant || index)) {
-                var node = list.getIndex(index) || list.head;
-                while (node) {
-                    if (node.match(constraint, v)) {
-                        var base = target.base;
-                        var baseCalled = false;
-                        target.base = function () {
-                            var baseResult = void 0;
-                            baseCalled = true;
-                            _dispatch(target, meta.parent, callback, constraint, v, composer, false, function (result) {
-                                baseResult = result;
-                            });
-                            return baseResult;
-                        };
-                        try {
-                            var result = node.handler.call(target, callback, composer);
-                            if (handled(result)) {
-                                if (results) {
-                                    results.call(callback, result);
-                                }
-                                if (!all) {
-                                    return true;
-                                }
-                                dispatched = true;
-                            } else if (baseCalled) {
-                                if (!all) {
-                                    return false;
-                                }
-                            }
-                        } finally {
-                            target.base = base;
+            index = createIndex(constraint),
+            list = meta[tag];
+        if (list && (!invariant || index)) {
+            var node = list.getIndex(index) || list.head;
+            while (node) {
+                if (node.match(constraint, v)) {
+                    var result = node.handler.call(target, callback, composer);
+                    if (handled(result)) {
+                        if (results) {
+                            results.call(callback, result);
                         }
-                    } else if (invariant) {
-                        break;
+                        if (!all) return true;
+                        dispatched = true;
                     }
-                    node = node.next;
+                } else if (invariant) {
+                    break;
                 }
+                node = node.next;
             }
-            meta = meta.parent;
         }
         return dispatched;
     }
@@ -336,15 +327,15 @@ function impliesSuccess(result) {
 var $composer = exports.$composer = void 0;
 
 var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
-    constructor: function constructor(type, protocol, methodName, args, strict) {
+    constructor: function constructor(methodType, protocol, methodName, args, strict) {
         if (protocol && !(0, _mirukenCore.$isProtocol)(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
         }
         var _returnValue = void 0,
             _exception = void 0;
         this.extend({
-            get type() {
-                return type;
+            get methodType() {
+                return methodType;
             },
 
             get protocol() {
@@ -355,8 +346,11 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
                 return methodName;
             },
 
-            get arguments() {
+            get methodArgs() {
                 return args;
+            },
+            set methodArgs(value) {
+                args = value;
             },
 
             get returnValue() {
@@ -385,7 +379,7 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
                 }
                 var method = void 0,
                     result = void 0;
-                if (type === HandleMethod.Invoke) {
+                if (methodType === _mirukenCore.MethodType.Invoke) {
                     method = target[methodName];
                     if (!(0, _mirukenCore.$isFunction)(method)) {
                         return false;
@@ -394,14 +388,14 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
                 var oldComposer = $composer;
                 try {
                     exports.$composer = $composer = composer;
-                    switch (type) {
-                        case HandleMethod.Get:
+                    switch (methodType) {
+                        case _mirukenCore.MethodType.Get:
                             result = target[methodName];
                             break;
-                        case HandleMethod.Set:
+                        case _mirukenCore.MethodType.Set:
                             result = target[methodName] = args;
                             break;
-                        case HandleMethod.Invoke:
+                        case _mirukenCore.MethodType.Invoke:
                             result = method.apply(target, args);
                             break;
                     }
@@ -419,17 +413,11 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
             }
         });
     }
-}, {
-    Get: 1,
-
-    Set: 2,
-
-    Invoke: 3
 });
 
 var ResolveMethod = exports.ResolveMethod = HandleMethod.extend({
-    constructor: function constructor(type, protocol, methodName, args, strict, all, required) {
-        this.base(type, protocol, methodName, args, strict);
+    constructor: function constructor(methodType, protocol, methodName, args, strict, all, required) {
+        this.base(methodType, protocol, methodName, args, strict);
         this.extend({
             invokeResolve: function invokeResolve(composer) {
                 var _this = this;
@@ -726,10 +714,9 @@ function lookup() {
 
 var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
     constructor: function constructor(delegate) {
-        this.extend({
-            get delegate() {
-                return delegate;
-            }
+        Object.defineProperty(this, "delegate", {
+            value: delegate,
+            writable: false
         });
     },
     handle: function handle(callback, greedy, composer) {
@@ -809,15 +796,15 @@ var CascadeCallbackHandler = exports.CascadeCallbackHandler = CallbackHandler.ex
         } else if ((0, _mirukenCore.$isNothing)(cascadeToHandler)) {
             throw new TypeError("No cascadeToHandler specified.");
         }
-        handler = handler.toCallbackHandler();
-        cascadeToHandler = cascadeToHandler.toCallbackHandler();
-        this.extend({
-            get handler() {
-                return handler;
+        Object.defineProperties(this, {
+            handler: {
+                value: handler.toCallbackHandler(),
+                writable: false
             },
 
-            get cascadeToHandler() {
-                return cascadeToHandler;
+            cascadeToHandler: {
+                value: cascadeToHandler.toCallbackHandler(),
+                writable: false
             }
         });
     },
@@ -1195,6 +1182,7 @@ var Batching = exports.Batching = _mirukenCore.StrictProtocol.extend({
 });
 
 var BatchingComplete = Batching.extend();
+
 var Batcher = exports.Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
     constructor: function constructor() {
         for (var _len9 = arguments.length, protocols = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
@@ -1319,17 +1307,17 @@ var InvocationDelegate = exports.InvocationDelegate = _mirukenCore.Delegate.exte
         });
     },
     get: function get(protocol, propertyName, strict) {
-        return delegate(this, HandleMethod.Get, protocol, propertyName, null, strict);
+        return delegate(this, _mirukenCore.MethodType.Get, protocol, propertyName, null, strict);
     },
     set: function set(protocol, propertyName, propertyValue, strict) {
-        return delegate(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
+        return delegate(this, _mirukenCore.MethodType.Set, protocol, propertyName, propertyValue, strict);
     },
     invoke: function invoke(protocol, methodName, args, strict) {
-        return delegate(this, HandleMethod.Invoke, protocol, methodName, args, strict);
+        return delegate(this, _mirukenCore.MethodType.Invoke, protocol, methodName, args, strict);
     }
 });
 
-function delegate(delegate, type, protocol, methodName, args, strict) {
+function delegate(delegate, methodType, protocol, methodName, args, strict) {
     var broadcast = false,
         useResolve = false,
         bestEffort = false,
@@ -1344,7 +1332,7 @@ function delegate(delegate, type, protocol, methodName, args, strict) {
             useResolve = semantics.getOption(InvocationOptions.Resolve) || protocol.conformsTo(_mirukenCore.Resolving);
         }
     }
-    var handleMethod = useResolve ? new ResolveMethod(type, protocol, methodName, args, strict, broadcast, !bestEffort) : new HandleMethod(type, protocol, methodName, args, strict);
+    var handleMethod = useResolve ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort) : new HandleMethod(methodType, protocol, methodName, args, strict);
     if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
         throw new TypeError('Object ' + handler + ' has no method \'' + methodName + '\'');
     }

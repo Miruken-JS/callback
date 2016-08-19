@@ -1,7 +1,7 @@
 import {
     False, True, Undefined, Base, Abstract, extend,
-    typeOf, assignID, Variance, $meta, $isClass,
-    $isString, $isFunction, $isNothing, $isProtocol,
+    typeOf, assignID, Variance, $meta, $isNothing,
+    $isString, $isFunction, $isClass, $isProtocol,
     $classOf, Modifier, IndexedList,
     $eq, $use, $copy, $lift
 } from 'miruken-core';
@@ -139,6 +139,7 @@ export function $define(tag, variance) {
         let   v        = variance;
         const delegate = handler.delegate;
         constraint = constraint || callback;
+        
         if (constraint) {
             if ($eq.test(constraint)) {
                 v = Variance.Invariant;
@@ -148,56 +149,48 @@ export function $define(tag, variance) {
                 constraint = $classOf(constraint);
             }
         }
-        let ok = delegate && _dispatch(delegate, $meta(delegate), callback, constraint, v, composer, all, results);
-        if (!ok || all) {
-            ok = ok || _dispatch(handler, $meta(handler), callback, constraint, v, composer, all, results);
+
+        let ok = traverse(delegate);
+        if (!ok || all)
+            ok = traverse(handler) || ok;
+             
+        function traverse(target) {
+            if (!target) return false;
+            let ok   = false,
+                meta = $meta(target);
+            if (meta) {
+                meta.traverseTopDown(m => {
+                    ok = _dispatch(target, m, callback, constraint, v, composer, all, results) || ok;
+                    if (ok && !all) return true;
+                });
+            }
+            return ok;
         }
+        
         return ok;
     };
     function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
         let   dispatched = false;
         const invariant  = (v === Variance.Invariant),
-              index      = meta && createIndex(constraint);
-        while (meta) {
-            const list = meta[tag];
-            if (list && (!invariant || index)) {
-                let node = list.getIndex(index) || list.head;
-                while (node) {
-                    if (node.match(constraint, v)) {
-                        const base       = target.base;
-                        let   baseCalled = false;
-                        target.base    = function () {
-                            let baseResult;
-                            baseCalled = true;
-                            _dispatch(target, meta.parent, callback, constraint, v, composer, false,
-                                      function (result) { baseResult = result; });
-                            return baseResult;
-                        };
-                        try {
-                            const result = node.handler.call(target, callback, composer);
-                            if (handled(result)) {
-                                if (results) {
-                                    results.call(callback, result);
-                                }
-                                if (!all) {
-                                    return true;
-                                }
-                                dispatched = true;
-                            } else if (baseCalled) {
-                                if (!all) {
-                                    return false;
-                                }
-                            }
-                        } finally {
-                            target.base = base;
+              index      = createIndex(constraint),
+              list       = meta[tag];
+        if (list && (!invariant || index)) {
+            let node = list.getIndex(index) || list.head;
+            while (node) {
+                if (node.match(constraint, v)) {
+                    const result = node.handler.call(target, callback, composer);
+                    if (handled(result)) {
+                        if (results) {
+                            results.call(callback, result);
                         }
-                    } else if (invariant) {
-                        break;  // stop matching if invariant not satisifed
+                        if (!all) return true;
+                        dispatched = true;
                     }
-                    node = node.next;
+                } else if (invariant) {
+                    break;  // stop matching if invariant not satisifed
                 }
+                node = node.next;
             }
-            meta = meta.parent;
         }
         return dispatched;
     }

@@ -1,6 +1,7 @@
 import {
-    True, Base, Undefined, $isProtocol, $isPromise,
-    $isFunction, $isNothing, $instant, $flatten
+    True, Base, Undefined, MethodType,
+    $isProtocol, $isPromise, $isFunction,
+    $isNothing, $instant, $flatten
 } from 'miruken-core';
 
 import { $NOT_HANDLED } from './meta';
@@ -11,7 +12,7 @@ export let $composer;
  * Captures the invocation of a method.
  * @class HandleMethod
  * @constructor
- * @param  {number}    type        -  get, set or invoke
+ * @param  {number}    methodType  -  get, set or invoke
  * @param  {Protocol}  protocol    -  initiating protocol
  * @param  {string}    methodName  -  method name
  * @param  {Array}     [...args]   -  method arguments
@@ -19,7 +20,7 @@ export let $composer;
  * @extends Base
  */
 export const HandleMethod = Base.extend({
-    constructor(type, protocol, methodName, args, strict) {
+    constructor(methodType, protocol, methodName, args, strict) {
         if (protocol && !$isProtocol(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
         }
@@ -27,10 +28,10 @@ export const HandleMethod = Base.extend({
         this.extend({
             /**
              * Gets the type of method.
-             * @property {number} type
+             * @property {number} methodType
              * @readOnly
              */
-            get type() { return type; },
+            get methodType() { return methodType; },
             /**
              * Gets the Protocol the method belongs to.
              * @property {Protocol} protocol
@@ -44,11 +45,12 @@ export const HandleMethod = Base.extend({
              */
             get methodName() { return methodName; },
             /**
-             * Gets the arguments of the method.
-             * @property {Array} arguments
+             * Gets/sets the arguments of the method.
+             * @property {Array} methodArgs
              * @readOnly
              */
-            get arguments() { return args; },
+            get methodArgs() { return args; },
+            set methodArgs(value) { args = value; },
             /**
              * Get/sets the return value of the method.
              * @property {Any} returnValue.
@@ -81,7 +83,7 @@ export const HandleMethod = Base.extend({
                     return false;
                 }
                 let method, result;
-                if (type === HandleMethod.Invoke) {
+                if (methodType === MethodType.Invoke) {
                     method = target[methodName];
                     if (!$isFunction(method)) {
                         return false;
@@ -90,14 +92,14 @@ export const HandleMethod = Base.extend({
                 const oldComposer = $composer;                    
                 try {
                     $composer = composer;
-                    switch (type) {
-                    case HandleMethod.Get:
+                    switch (methodType) {
+                    case MethodType.Get:
                         result = target[methodName];
                         break;
-                    case HandleMethod.Set:
+                    case MethodType.Set:
                         result = target[methodName] = args;
                         break;
-                    case HandleMethod.Invoke:
+                    case MethodType.Invoke:
                         result = method.apply(target, args);
                         break;
                     }
@@ -115,32 +117,13 @@ export const HandleMethod = Base.extend({
             }
         });
     }
-}, {
-    /**
-     * Identifies a property get.
-     * @property {number} Get
-     * @static
-     */
-    Get: 1,
-    /**
-     * Identifies a property set.
-     * @property {number} Set
-     * @static
-     */
-    Set: 2,
-    /**
-     * Identifies a method invocation.
-     * @property {number} Invoke
-     * @static
-     */
-    Invoke: 3
 });
 
 /**
  * Captures the invocation of a method using resolution to determine the targets.
  * @class ResolveMethod
  * @constructor
- * @param  {number}    type        -  get, set or invoke
+ * @param  {number}    methodType  -  get, set or invoke
  * @param  {Protocol}  protocol    -  initiating protocol
  * @param  {string}    methodName  -  method name
  * @param  {Array}     [...args]   -  method arguments
@@ -150,8 +133,8 @@ export const HandleMethod = Base.extend({
  * @extends HandleMethod
  */
 export const ResolveMethod = HandleMethod.extend({
-    constructor(type, protocol, methodName, args, strict, all, required) {
-        this.base(type, protocol, methodName, args, strict);
+    constructor(methodType, protocol, methodName, args, strict, all, required) {
+        this.base(methodType, protocol, methodName, args, strict);
         this.extend({
             /**
              * Attempts to invoke the method on resolved targets.

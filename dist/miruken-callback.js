@@ -1,4 +1,4 @@
-import {False,True,Undefined,Base,Abstract,extend,typeOf,assignID,Variance,MetaMacro,$meta,$isClass,$isString,$isFunction,$isNothing,$isProtocol,$classOf,Modifier,IndexedList,$eq,$use,$copy,$lift,$isPromise,$instant,$flatten,decorate,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
+import {False,True,Undefined,Base,Abstract,extend,typeOf,assignID,Variance,$meta,$isNothing,$isString,$isFunction,$isClass,$isProtocol,$classOf,Modifier,IndexedList,$eq,$use,$copy,$lift,MethodType,$isPromise,$instant,$flatten,decorate,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
 
 const _definitions = {};
 
@@ -133,6 +133,7 @@ export function $define(tag, variance) {
         let   v        = variance;
         const delegate = handler.delegate;
         constraint = constraint || callback;
+        
         if (constraint) {
             if ($eq.test(constraint)) {
                 v = Variance.Invariant;
@@ -142,56 +143,48 @@ export function $define(tag, variance) {
                 constraint = $classOf(constraint);
             }
         }
-        let ok = delegate && _dispatch(delegate, $meta(delegate), callback, constraint, v, composer, all, results);
-        if (!ok || all) {
-            ok = ok || _dispatch(handler, $meta(handler), callback, constraint, v, composer, all, results);
+
+        let ok = traverse(delegate);
+        if (!ok || all)
+            ok = traverse(handler) || ok;
+             
+        function traverse(target) {
+            if (!target) return false;
+            let ok   = false,
+                meta = $meta(target);
+            if (meta) {
+                meta.traverseTopDown(m => {
+                    ok = _dispatch(target, m, callback, constraint, v, composer, all, results) || ok;
+                    if (ok && !all) return true;
+                });
+            }
+            return ok;
         }
+        
         return ok;
     };
     function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
         let   dispatched = false;
         const invariant  = (v === Variance.Invariant),
-              index      = meta && createIndex(constraint);
-        while (meta) {
-            const list = meta[tag];
-            if (list && (!invariant || index)) {
-                let node = list.getIndex(index) || list.head;
-                while (node) {
-                    if (node.match(constraint, v)) {
-                        const base       = target.base;
-                        let   baseCalled = false;
-                        target.base    = function () {
-                            let baseResult;
-                            baseCalled = true;
-                            _dispatch(target, meta.parent, callback, constraint, v, composer, false,
-                                      function (result) { baseResult = result; });
-                            return baseResult;
-                        };
-                        try {
-                            const result = node.handler.call(target, callback, composer);
-                            if (handled(result)) {
-                                if (results) {
-                                    results.call(callback, result);
-                                }
-                                if (!all) {
-                                    return true;
-                                }
-                                dispatched = true;
-                            } else if (baseCalled) {
-                                if (!all) {
-                                    return false;
-                                }
-                            }
-                        } finally {
-                            target.base = base;
+              index      = createIndex(constraint),
+              list       = meta[tag];
+        if (list && (!invariant || index)) {
+            let node = list.getIndex(index) || list.head;
+            while (node) {
+                if (node.match(constraint, v)) {
+                    const result = node.handler.call(target, callback, composer);
+                    if (handled(result)) {
+                        if (results) {
+                            results.call(callback, result);
                         }
-                    } else if (invariant) {
-                        break;  // stop matching if invariant not satisifed
+                        if (!all) return true;
+                        dispatched = true;
                     }
-                    node = node.next;
+                } else if (invariant) {
+                    break;  // stop matching if invariant not satisifed
                 }
+                node = node.next;
             }
-            meta = meta.parent;
         }
         return dispatched;
     }
@@ -316,7 +309,7 @@ export let $composer;
  * Captures the invocation of a method.
  * @class HandleMethod
  * @constructor
- * @param  {number}    type        -  get, set or invoke
+ * @param  {number}    methodType  -  get, set or invoke
  * @param  {Protocol}  protocol    -  initiating protocol
  * @param  {string}    methodName  -  method name
  * @param  {Array}     [...args]   -  method arguments
@@ -324,7 +317,7 @@ export let $composer;
  * @extends Base
  */
 export const HandleMethod = Base.extend({
-    constructor(type, protocol, methodName, args, strict) {
+    constructor(methodType, protocol, methodName, args, strict) {
         if (protocol && !$isProtocol(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
         }
@@ -332,10 +325,10 @@ export const HandleMethod = Base.extend({
         this.extend({
             /**
              * Gets the type of method.
-             * @property {number} type
+             * @property {number} methodType
              * @readOnly
              */
-            get type() { return type; },
+            get methodType() { return methodType; },
             /**
              * Gets the Protocol the method belongs to.
              * @property {Protocol} protocol
@@ -349,11 +342,12 @@ export const HandleMethod = Base.extend({
              */
             get methodName() { return methodName; },
             /**
-             * Gets the arguments of the method.
-             * @property {Array} arguments
+             * Gets/sets the arguments of the method.
+             * @property {Array} methodArgs
              * @readOnly
              */
-            get arguments() { return args; },
+            get methodArgs() { return args; },
+            set methodArgs(value) { args = value; },
             /**
              * Get/sets the return value of the method.
              * @property {Any} returnValue.
@@ -386,7 +380,7 @@ export const HandleMethod = Base.extend({
                     return false;
                 }
                 let method, result;
-                if (type === HandleMethod.Invoke) {
+                if (methodType === MethodType.Invoke) {
                     method = target[methodName];
                     if (!$isFunction(method)) {
                         return false;
@@ -395,14 +389,14 @@ export const HandleMethod = Base.extend({
                 const oldComposer = $composer;                    
                 try {
                     $composer = composer;
-                    switch (type) {
-                    case HandleMethod.Get:
+                    switch (methodType) {
+                    case MethodType.Get:
                         result = target[methodName];
                         break;
-                    case HandleMethod.Set:
+                    case MethodType.Set:
                         result = target[methodName] = args;
                         break;
-                    case HandleMethod.Invoke:
+                    case MethodType.Invoke:
                         result = method.apply(target, args);
                         break;
                     }
@@ -420,32 +414,13 @@ export const HandleMethod = Base.extend({
             }
         });
     }
-}, {
-    /**
-     * Identifies a property get.
-     * @property {number} Get
-     * @static
-     */
-    Get: 1,
-    /**
-     * Identifies a property set.
-     * @property {number} Set
-     * @static
-     */
-    Set: 2,
-    /**
-     * Identifies a method invocation.
-     * @property {number} Invoke
-     * @static
-     */
-    Invoke: 3
 });
 
 /**
  * Captures the invocation of a method using resolution to determine the targets.
  * @class ResolveMethod
  * @constructor
- * @param  {number}    type        -  get, set or invoke
+ * @param  {number}    methodType  -  get, set or invoke
  * @param  {Protocol}  protocol    -  initiating protocol
  * @param  {string}    methodName  -  method name
  * @param  {Array}     [...args]   -  method arguments
@@ -455,8 +430,8 @@ export const HandleMethod = Base.extend({
  * @extends HandleMethod
  */
 export const ResolveMethod = HandleMethod.extend({
-    constructor(type, protocol, methodName, args, strict, all, required) {
-        this.base(type, protocol, methodName, args, strict);
+    constructor(methodType, protocol, methodName, args, strict, all, required) {
+        this.base(methodType, protocol, methodName, args, strict);
         this.extend({
             /**
              * Attempts to invoke the method on resolved targets.
@@ -848,13 +823,14 @@ export function lookup(...args) {
  */
 export const CallbackHandler = Base.extend({
     constructor(delegate) {
-        this.extend({
-            /**
-             * Gets the delegate.
-             * @property {Object} delegate
-             * @readOnly
-             */            
-            get delegate() { return delegate; }
+        /**
+         * Gets the delegate.
+         * @property {Object} delegate
+         * @readOnly
+         */            
+        Object.defineProperty(this, "delegate", {
+            value:    delegate,
+            writable: false
         });
     },
     /**
@@ -959,21 +935,25 @@ export const CascadeCallbackHandler = CallbackHandler.extend({
         } else if ($isNothing(cascadeToHandler)) {
             throw new TypeError("No cascadeToHandler specified.");
         }
-        handler          = handler.toCallbackHandler();
-        cascadeToHandler = cascadeToHandler.toCallbackHandler();
-        this.extend({
+        Object.defineProperties(this, {
             /**
              * Gets the primary handler.
              * @property {CallbackHandler} handler
              * @readOnly
              */
-            get handler() { return handler; },
+            handler:  {
+                value:     handler.toCallbackHandler(),
+                writable: false
+            },
             /**
              * Gets the secondary handler.
              * @property {CallbackHandler} cascadeToHandler
              * @readOnly
-             */
-            get cascadeToHandler() { return cascadeToHandler; }                
+             */            
+            cascadeToHandler: {
+                value:    cascadeToHandler.toCallbackHandler(),
+                writable: false
+            }
         });
     },
     handleCallback(callback, greedy, composer) {
@@ -1524,6 +1504,7 @@ export const Batching = StrictProtocol.extend({
  * @uses Batching
  */
 const BatchingComplete = Batching.extend();
+
 export const Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
     constructor(...protocols) {
         this.base();
@@ -1711,17 +1692,17 @@ export const InvocationDelegate = Delegate.extend({
         });
     },
     get(protocol, propertyName, strict) {
-        return delegate(this, HandleMethod.Get, protocol, propertyName, null, strict);
+        return delegate(this, MethodType.Get, protocol, propertyName, null, strict);
     },
     set(protocol, propertyName, propertyValue, strict) {
-        return delegate(this, HandleMethod.Set, protocol, propertyName, propertyValue, strict);
+        return delegate(this, MethodType.Set, protocol, propertyName, propertyValue, strict);
     },
     invoke(protocol, methodName, args, strict) {
-        return delegate(this, HandleMethod.Invoke, protocol, methodName, args, strict);
+        return delegate(this, MethodType.Invoke, protocol, methodName, args, strict);
     }
 });
 
-function delegate(delegate, type, protocol, methodName, args, strict) {
+function delegate(delegate, methodType, protocol, methodName, args, strict) {
     let broadcast  = false,
         useResolve = false,
         bestEffort = false,
@@ -1738,8 +1719,8 @@ function delegate(delegate, type, protocol, methodName, args, strict) {
         }
     }
     const handleMethod = useResolve
-        ? new ResolveMethod(type, protocol, methodName, args, strict, broadcast, !bestEffort)
-        : new HandleMethod(type, protocol, methodName, args, strict);
+        ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort)
+        : new HandleMethod(methodType, protocol, methodName, args, strict);
     if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
         throw new TypeError(`Object ${handler} has no method '${methodName}'`);
     }
