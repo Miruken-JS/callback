@@ -3,7 +3,7 @@
 System.register(['miruken-core'], function (_export, _context) {
     "use strict";
 
-    var False, True, Undefined, Base, Abstract, extend, typeOf, assignID, Variance, $meta, $isNothing, $isString, $isFunction, $isClass, $isProtocol, $classOf, Modifier, IndexedList, $eq, $use, $copy, $lift, MethodType, $isPromise, $instant, $flatten, decorate, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, _definitions, $handle, $provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, True, Undefined, Base, Abstract, extend, typeOf, assignID, Variance, $meta, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, Modifier, IndexedList, $eq, $use, $copy, $lift, MethodType, $isPromise, $instant, $flatten, decorate, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, _definitions, $handle, $provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -189,6 +189,7 @@ System.register(['miruken-core'], function (_export, _context) {
             $isNothing = _mirukenCore.$isNothing;
             $isString = _mirukenCore.$isString;
             $isFunction = _mirukenCore.$isFunction;
+            $isObject = _mirukenCore.$isObject;
             $isClass = _mirukenCore.$isClass;
             $isProtocol = _mirukenCore.$isProtocol;
             $classOf = _mirukenCore.$classOf;
@@ -341,7 +342,7 @@ System.register(['miruken-core'], function (_export, _context) {
                             v = Variance.Invariant;
                         }
                         constraint = Modifier.unwrap(constraint);
-                        if (typeOf(constraint) === 'object') {
+                        if ($isObject(constraint)) {
                             constraint = $classOf(constraint);
                         }
                     }

@@ -1,8 +1,8 @@
 import {
     False, True, Undefined, Base, Abstract, extend,
     typeOf, assignID, Variance, $meta, $isNothing,
-    $isString, $isFunction, $isClass, $isProtocol,
-    $classOf, Modifier, IndexedList,
+    $isString, $isFunction, $isObject, $isClass,
+    $isProtocol, $classOf, Modifier, IndexedList,
     $eq, $use, $copy, $lift
 } from 'miruken-core';
 
@@ -145,7 +145,7 @@ export function $define(tag, variance) {
                 v = Variance.Invariant;
             }
             constraint = Modifier.unwrap(constraint);
-            if (typeOf(constraint) === 'object') {
+            if ($isObject(constraint)) {
                 constraint = $classOf(constraint);
             }
         }

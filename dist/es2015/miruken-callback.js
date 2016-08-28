@@ -164,7 +164,7 @@ function $define(tag, variance) {
                 v = _mirukenCore.Variance.Invariant;
             }
             constraint = _mirukenCore.Modifier.unwrap(constraint);
-            if ((0, _mirukenCore.typeOf)(constraint) === 'object') {
+            if ((0, _mirukenCore.$isObject)(constraint)) {
                 constraint = (0, _mirukenCore.$classOf)(constraint);
             }
         }

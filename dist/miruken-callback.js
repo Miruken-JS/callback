@@ -1,4 +1,4 @@
-import {False,True,Undefined,Base,Abstract,extend,typeOf,assignID,Variance,$meta,$isNothing,$isString,$isFunction,$isClass,$isProtocol,$classOf,Modifier,IndexedList,$eq,$use,$copy,$lift,MethodType,$isPromise,$instant,$flatten,decorate,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
+import {False,True,Undefined,Base,Abstract,extend,typeOf,assignID,Variance,$meta,$isNothing,$isString,$isFunction,$isObject,$isClass,$isProtocol,$classOf,Modifier,IndexedList,$eq,$use,$copy,$lift,MethodType,$isPromise,$instant,$flatten,decorate,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
 
 const _definitions = {};
 
@@ -139,7 +139,7 @@ export function $define(tag, variance) {
                 v = Variance.Invariant;
             }
             constraint = Modifier.unwrap(constraint);
-            if (typeOf(constraint) === 'object') {
+            if ($isObject(constraint)) {
                 constraint = $classOf(constraint);
             }
         }
@@ -782,6 +782,12 @@ export function TimeoutError(callback, message) {
 TimeoutError.prototype             = new Error;
 TimeoutError.prototype.constructor = TimeoutError;
 
+/**
+ * Marks methods and properties as handlers.
+ * @method validate
+ * @param  {Object}  def        - definition provider
+ * @param  {Object}  allowGets  - allow properties to be handlers
+ */
 export function addDefinition(def, allowGets) {
     return function (target, key, descriptor, constraints) {
         if (def && def.tag && key !== 'constructor') {
@@ -801,14 +807,23 @@ export function addDefinition(def, allowGets) {
     };
 }
 
+/**
+ * Contravariant (in) handlers.
+ */
 export function handle(...args) {
     return decorate(addDefinition($handle), args);
 }
 
+/**
+ * Covariant (out) handlers.
+ */
 export function provide(...args) {
     return decorate(addDefinition($provide, true), args);    
 }
 
+/**
+ * Invariant handlers.
+ */
 export function lookup(...args) {
     return decorate(addDefinition($lookup, true), args);    
 }
