@@ -434,6 +434,11 @@ export const Composition = Base.extend({
             });
         }
     }
+}, {
+    isComposed(callback, type) {
+        return callback instanceof this &&
+            callback.callback instanceof type;
+    }
 });
 
 /**

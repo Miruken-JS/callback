@@ -132,26 +132,26 @@ export const InvocationDelegate = Delegate.extend({
 
 function delegate(delegate, methodType, protocol, methodName, args, strict) {
     let broadcast  = false,
-        useResolve = false,
         bestEffort = false,
+        useResolve = protocol.conformsTo(Resolving),
         handler    = delegate.handler;
 
-    if (!handler.isCompositionScope) {
-        const semantics = new InvocationSemantics();
-        if (handler.handle(semantics, true)) {
-            strict     = !!(strict | semantics.getOption(InvocationOptions.Strict));
-            broadcast  = semantics.getOption(InvocationOptions.Broadcast);
-            bestEffort = semantics.getOption(InvocationOptions.BestEffort);
-            useResolve = semantics.getOption(InvocationOptions.Resolve)
-                || protocol.conformsTo(Resolving);
-        }
+    const semantics = new InvocationSemantics();
+    if (handler.handle(semantics, true)) {
+        strict     = !!(strict | semantics.getOption(InvocationOptions.Strict));
+        broadcast  = semantics.getOption(InvocationOptions.Broadcast);
+        bestEffort = semantics.getOption(InvocationOptions.BestEffort);
+        useResolve = useResolve || semantics.getOption(InvocationOptions.Resolve);
     }
+    
     const handleMethod = useResolve
         ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort)
         : new HandleMethod(methodType, protocol, methodName, args, strict);
+    
     if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
         throw new TypeError(`Object ${handler} has no method '${methodName}'`);
     }
+    
     return handleMethod.returnValue;
 }
 
@@ -209,6 +209,9 @@ CallbackHandler.implement({
         return this.decorate({
             handleCallback(callback, greedy, composer) {
                 let handled = false;
+                if (Composition.isComposed(callback, InvocationSemantics)) {
+                    return false;
+                }
                 if (callback instanceof InvocationSemantics) {
                     semantics.mergeInto(callback);
                     handled = true;

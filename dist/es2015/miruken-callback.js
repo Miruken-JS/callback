@@ -640,6 +640,10 @@ var Composition = exports.Composition = _mirukenCore.Base.extend({
             });
         }
     }
+}, {
+    isComposed: function isComposed(callback, type) {
+        return callback instanceof this && callback.callback instanceof type;
+    }
 });
 
 function RejectedError(callback) {
@@ -778,9 +782,6 @@ _mirukenCore.Base.implement({
 });
 
 var compositionScope = (0, _mirukenCore.$decorator)({
-    isCompositionScope: function isCompositionScope() {
-        return true;
-    },
     handleCallback: function handleCallback(callback, greedy, composer) {
         if (!(callback instanceof Composition)) {
             callback = new Composition(callback);
@@ -1323,19 +1324,20 @@ function delegate(delegate, methodType, protocol, methodName, args, strict) {
         bestEffort = false,
         handler = delegate.handler;
 
-    if (!handler.isCompositionScope) {
-        var semantics = new InvocationSemantics();
-        if (handler.handle(semantics, true)) {
-            strict = !!(strict | semantics.getOption(InvocationOptions.Strict));
-            broadcast = semantics.getOption(InvocationOptions.Broadcast);
-            bestEffort = semantics.getOption(InvocationOptions.BestEffort);
-            useResolve = semantics.getOption(InvocationOptions.Resolve) || protocol.conformsTo(_mirukenCore.Resolving);
-        }
+    var semantics = new InvocationSemantics();
+    if (handler.handle(semantics, true)) {
+        strict = !!(strict | semantics.getOption(InvocationOptions.Strict));
+        broadcast = semantics.getOption(InvocationOptions.Broadcast);
+        bestEffort = semantics.getOption(InvocationOptions.BestEffort);
+        useResolve = semantics.getOption(InvocationOptions.Resolve) || protocol.conformsTo(_mirukenCore.Resolving);
     }
+
     var handleMethod = useResolve ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort) : new HandleMethod(methodType, protocol, methodName, args, strict);
+
     if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
         throw new TypeError('Object ' + handler + ' has no method \'' + methodName + '\'');
     }
+
     return handleMethod.returnValue;
 }
 
@@ -1363,6 +1365,9 @@ CallbackHandler.implement({
         return this.decorate({
             handleCallback: function handleCallback(callback, greedy, composer) {
                 var handled = false;
+                if (Composition.isComposed(callback, InvocationSemantics)) {
+                    return false;
+                }
                 if (callback instanceof InvocationSemantics) {
                     semantics.mergeInto(callback);
                     handled = true;
