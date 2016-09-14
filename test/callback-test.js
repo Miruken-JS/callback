@@ -539,7 +539,7 @@ describe("CallbackHandler", () => {
             expect(inventory.handle($eq(accountable))).to.be.true;
             expect(inventory.handle($eq(cashier))).to.be.false;
         });
-
+        
         it("should handle callback protocol conformance", () => {
             const blackjack  = new CardTable('Blackjack'),
                   inventory  = new (CallbackHandler.extend({
@@ -941,7 +941,7 @@ describe("CallbackHandler", () => {
                       @provide(CardTable, Cashier)
                       stuff(resolution) {
                           const key = resolution.key;
-                          if (key.conformsTo(Game)) {
+                          if (Game.isAdoptedBy(key)) {
                               return blackjack;
                           } else if (key === Cashier) {
                               return cashier;
@@ -958,7 +958,7 @@ describe("CallbackHandler", () => {
                   cardGames  = new CallbackHandler(),
                   unregister = $provide(cardGames, [CardTable, Cashier], resolution => {
                       const key = resolution.key;
-                      if (key.conformsTo(Game)) {
+                      if (Game.isAdoptedBy(key)) {
                           return blackjack;
                       } else if (key === Cashier) {
                           return cashier;

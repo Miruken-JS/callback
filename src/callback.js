@@ -79,7 +79,7 @@ export const HandleMethod = Base.extend({
              * @returns {boolean} true if the method was accepted.
              */
             invokeOn(target, composer) {
-                if (!target || (strict && protocol && !protocol.adoptedBy(target))) {
+                if (!target || (strict && protocol && !protocol.isAdoptedBy(target))) {
                     return false;
                 }
                 let method, result;

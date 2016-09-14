@@ -133,7 +133,7 @@ export const InvocationDelegate = Delegate.extend({
 function delegate(delegate, methodType, protocol, methodName, args, strict) {
     let broadcast  = false,
         bestEffort = false,
-        useResolve = protocol.conformsTo(Resolving),
+        useResolve = Resolving.isAdoptedBy(protocol),
         handler    = delegate.handler;
 
     const semantics = new InvocationSemantics();

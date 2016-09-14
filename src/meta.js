@@ -249,9 +249,9 @@ function matchProtocol(match, variance) {
     if (constraint === match) {
         return true;
     } else if (variance === Variance.Covariant) {
-        return constraint.conformsTo(match);
+        return match.isAdoptedBy(constraint);
     } else if (variance === Variance.Contravariant) {
-        return match.conformsTo && match.conformsTo(constraint);
+        return constraint.isAdoptedBy(match);
     }
     return false;
 }
@@ -266,7 +266,7 @@ function matchClass(match, variance) {
     else if (variance === Variance.Covariant) {
         return match.prototype &&
             (constraint.prototype instanceof match
-             || ($isProtocol(match) && match.adoptedBy(constraint)));
+             || ($isProtocol(match) && match.isAdoptedBy(constraint)));
     }
     return false;
 }
