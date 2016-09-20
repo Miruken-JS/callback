@@ -1,20 +1,20 @@
 import {
-    $handle, $provide, $lookup, Node
-} from './meta';
+    Handler, $handle, $provide, $lookup
+} from "./definition";
 
-import { handle } from './define';
+import { handle } from "./define";
 
 import {
     Lookup, Deferred, Resolution, $composer,
     HandleMethod, ResolveMethod, Composition,
     RejectedError, TimeoutError
-} from './callback'; 
+} from "./callback"; 
          
 import {
     Base, Variance, $isNothing, $isFunction,
     $isString, $isPromise, $classOf, $flatten,
     $decorator, $decorate, $decorated
-} from 'miruken-core';
+} from "miruken-core";
 
 /**
  * Base class for handling arbitrary callbacks.<br/>
@@ -65,20 +65,20 @@ export const CallbackHandler = Base.extend({
         return $handle.dispatch(this, callback, null, composer, greedy);
     },
     @handle(Lookup)
-    _lookup(lookup, composer) {
+    __lookup(lookup, composer) {
         return $lookup.dispatch(this, lookup,lookup.key, composer, lookup.isMany, lookup.addResult);        
     },
     @handle(Deferred)
-    _defered(deferred, composer) {
+    __defered(deferred, composer) {
         return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);        
     },
     @handle(Resolution)
-    _resolution(resolution, composer) {
+    __resolution(resolution, composer) {
         const key      = resolution.key,
               many     = resolution.isMany;
         let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (!resolved) { // check if delegate or handler implicitly satisfy key
-            const implied  = new Node(key),
+            const implied  = new Handler(key),
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
                 resolution.resolve($decorated(delegate, true));
@@ -92,15 +92,15 @@ export const CallbackHandler = Base.extend({
         return resolved;
     },
     @handle(HandleMethod)
-    _handleMethod(method, composer) {
+    __handleMethod(method, composer) {
         return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
     },
     @handle(ResolveMethod)
-    _resolveMethod(method, composer) {
+    __resolveMethod(method, composer) {
         return method.invokeResolve(composer);
     },
     @handle(Composition)
-    _composition(composable, composer) {
+    __composition(composable, composer) {
         const callback = composable.callback;
         return !!(callback && $handle.dispatch(this, callback, null, composer));
     }
@@ -487,11 +487,11 @@ CallbackHandler.implement({
      * Decorates the handler to conditionally handle callbacks.
      * @method when
      * @param   {Any}  constraint  -  matching constraint
-     * @returns {ConditionalCallbackHandler}  conditional callback handler.
+     * @returns {CallbackHandler}  conditional callback handler.
      * @for CallbackHandler
      */                                                                        
     when(constraint) {
-        const when = new Node(constraint),
+        const when = new Handler(constraint),
             condition = callback => {
                 if (callback instanceof Deferred) {
                     return when.match($classOf(callback.callback), Variance.Contravariant);

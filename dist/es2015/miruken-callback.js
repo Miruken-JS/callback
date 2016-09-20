@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -10,7 +10,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj;
 
 exports.$define = $define;
-exports.Node = Node;
+exports.Handler = Handler;
 exports.RejectedError = RejectedError;
 exports.TimeoutError = TimeoutError;
 exports.addDefinition = addDefinition;
@@ -18,7 +18,7 @@ exports.handle = handle;
 exports.provide = provide;
 exports.lookup = lookup;
 
-var _mirukenCore = require('miruken-core');
+var _mirukenCore = require("miruken-core");
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
@@ -51,26 +51,22 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
     return desc;
 }
 
-var _definitions = {};
+var definitions = {};
 
-var $handle = exports.$handle = $define('$handle', _mirukenCore.Variance.Contravariant);
-var $provide = exports.$provide = $define('$provide', _mirukenCore.Variance.Covariant);
-var $lookup = exports.$lookup = $define('$lookup', _mirukenCore.Variance.Invariant);
+var $handle = exports.$handle = $define(_mirukenCore.Variance.Contravariant);
+var $provide = exports.$provide = $define(_mirukenCore.Variance.Covariant);
+var $lookup = exports.$lookup = $define(_mirukenCore.Variance.Invariant);
 var $NOT_HANDLED = exports.$NOT_HANDLED = Object.freeze({});
 
-function $define(tag, variance) {
-    if (!(0, _mirukenCore.$isString)(tag) || tag.length === 0 || /\s/.test(tag)) {
-        throw new TypeError("The tag must be a non-empty string with no whitespace.");
-    } else if (_definitions[tag]) {
-        throw new TypeError('\'' + tag + '\' is already defined.');
-    }
-
+function $define(variance) {
     var handled = void 0,
         comparer = void 0;
     variance = variance || _mirukenCore.Variance.Contravariant;
     if (!(variance instanceof _mirukenCore.Variance)) {
         throw new TypeError("Invalid variance type supplied");
     }
+
+    var key = Symbol();
 
     switch (variance) {
         case _mirukenCore.Variance.Covariant:
@@ -111,7 +107,7 @@ function $define(tag, variance) {
             constraint = (0, _mirukenCore.$classOf)(_mirukenCore.Modifier.unwrap(constraint));
         }
         if ((0, _mirukenCore.$isNothing)(handler)) {
-            throw new TypeError('Incomplete \'' + tag + '\' definition: missing handler for constraint ' + constraint);
+            throw new TypeError("Incomplete definition: missing handler for constraint " + constraint);
         } else if (removed && !(0, _mirukenCore.$isFunction)(removed)) {
             throw new TypeError("The removed argument is not a function.");
         }
@@ -127,15 +123,16 @@ function $define(tag, variance) {
                 handler = (0, _mirukenCore.$lift)(_source);
             }
         }
-        var meta = (0, _mirukenCore.$meta)(owner),
-            node = new Node(constraint, handler, removed),
+        var node = new Handler(constraint, handler, removed),
             index = createIndex(node.constraint),
-            list = meta[tag] || (meta[tag] = new _mirukenCore.IndexedList(comparer));
+            list = _mirukenCore.Metadata.getOrCreateOwn(key, owner, function () {
+            return new _mirukenCore.IndexedList(comparer);
+        });
         list.insert(node, index);
         return function (notifyRemoved) {
             list.remove(node);
             if (list.isEmpty()) {
-                delete meta[tag];
+                _mirukenCore.Metadata.remove(key, owner);
             }
             if (node.removed && notifyRemoved !== false) {
                 node.removed(owner);
@@ -143,8 +140,10 @@ function $define(tag, variance) {
         };
     };
     definition.removeAll = function (owner) {
-        var meta = (0, _mirukenCore.$meta)(owner),
-            list = meta[tag];
+        var list = _mirukenCore.Metadata.getOwn(key, owner);
+        if (!list) {
+            return;
+        };
         var head = list.head;
         while (head) {
             if (head.removed) {
@@ -152,7 +151,7 @@ function $define(tag, variance) {
             }
             head = head.next;
         }
-        delete meta[tag];
+        _mirukenCore.Metadata.remove(key, owner);
     };
     definition.dispatch = function (handler, callback, constraint, composer, all, results) {
         var v = variance;
@@ -169,31 +168,30 @@ function $define(tag, variance) {
             }
         }
 
-        var ok = traverse(delegate);
-        if (!ok || all) ok = traverse(handler) || ok;
-
-        function traverse(target) {
-            if (!target) return false;
-            var ok = false,
-                meta = (0, _mirukenCore.$meta)(target);
-            if (meta) {
-                meta.traverseTopDown(function (m) {
-                    ok = _dispatch(target, m, callback, constraint, v, composer, all, results) || ok;
-                    if (ok && !all) return true;
-                });
-            }
-            return ok;
+        var dispatched = dispatch(delegate);
+        if (!dispatched || all) {
+            dispatched = dispatch(handler) || dispatched;
         }
 
-        return ok;
+        function dispatch(target) {
+            var dispatched = false;
+            if (target) {
+                _mirukenCore.Metadata.match(key, target, function (list) {
+                    dispatched = _dispatch(target, callback, constraint, v, list, composer, all, results) || dispatched;
+                    return dispatched && !all;
+                });
+            }
+            return dispatched;
+        }
+
+        return dispatched;
     };
-    function _dispatch(target, meta, callback, constraint, v, composer, all, results) {
+    function _dispatch(target, callback, constraint, v, list, composer, all, results) {
         var dispatched = false;
         var invariant = v === _mirukenCore.Variance.Invariant,
-            index = createIndex(constraint),
-            list = meta[tag];
-        if (list && (!invariant || index)) {
-            var node = list.getIndex(index) || list.head;
+            index = createIndex(constraint);
+        if (!invariant || index) {
+            var node = list.getFirst(index) || list.head;
             while (node) {
                 if (node.match(constraint, v)) {
                     var result = node.handler.call(target, callback, composer);
@@ -212,14 +210,14 @@ function $define(tag, variance) {
         }
         return dispatched;
     }
-    definition.tag = tag;
+    definition.key = key;
     definition.variance = variance;
     Object.freeze(definition);
-    _definitions[tag] = definition;
+    definitions[key] = definition;
     return definition;
 }
 
-function Node(constraint, handler, removed) {
+function Handler(constraint, handler, removed) {
     var invariant = _mirukenCore.$eq.test(constraint);
     constraint = _mirukenCore.Modifier.unwrap(constraint);
     this.constraint = constraint;
@@ -243,6 +241,9 @@ function Node(constraint, handler, removed) {
         this.removed = removed;
     }
 }
+Handler.prototype.equals = function (other) {
+    return this.constraint === other.constraint && (this.handler === other.handler || this.handler.method === other.handler.method);
+};
 
 function createIndex(constraint) {
     if (constraint) {
@@ -267,9 +268,9 @@ function matchProtocol(match, variance) {
     if (constraint === match) {
         return true;
     } else if (variance === _mirukenCore.Variance.Covariant) {
-        return constraint.conformsTo(match);
+        return match.isAdoptedBy(constraint);
     } else if (variance === _mirukenCore.Variance.Contravariant) {
-        return match.conformsTo && match.conformsTo(constraint);
+        return constraint.isAdoptedBy(match);
     }
     return false;
 }
@@ -281,7 +282,7 @@ function matchClass(match, variance) {
     } else if (variance === _mirukenCore.Variance.Contravariant) {
         return match.prototype instanceof constraint;
     } else if (variance === _mirukenCore.Variance.Covariant) {
-        return match.prototype && (constraint.prototype instanceof match || (0, _mirukenCore.$isProtocol)(match) && match.adoptedBy(constraint));
+        return match.prototype && (constraint.prototype instanceof match || (0, _mirukenCore.$isProtocol)(match) && match.isAdoptedBy(constraint));
     }
     return false;
 }
@@ -374,7 +375,7 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
                 _returnValue = value;
             },
             invokeOn: function invokeOn(target, composer) {
-                if (!target || strict && protocol && !protocol.adoptedBy(target)) {
+                if (!target || strict && protocol && !protocol.isAdoptedBy(target)) {
                     return false;
                 }
                 var method = void 0,
@@ -434,7 +435,7 @@ var ResolveMethod = exports.ResolveMethod = HandleMethod.extend({
                             } else if (handled) {
                                 resolve(_this.returnValue);
                             } else if (required) {
-                                reject(new TypeError('Object ' + composer + ' has no method \'' + methodName + '\''));
+                                reject(new TypeError("Object " + composer + " has no method '" + methodName + "'"));
                             } else {
                                 resolve();
                             }
@@ -673,8 +674,14 @@ TimeoutError.prototype = new Error();
 TimeoutError.prototype.constructor = TimeoutError;
 
 function addDefinition(def, allowGets) {
+    if (!def) {
+        throw new Error("Definition is missing");
+    }
+    if (!def.key) {
+        throw new Error("Definition key is missing");
+    }
     return function (target, key, descriptor, constraints) {
-        if (def && def.tag && key !== 'constructor') {
+        if (key !== "constructor") {
             var lateBinding = function lateBinding() {
                 var result = this[key];
                 if ((0, _mirukenCore.$isFunction)(result)) {
@@ -686,6 +693,8 @@ function addDefinition(def, allowGets) {
             if (constraints.length === 0) {
                 constraints = null;
             }
+
+            lateBinding.method = key;
             def(target, constraints, lateBinding);
         }
         return descriptor;
@@ -735,18 +744,18 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec =
     handleCallback: function handleCallback(callback, greedy, composer) {
         return $handle.dispatch(this, callback, null, composer, greedy);
     },
-    _lookup: function _lookup(lookup, composer) {
+    __lookup: function __lookup(lookup, composer) {
         return $lookup.dispatch(this, lookup, lookup.key, composer, lookup.isMany, lookup.addResult);
     },
-    _defered: function _defered(deferred, composer) {
+    __defered: function __defered(deferred, composer) {
         return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);
     },
-    _resolution: function _resolution(resolution, composer) {
+    __resolution: function __resolution(resolution, composer) {
         var key = resolution.key,
             many = resolution.isMany;
         var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (!resolved) {
-            var implied = new Node(key),
+            var implied = new Handler(key),
                 _delegate = this.delegate;
             if (_delegate && implied.match((0, _mirukenCore.$classOf)(_delegate), _mirukenCore.Variance.Contravariant)) {
                 resolution.resolve((0, _mirukenCore.$decorated)(_delegate, true));
@@ -759,17 +768,17 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec =
         }
         return resolved;
     },
-    _handleMethod: function _handleMethod(method, composer) {
+    __handleMethod: function __handleMethod(method, composer) {
         return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
     },
-    _resolveMethod: function _resolveMethod(method, composer) {
+    __resolveMethod: function __resolveMethod(method, composer) {
         return method.invokeResolve(composer);
     },
-    _composition: function _composition(composable, composer) {
+    __composition: function __composition(composable, composer) {
         var callback = composable.callback;
-        return callback && $handle.dispatch(this, callback, null, composer);
+        return !!(callback && $handle.dispatch(this, callback, null, composer));
     }
-}, (_applyDecoratedDescriptor(_obj, '_lookup', [_dec], Object.getOwnPropertyDescriptor(_obj, '_lookup'), _obj), _applyDecoratedDescriptor(_obj, '_defered', [_dec2], Object.getOwnPropertyDescriptor(_obj, '_defered'), _obj), _applyDecoratedDescriptor(_obj, '_resolution', [_dec3], Object.getOwnPropertyDescriptor(_obj, '_resolution'), _obj), _applyDecoratedDescriptor(_obj, '_handleMethod', [_dec4], Object.getOwnPropertyDescriptor(_obj, '_handleMethod'), _obj), _applyDecoratedDescriptor(_obj, '_resolveMethod', [_dec5], Object.getOwnPropertyDescriptor(_obj, '_resolveMethod'), _obj), _applyDecoratedDescriptor(_obj, '_composition', [_dec6], Object.getOwnPropertyDescriptor(_obj, '_composition'), _obj)), _obj)), {
+}, (_applyDecoratedDescriptor(_obj, "__lookup", [_dec], Object.getOwnPropertyDescriptor(_obj, "__lookup"), _obj), _applyDecoratedDescriptor(_obj, "__defered", [_dec2], Object.getOwnPropertyDescriptor(_obj, "__defered"), _obj), _applyDecoratedDescriptor(_obj, "__resolution", [_dec3], Object.getOwnPropertyDescriptor(_obj, "__resolution"), _obj), _applyDecoratedDescriptor(_obj, "__handleMethod", [_dec4], Object.getOwnPropertyDescriptor(_obj, "__handleMethod"), _obj), _applyDecoratedDescriptor(_obj, "__resolveMethod", [_dec5], Object.getOwnPropertyDescriptor(_obj, "__resolveMethod"), _obj), _applyDecoratedDescriptor(_obj, "__composition", [_dec6], Object.getOwnPropertyDescriptor(_obj, "__composition"), _obj)), _obj)), {
     coerce: function coerce(object) {
         return new this(object);
     }
@@ -783,7 +792,7 @@ _mirukenCore.Base.implement({
 
 var compositionScope = (0, _mirukenCore.$decorator)({
     handleCallback: function handleCallback(callback, greedy, composer) {
-        if (!(callback instanceof Composition)) {
+        if (callback.constructor !== Composition) {
             callback = new Composition(callback);
         }
         return this.base(callback, greedy, composer);
@@ -906,7 +915,7 @@ CallbackHandler.implementing = function (methodName, method) {
     if (!(0, _mirukenCore.$isString)(methodName) || methodName.length === 0 || !methodName.trim()) {
         throw new TypeError("No methodName specified.");
     } else if (!(0, _mirukenCore.$isFunction)(method)) {
-        throw new TypeError('Invalid method: ' + method + ' is not a function.');
+        throw new TypeError("Invalid method: " + method + " is not a function.");
     }
     return new CallbackHandler().extend({
         handleCallback: function handleCallback(callback, greedy, composer) {
@@ -956,7 +965,7 @@ CallbackHandler.implement({
     },
     filter: function filter(_filter, reentrant) {
         if (!(0, _mirukenCore.$isFunction)(_filter)) {
-            throw new TypeError('Invalid filter: ' + _filter + ' is not a function.');
+            throw new TypeError("Invalid filter: " + _filter + " is not a function.");
         }
         return this.decorate({
             handleCallback: function handleCallback(callback, greedy, composer) {
@@ -994,7 +1003,7 @@ CallbackHandler.implement({
                         };
                     }();
 
-                    if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
+                    if ((typeof _ret === "undefined" ? "undefined" : _typeof(_ret)) === "object") return _ret.v;
                 } else if (test === false) {
                     throw new RejectedError(callback);
                 }
@@ -1009,7 +1018,7 @@ CallbackHandler.implement({
         return this.decorate({ $provide: definitions });
     },
     when: function when(constraint) {
-        var when = new Node(constraint),
+        var when = new Handler(constraint),
             condition = function condition(callback) {
             if (callback instanceof Deferred) {
                 return when.match((0, _mirukenCore.$classOf)(callback.callback), _mirukenCore.Variance.Contravariant);
@@ -1065,7 +1074,7 @@ CallbackHandler.implement({
                 };
             }();
 
-            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
+            if ((typeof _ret2 === "undefined" ? "undefined" : _typeof(_ret2)) === "object") return _ret2.v;
         }
         return this;
     },
@@ -1320,8 +1329,8 @@ var InvocationDelegate = exports.InvocationDelegate = _mirukenCore.Delegate.exte
 
 function delegate(delegate, methodType, protocol, methodName, args, strict) {
     var broadcast = false,
-        useResolve = false,
         bestEffort = false,
+        useResolve = _mirukenCore.Resolving.isAdoptedBy(protocol),
         handler = delegate.handler;
 
     var semantics = new InvocationSemantics();
@@ -1329,13 +1338,13 @@ function delegate(delegate, methodType, protocol, methodName, args, strict) {
         strict = !!(strict | semantics.getOption(InvocationOptions.Strict));
         broadcast = semantics.getOption(InvocationOptions.Broadcast);
         bestEffort = semantics.getOption(InvocationOptions.BestEffort);
-        useResolve = semantics.getOption(InvocationOptions.Resolve) || protocol.conformsTo(_mirukenCore.Resolving);
+        useResolve = useResolve || semantics.getOption(InvocationOptions.Resolve);
     }
 
     var handleMethod = useResolve ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort) : new HandleMethod(methodType, protocol, methodName, args, strict);
 
     if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
-        throw new TypeError('Object ' + handler + ' has no method \'' + methodName + '\'');
+        throw new TypeError("Object " + handler + " has no method '" + methodName + "'");
     }
 
     return handleMethod.returnValue;

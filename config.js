@@ -19,6 +19,7 @@ System.config({
     "chai": "npm:chai@3.5.0",
     "core-js": "npm:core-js@1.2.6",
     "miruken-core": "npm:miruken-core@0.0.1",
+    "reflect-metadata": "npm:reflect-metadata@0.1.8",
     "–latest": "npm:babel-core@5.8.38",
     "–latest-runtime": "npm:babel-runtime@5.8.38",
     "github:jspm/nodelibs-assert@0.1.0": {

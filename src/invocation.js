@@ -1,12 +1,12 @@
 import {
     Base, Flags, MethodType, Delegate, Resolving
-} from 'miruken-core';
+} from "miruken-core";
 
 import {
     Composition, HandleMethod, ResolveMethod
-} from './callback';
+} from "./callback";
 
-import { CallbackHandler } from './handler';
+import { CallbackHandler } from "./handler";
 
 /**
  * InvocationOptions flags enum

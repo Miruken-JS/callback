@@ -2,9 +2,9 @@ import {
     True, Base, Undefined, MethodType,
     $isProtocol, $isPromise, $isFunction,
     $isNothing, $instant, $flatten
-} from 'miruken-core';
+} from "miruken-core";
 
-import { $NOT_HANDLED } from './meta';
+import { $NOT_HANDLED } from "./definition";
 
 export let $composer;
 

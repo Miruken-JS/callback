@@ -1,8 +1,8 @@
 import {
     $handle, $provide, $lookup, $NOT_HANDLED
-} from './meta';
+} from "./definition";
 
-import { decorate, $isFunction } from 'miruken-core';
+import { decorate, $isFunction } from "miruken-core";
 
 /**
  * Marks methods and properties as handlers.
@@ -11,19 +11,22 @@ import { decorate, $isFunction } from 'miruken-core';
  * @param  {Object}  allowGets  - allow properties to be handlers
  */
 export function addDefinition(def, allowGets) {
+    if (!def) {  throw new Error("Definition is missing"); }
+    if (!def.key) { throw new Error("Definition key is missing"); }
     return function (target, key, descriptor, constraints) {
-        if (def && def.tag && key !== 'constructor') {
+        if (key !== "constructor") {
             if (constraints.length === 0) {
                 constraints = null;
             }
-            def(target, constraints, lateBinding);
             function lateBinding() {
                 const result = this[key];
                 if ($isFunction(result)) {
                     return result.apply(this, arguments);
                 }
-                return allowGets ? result : $NOT_HANDLED;
+                return allowGets ? result : $NOT_HANDLED;                
             }
+            lateBinding.method = key;
+            def(target, constraints, lateBinding);
         }
         return descriptor;
     };
@@ -44,7 +47,7 @@ export function provide(...args) {
 }
 
 /**
- * Invariant handlers.
+ * Invariant (eq) handlers.
  */
 export function lookup(...args) {
     return decorate(addDefinition($lookup, true), args);    
