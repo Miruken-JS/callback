@@ -168,7 +168,7 @@ function $define(variance) {
         function dispatch(target) {
             var dispatched = false;
             if (target) {
-                _mirukenCore.Metadata.match(key, target, function (list) {
+                _mirukenCore.Metadata.collect(key, target, function (list) {
                     dispatched = _dispatch(target, callback, constraint, v, list, composer, all, results) || dispatched;
                     return dispatched && !all;
                 });
@@ -259,7 +259,7 @@ function matchProtocol(match, variance) {
     if (constraint === match) {
         return true;
     } else if (variance === _mirukenCore.Variance.Covariant) {
-        return match.isAdoptedBy(constraint);
+        return (0, _mirukenCore.$isProtocol)(match) && match.isAdoptedBy(constraint);
     } else if (variance === _mirukenCore.Variance.Contravariant) {
         return constraint.isAdoptedBy(match);
     }

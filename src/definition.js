@@ -143,7 +143,7 @@ export function $define(variance) {
         function dispatch(target) {
             let dispatched = false;
             if (target) {
-                Metadata.match(key, target, list => {
+                Metadata.collect(key, target, list => {
                     dispatched = _dispatch(target, callback, constraint, v,
                                            list, composer, all, results)
                         || dispatched;
@@ -238,7 +238,7 @@ function matchProtocol(match, variance) {
     if (constraint === match) {
         return true;
     } else if (variance === Variance.Covariant) {
-        return match.isAdoptedBy(constraint);
+        return $isProtocol(match) && match.isAdoptedBy(constraint);
     } else if (variance === Variance.Contravariant) {
         return constraint.isAdoptedBy(match);
     }

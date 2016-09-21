@@ -69,7 +69,7 @@ System.register(["miruken-core"], function (_export, _context) {
         if (constraint === match) {
             return true;
         } else if (variance === Variance.Covariant) {
-            return match.isAdoptedBy(constraint);
+            return $isProtocol(match) && match.isAdoptedBy(constraint);
         } else if (variance === Variance.Contravariant) {
             return constraint.isAdoptedBy(match);
         }
@@ -345,7 +345,7 @@ System.register(["miruken-core"], function (_export, _context) {
                     function dispatch(target) {
                         var dispatched = false;
                         if (target) {
-                            Metadata.match(key, target, function (list) {
+                            Metadata.collect(key, target, function (list) {
                                 dispatched = _dispatch(target, callback, constraint, v, list, composer, all, results) || dispatched;
                                 return dispatched && !all;
                             });
