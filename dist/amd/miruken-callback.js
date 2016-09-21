@@ -124,16 +124,8 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                 throw new TypeError("The removed argument is not a function.");
             }
             if (!(0, _mirukenCore.$isFunction)(handler)) {
-                if (_mirukenCore.$copy.test(handler)) {
-                    var source = _mirukenCore.Modifier.unwrap(handler);
-                    if (!(0, _mirukenCore.$isFunction)(source.copy)) {
-                        throw new Error("$copy requires the target to have a copy method.");
-                    }
-                    handler = source.copy.bind(source);
-                } else {
-                    var _source = _mirukenCore.$use.test(handler) ? _mirukenCore.Modifier.unwrap(handler) : handler;
-                    handler = (0, _mirukenCore.$lift)(_source);
-                }
+                var source = _mirukenCore.$use.test(handler) ? _mirukenCore.Modifier.unwrap(handler) : handler;
+                handler = (0, _mirukenCore.$lift)(source);
             }
             var node = new Handler(constraint, handler, removed),
                 index = createIndex(node.constraint),
@@ -225,8 +217,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         definition.key = key;
         definition.variance = variance;
         Object.freeze(definition);
-        definitions[key] = definition;
-        return definition;
+        return definitions[key] = definition;
     }
 
     function Handler(constraint, handler, removed) {
@@ -254,7 +245,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         }
     }
     Handler.prototype.equals = function (other) {
-        return this.constraint === other.constraint && (this.handler === other.handler || this.handler.method === other.handler.method);
+        return this.constraint === other.constraint && (this.handler === other.handler || this.handler.key === other.handler.key);
     };
 
     function createIndex(constraint) {
@@ -706,7 +697,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                     constraints = null;
                 }
 
-                lateBinding.method = key;
+                lateBinding.key = key;
                 def(target, constraints, lateBinding);
             }
             return descriptor;

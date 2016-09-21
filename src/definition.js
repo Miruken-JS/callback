@@ -2,8 +2,7 @@ import {
     False, Undefined, Base, Abstract, Metadata,
     Variance, Modifier, IndexedList, typeOf, assignID,
     $isNothing, $isString, $isFunction, $isObject,
-    $isClass, $isProtocol, $classOf, $eq, $use,
-    $copy, $lift
+    $isClass, $isProtocol, $classOf, $eq, $use, $lift
 } from "miruken-core";
 
 const definitions = {};
@@ -92,16 +91,8 @@ export function $define(variance) {
             throw new TypeError("The removed argument is not a function.");
         }
         if (!$isFunction(handler)) {
-            if ($copy.test(handler)) {
-                const source = Modifier.unwrap(handler);
-                if (!$isFunction(source.copy)) {
-                    throw new Error("$copy requires the target to have a copy method.");
-                }
-                handler = source.copy.bind(source);
-            } else {
-                const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
-                handler = $lift(source);
-            }
+            const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
+            handler = $lift(source);
         }
         const node  = new Handler(constraint, handler, removed),
               index = createIndex(node.constraint),
@@ -191,8 +182,7 @@ export function $define(variance) {
     definition.key      = key;
     definition.variance = variance;
     Object.freeze(definition);
-    definitions[key]    = definition;
-    return definition;
+    return definitions[key] = definition;
 }
 
 export function Handler(constraint, handler, removed) {
@@ -222,7 +212,7 @@ export function Handler(constraint, handler, removed) {
 Handler.prototype.equals = function (other) {
     return this.constraint === other.constraint
         && (this.handler === other.handler ||
-            this.handler.method === other.handler.method);
+            this.handler.key === other.handler.key);
 }
 
 function createIndex(constraint) {

@@ -21,8 +21,7 @@ import {
     True, False, Undefined, Base, Protocol,
     StrictProtocol, Variance, MethodType,
     Resolving, Metadata, assignID, copy,
-    $isPromise, $eq, $copy, $instant,
-    $using, $flatten
+    $isPromise, $eq, $instant, $using, $flatten
 } from "miruken-core";
 
 import { expect } from "chai";
@@ -763,7 +762,7 @@ describe("CallbackHandler", () => {
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
 
-        it("should resolve copy of object with $copy", () => {
+        it("should resolve copy of object with @copy", () => {
             const Circle = Base.extend({
                       constructor(radius) {
                           this.radius = radius;

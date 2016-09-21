@@ -25,7 +25,7 @@ export function addDefinition(def, allowGets) {
                 }
                 return allowGets ? result : $NOT_HANDLED;                
             }
-            lateBinding.method = key;
+            lateBinding.key = key;
             def(target, constraints, lateBinding);
         }
         return descriptor;

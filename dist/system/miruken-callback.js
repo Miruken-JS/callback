@@ -3,7 +3,7 @@
 System.register(["miruken-core"], function (_export, _context) {
     "use strict";
 
-    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $copy, $lift, True, MethodType, $isPromise, $instant, $flatten, decorate, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, $provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, True, MethodType, $isPromise, $instant, $flatten, decorate, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, $provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -196,7 +196,6 @@ System.register(["miruken-core"], function (_export, _context) {
             $classOf = _mirukenCore.$classOf;
             $eq = _mirukenCore.$eq;
             $use = _mirukenCore.$use;
-            $copy = _mirukenCore.$copy;
             $lift = _mirukenCore.$lift;
             True = _mirukenCore.True;
             MethodType = _mirukenCore.MethodType;
@@ -290,16 +289,8 @@ System.register(["miruken-core"], function (_export, _context) {
                         throw new TypeError("The removed argument is not a function.");
                     }
                     if (!$isFunction(handler)) {
-                        if ($copy.test(handler)) {
-                            var source = Modifier.unwrap(handler);
-                            if (!$isFunction(source.copy)) {
-                                throw new Error("$copy requires the target to have a copy method.");
-                            }
-                            handler = source.copy.bind(source);
-                        } else {
-                            var _source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
-                            handler = $lift(_source);
-                        }
+                        var source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
+                        handler = $lift(source);
                     }
                     var node = new Handler(constraint, handler, removed),
                         index = createIndex(node.constraint),
@@ -391,8 +382,7 @@ System.register(["miruken-core"], function (_export, _context) {
                 definition.key = key;
                 definition.variance = variance;
                 Object.freeze(definition);
-                definitions[key] = definition;
-                return definition;
+                return definitions[key] = definition;
             }
 
             _export("$define", $define);
@@ -425,7 +415,7 @@ System.register(["miruken-core"], function (_export, _context) {
             _export("Handler", Handler);
 
             Handler.prototype.equals = function (other) {
-                return this.constraint === other.constraint && (this.handler === other.handler || this.handler.method === other.handler.method);
+                return this.constraint === other.constraint && (this.handler === other.handler || this.handler.key === other.handler.key);
             };
             _export("$composer", $composer = void 0);
 
@@ -816,7 +806,7 @@ System.register(["miruken-core"], function (_export, _context) {
                             constraints = null;
                         }
 
-                        lateBinding.method = key;
+                        lateBinding.key = key;
                         def(target, constraints, lateBinding);
                     }
                     return descriptor;
