@@ -786,7 +786,7 @@ TimeoutError.prototype.constructor = TimeoutError;
 export function addDefinition(def, allowGets) {
     if (!def) {  throw new Error("Definition is missing"); }
     if (!def.key) { throw new Error("Definition key is missing"); }
-    return function (target, key, descriptor, constraints) {
+    return (target, key, descriptor, constraints) => {
         if (key !== "constructor") {
             if (constraints.length === 0) {
                 constraints = null;
