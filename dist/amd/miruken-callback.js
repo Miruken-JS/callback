@@ -676,31 +676,44 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
     TimeoutError.prototype = new Error();
     TimeoutError.prototype.constructor = TimeoutError;
 
-    function addDefinition(def, allowGets) {
+    function addDefinition(name, def, allowGets) {
         if (!def) {
-            throw new Error("Definition is missing");
+            throw new Error("Definition for @" + name + " is missing");
         }
         if (!def.key) {
-            throw new Error("Definition key is missing");
+            throw new Error("Invalid definition @" + name + ": key is missing");
         }
         return function (target, key, descriptor, constraints) {
-            if (key !== "constructor") {
-                var lateBinding = function lateBinding() {
-                    var result = this[key];
-                    if ((0, _mirukenCore.$isFunction)(result)) {
-                        return result.apply(this, arguments);
-                    }
-                    return allowGets ? result : $NOT_HANDLED;
-                };
-
-                if (constraints.length === 0) {
-                    constraints = null;
-                }
-
-                lateBinding.key = key;
-                def(target, constraints, lateBinding);
+            if (!(0, _mirukenCore.isDescriptor)(descriptor)) {
+                throw new SyntaxError("@" + name + " cannot be applied to classes");
             }
-            return descriptor;
+            if (key === "constructor") {
+                throw new SyntaxError("@" + name + " cannot be applied to constructors");
+            }
+            var get = descriptor.get;
+            var value = descriptor.value;
+
+            if (!(0, _mirukenCore.$isFunction)(value)) {
+                if (allowGets) {
+                    if (!(0, _mirukenCore.$isFunction)(get)) {
+                        throw new SyntaxError("@" + name + " can only be applied to methods and getters");
+                    }
+                } else {
+                    throw new SyntaxError("@" + name + " can only be applied to methods");
+                }
+            }
+            if (constraints.length === 0) {
+                constraints = null;
+            }
+            function lateBinding() {
+                var result = this[key];
+                if ((0, _mirukenCore.$isFunction)(result)) {
+                    return result.apply(this, arguments);
+                }
+                return allowGets ? result : $NOT_HANDLED;
+            }
+            lateBinding.key = key;
+            def(target, constraints, lateBinding);
         };
     }
 
@@ -709,7 +722,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
             args[_key] = arguments[_key];
         }
 
-        return (0, _mirukenCore.decorate)(addDefinition($handle), args);
+        return (0, _mirukenCore.decorate)(addDefinition("handle", $handle), args);
     }
 
     function provide() {
@@ -717,7 +730,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
             args[_key2] = arguments[_key2];
         }
 
-        return (0, _mirukenCore.decorate)(addDefinition($provide, true), args);
+        return (0, _mirukenCore.decorate)(addDefinition("provide", $provide, true), args);
     }
 
     function lookup() {
@@ -725,7 +738,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
             args[_key3] = arguments[_key3];
         }
 
-        return (0, _mirukenCore.decorate)(addDefinition($lookup, true), args);
+        return (0, _mirukenCore.decorate)(addDefinition("lookup", $lookup, true), args);
     }
 
     var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {

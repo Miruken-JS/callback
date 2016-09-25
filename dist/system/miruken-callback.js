@@ -3,7 +3,7 @@
 System.register(["miruken-core"], function (_export, _context) {
     "use strict";
 
-    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, True, MethodType, $isPromise, $instant, $flatten, decorate, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, $provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, True, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, $provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -203,6 +203,7 @@ System.register(["miruken-core"], function (_export, _context) {
             $instant = _mirukenCore.$instant;
             $flatten = _mirukenCore.$flatten;
             decorate = _mirukenCore.decorate;
+            isDescriptor = _mirukenCore.isDescriptor;
             $decorator = _mirukenCore.$decorator;
             $decorate = _mirukenCore.$decorate;
             $decorated = _mirukenCore.$decorated;
@@ -785,31 +786,44 @@ System.register(["miruken-core"], function (_export, _context) {
             TimeoutError.prototype = new Error();
             TimeoutError.prototype.constructor = TimeoutError;
 
-            function addDefinition(def, allowGets) {
+            function addDefinition(name, def, allowGets) {
                 if (!def) {
-                    throw new Error("Definition is missing");
+                    throw new Error("Definition for @" + name + " is missing");
                 }
                 if (!def.key) {
-                    throw new Error("Definition key is missing");
+                    throw new Error("Invalid definition @" + name + ": key is missing");
                 }
                 return function (target, key, descriptor, constraints) {
-                    if (key !== "constructor") {
-                        var lateBinding = function lateBinding() {
-                            var result = this[key];
-                            if ($isFunction(result)) {
-                                return result.apply(this, arguments);
-                            }
-                            return allowGets ? result : $NOT_HANDLED;
-                        };
-
-                        if (constraints.length === 0) {
-                            constraints = null;
-                        }
-
-                        lateBinding.key = key;
-                        def(target, constraints, lateBinding);
+                    if (!isDescriptor(descriptor)) {
+                        throw new SyntaxError("@" + name + " cannot be applied to classes");
                     }
-                    return descriptor;
+                    if (key === "constructor") {
+                        throw new SyntaxError("@" + name + " cannot be applied to constructors");
+                    }
+                    var get = descriptor.get;
+                    var value = descriptor.value;
+
+                    if (!$isFunction(value)) {
+                        if (allowGets) {
+                            if (!$isFunction(get)) {
+                                throw new SyntaxError("@" + name + " can only be applied to methods and getters");
+                            }
+                        } else {
+                            throw new SyntaxError("@" + name + " can only be applied to methods");
+                        }
+                    }
+                    if (constraints.length === 0) {
+                        constraints = null;
+                    }
+                    function lateBinding() {
+                        var result = this[key];
+                        if ($isFunction(result)) {
+                            return result.apply(this, arguments);
+                        }
+                        return allowGets ? result : $NOT_HANDLED;
+                    }
+                    lateBinding.key = key;
+                    def(target, constraints, lateBinding);
                 };
             }
 
@@ -820,7 +834,7 @@ System.register(["miruken-core"], function (_export, _context) {
                     args[_key] = arguments[_key];
                 }
 
-                return decorate(addDefinition($handle), args);
+                return decorate(addDefinition("handle", $handle), args);
             }
 
             _export("handle", handle);
@@ -830,7 +844,7 @@ System.register(["miruken-core"], function (_export, _context) {
                     args[_key2] = arguments[_key2];
                 }
 
-                return decorate(addDefinition($provide, true), args);
+                return decorate(addDefinition("provide", $provide, true), args);
             }
 
             _export("provide", provide);
@@ -840,7 +854,7 @@ System.register(["miruken-core"], function (_export, _context) {
                     args[_key3] = arguments[_key3];
                 }
 
-                return decorate(addDefinition($lookup, true), args);
+                return decorate(addDefinition("lookup", $lookup, true), args);
             }
 
             _export("lookup", lookup);

@@ -1,4 +1,4 @@
-import {False,Undefined,Base,Abstract,Metadata,Variance,Modifier,IndexedList,typeOf,assignID,$isNothing,$isString,$isFunction,$isObject,$isClass,$isProtocol,$classOf,$eq,$use,$lift,True,MethodType,$isPromise,$instant,$flatten,decorate,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
+import {False,Undefined,Base,Abstract,Metadata,Variance,Modifier,IndexedList,typeOf,assignID,$isNothing,$isString,$isFunction,$isObject,$isClass,$isProtocol,$classOf,$eq,$use,$lift,True,MethodType,$isPromise,$instant,$flatten,decorate,isDescriptor,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
 
 const definitions = {};
 
@@ -780,28 +780,46 @@ TimeoutError.prototype.constructor = TimeoutError;
 /**
  * Marks methods and properties as handlers.
  * @method validate
+ * @param  {Object}  name       - definition name
  * @param  {Object}  def        - definition provider
  * @param  {Object}  allowGets  - allow properties to be handlers
  */
-export function addDefinition(def, allowGets) {
-    if (!def) {  throw new Error("Definition is missing"); }
-    if (!def.key) { throw new Error("Definition key is missing"); }
+export function addDefinition(name, def, allowGets) {
+    if (!def) {
+        throw new Error(`Definition for @${name} is missing`);
+    }
+    if (!def.key) {
+        throw new Error(`Invalid definition @${name}: key is missing`);
+    }
     return (target, key, descriptor, constraints) => {
-        if (key !== "constructor") {
-            if (constraints.length === 0) {
-                constraints = null;
-            }
-            function lateBinding() {
-                const result = this[key];
-                if ($isFunction(result)) {
-                    return result.apply(this, arguments);
-                }
-                return allowGets ? result : $NOT_HANDLED;                
-            }
-            lateBinding.key = key;
-            def(target, constraints, lateBinding);
+        if (!isDescriptor(descriptor)) {
+            throw new SyntaxError(`@${name} cannot be applied to classes`);
         }
-        return descriptor;
+        if (key === "constructor") {
+            throw new SyntaxError(`@${name} cannot be applied to constructors`);
+        }        
+        const { get, value } = descriptor;
+        if (!$isFunction(value)) {
+            if (allowGets) {
+                if (!$isFunction(get)) {
+                    throw new SyntaxError(`@${name} can only be applied to methods and getters`);
+                }
+            } else {
+                throw new SyntaxError(`@${name} can only be applied to methods`);
+            }
+        }
+        if (constraints.length === 0) {
+            constraints = null;
+        }
+        function lateBinding() {
+            const result = this[key];
+            if ($isFunction(result)) {
+                return result.apply(this, arguments);
+            }
+            return allowGets ? result : $NOT_HANDLED;                
+        }
+        lateBinding.key = key;
+        def(target, constraints, lateBinding);
     };
 }
 
@@ -809,21 +827,21 @@ export function addDefinition(def, allowGets) {
  * Contravariant (in) handlers.
  */
 export function handle(...args) {
-    return decorate(addDefinition($handle), args);
+    return decorate(addDefinition("handle", $handle), args);
 }
 
 /**
  * Covariant (out) handlers.
  */
 export function provide(...args) {
-    return decorate(addDefinition($provide, true), args);    
+    return decorate(addDefinition("provide", $provide, true), args);    
 }
 
 /**
  * Invariant (eq) handlers.
  */
 export function lookup(...args) {
-    return decorate(addDefinition($lookup, true), args);    
+    return decorate(addDefinition("lookup", $lookup, true), args);    
 }
 
 /**
