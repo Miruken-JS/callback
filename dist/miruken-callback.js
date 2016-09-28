@@ -797,7 +797,7 @@ export function addDefinition(name, def, allowGets) {
         }
         if (key === "constructor") {
             throw new SyntaxError(`@${name} cannot be applied to constructors`);
-        }        
+        }
         const { get, value } = descriptor;
         if (!$isFunction(value)) {
             if (allowGets) {
