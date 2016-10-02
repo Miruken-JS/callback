@@ -54,7 +54,8 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
 var definitions = {};
 
 var $handle = exports.$handle = $define(_mirukenCore.Variance.Contravariant);
-var $provide = exports.$provide = $define(_mirukenCore.Variance.Covariant);
+var _$provide = $define(_mirukenCore.Variance.Covariant);
+exports.$provide = _$provide;
 var $lookup = exports.$lookup = $define(_mirukenCore.Variance.Invariant);
 var $NOT_HANDLED = exports.$NOT_HANDLED = Object.freeze({});
 
@@ -718,7 +719,7 @@ function provide() {
         args[_key2] = arguments[_key2];
     }
 
-    return (0, _mirukenCore.decorate)(addDefinition("provide", $provide, true), args);
+    return (0, _mirukenCore.decorate)(addDefinition("provide", _$provide, true), args);
 }
 
 function lookup() {
@@ -757,7 +758,7 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec =
     __resolution: function __resolution(resolution, composer) {
         var key = resolution.key,
             many = resolution.isMany;
-        var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
+        var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (!resolved) {
             var implied = new Handler(key),
                 _delegate = this.delegate;
@@ -911,7 +912,7 @@ CallbackHandler.accepting = function (handler, constraint) {
 
 CallbackHandler.providing = function (provider, constraint) {
     var providing = new CallbackHandler();
-    $provide(providing, constraint, provider);
+    _$provide(providing, constraint, provider);
     return providing;
 };
 
@@ -1015,11 +1016,27 @@ CallbackHandler.implement({
             return aspectProceed(callback, composer, proceed, after);
         }, reentrant);
     },
-    $$handle: function $$handle(definitions) {
-        return this.decorate({ $handle: definitions });
-    },
-    $$provide: function $$provide(definitions) {
-        return this.decorate({ $provide: definitions });
+    $provide: function $provide() {
+        var _this3 = this;
+
+        for (var _len8 = arguments.length, values = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
+            values[_key8] = arguments[_key8];
+        }
+
+        if (values.length > 0) {
+            var _ret2 = function () {
+                var provider = _this3.decorate();
+                values.forEach(function (value) {
+                    return _$provide(provider, value);
+                });
+                return {
+                    v: provider
+                };
+            }();
+
+            if ((typeof _ret2 === "undefined" ? "undefined" : _typeof(_ret2)) === "object") return _ret2.v;
+        }
+        return this;
     },
     when: function when(constraint) {
         var when = new Handler(constraint),
@@ -1039,8 +1056,8 @@ CallbackHandler.implement({
         });
     },
     next: function next() {
-        for (var _len8 = arguments.length, handlers = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
-            handlers[_key8] = arguments[_key8];
+        for (var _len9 = arguments.length, handlers = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
+            handlers[_key9] = arguments[_key9];
         }
 
         switch (handlers.length) {
@@ -1053,15 +1070,15 @@ CallbackHandler.implement({
         }
     },
     $guard: function $guard(target, property) {
-        var _this3 = this;
+        var _this4 = this;
 
         if (target) {
-            var _ret2 = function () {
+            var _ret3 = function () {
                 var guarded = false;
                 property = property || "guarded";
                 var propExists = property in target;
                 return {
-                    v: _this3.aspect(function () {
+                    v: _this4.aspect(function () {
                         if (guarded = target[property]) {
                             return false;
                         }
@@ -1078,7 +1095,7 @@ CallbackHandler.implement({
                 };
             }();
 
-            if ((typeof _ret2 === "undefined" ? "undefined" : _typeof(_ret2)) === "object") return _ret2.v;
+            if ((typeof _ret3 === "undefined" ? "undefined" : _typeof(_ret3)) === "object") return _ret3.v;
         }
         return this;
     },
@@ -1199,8 +1216,8 @@ var BatchingComplete = Batching.extend();
 
 var Batcher = exports.Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
     constructor: function constructor() {
-        for (var _len9 = arguments.length, protocols = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
-            protocols[_key9] = arguments[_key9];
+        for (var _len10 = arguments.length, protocols = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
+            protocols[_key10] = arguments[_key10];
         }
 
         this.base();

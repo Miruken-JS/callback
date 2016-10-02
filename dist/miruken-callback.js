@@ -1292,24 +1292,19 @@ CallbackHandler.implement({
         }, reentrant);
     },
     /**
-     * Decorates the handler to handle definitions.
-     * @method $handle
-     * @param   {Array}  [definitions]  -  handler overrides
+     * Decorates the handler to provide one or more values.
+     * @method $provide
+     * @param   {Array}  ...values  -  values provided
      * @returns {CallbackHandler}  decorated callback handler.
      * @for CallbackHandler
      */
-    $$handle(definitions) {
-        return this.decorate({$handle: definitions});
-    },
-    /**
-     * Decorates the handler to provide definitions.
-     * @method $handle
-     * @param   {Array}  [definitions]  -  provider overrides
-     * @returns {CallbackHandler}  decorated callback handler.
-     * @for CallbackHandler
-     */
-    $$provide(definitions) {
-        return this.decorate({$provide: definitions});
+    $provide(...values) {
+        if (values.length > 0) {
+            const provider = this.decorate();
+            values.forEach(value => $provide(provider, value));
+            return provider;
+        }
+        return this;
     },
     /**
      * Decorates the handler to conditionally handle callbacks.

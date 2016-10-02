@@ -1299,6 +1299,19 @@ describe("CallbackHandler", () => {
         });
     });
 
+    describe("$provide", () => {
+        it("should provide transient values", () => {
+            const guest     = new Guest(17),
+                  blackjack = new CardTable("BlackJack", 1, 5),
+                  handler   = new CallbackHandler(),
+                  provider  = handler.$provide(guest, blackjack);
+            expect(provider.resolve(Guest)).equal(guest);
+            expect(provider.resolve(CardTable)).equal(blackjack);
+            expect(handler.resolve(Guest)).to.be.undefined;            
+            expect(handler.resolve(CardTable)).to.be.undefined;
+        })
+    });
+    
     describe("#when", () => {
         it("should restrict handlers using short syntax", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),

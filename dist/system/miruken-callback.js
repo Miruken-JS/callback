@@ -3,7 +3,7 @@
 System.register(["miruken-core"], function (_export, _context) {
     "use strict";
 
-    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, True, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, $provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, True, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, _$provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -224,9 +224,9 @@ System.register(["miruken-core"], function (_export, _context) {
 
             _export("$handle", $handle);
 
-            _export("$provide", $provide = $define(Variance.Covariant));
+            _export("$provide", _$provide = $define(Variance.Covariant));
 
-            _export("$provide", $provide);
+            _export("$provide", _$provide);
 
             _export("$lookup", $lookup = $define(Variance.Invariant));
 
@@ -844,7 +844,7 @@ System.register(["miruken-core"], function (_export, _context) {
                     args[_key2] = arguments[_key2];
                 }
 
-                return decorate(addDefinition("provide", $provide, true), args);
+                return decorate(addDefinition("provide", _$provide, true), args);
             }
 
             _export("provide", provide);
@@ -887,7 +887,7 @@ System.register(["miruken-core"], function (_export, _context) {
                 __resolution: function __resolution(resolution, composer) {
                     var key = resolution.key,
                         many = resolution.isMany;
-                    var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
+                    var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
                     if (!resolved) {
                         var implied = new Handler(key),
                             _delegate = this.delegate;
@@ -1047,7 +1047,7 @@ System.register(["miruken-core"], function (_export, _context) {
 
             CallbackHandler.providing = function (provider, constraint) {
                 var providing = new CallbackHandler();
-                $provide(providing, constraint, provider);
+                _$provide(providing, constraint, provider);
                 return providing;
             };
 
@@ -1151,11 +1151,27 @@ System.register(["miruken-core"], function (_export, _context) {
                         return aspectProceed(callback, composer, proceed, after);
                     }, reentrant);
                 },
-                $$handle: function $$handle(definitions) {
-                    return this.decorate({ $handle: definitions });
-                },
-                $$provide: function $$provide(definitions) {
-                    return this.decorate({ $provide: definitions });
+                $provide: function $provide() {
+                    var _this3 = this;
+
+                    for (var _len8 = arguments.length, values = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
+                        values[_key8] = arguments[_key8];
+                    }
+
+                    if (values.length > 0) {
+                        var _ret2 = function () {
+                            var provider = _this3.decorate();
+                            values.forEach(function (value) {
+                                return _$provide(provider, value);
+                            });
+                            return {
+                                v: provider
+                            };
+                        }();
+
+                        if ((typeof _ret2 === "undefined" ? "undefined" : _typeof(_ret2)) === "object") return _ret2.v;
+                    }
+                    return this;
                 },
                 when: function when(constraint) {
                     var when = new Handler(constraint),
@@ -1175,8 +1191,8 @@ System.register(["miruken-core"], function (_export, _context) {
                     });
                 },
                 next: function next() {
-                    for (var _len8 = arguments.length, handlers = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
-                        handlers[_key8] = arguments[_key8];
+                    for (var _len9 = arguments.length, handlers = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
+                        handlers[_key9] = arguments[_key9];
                     }
 
                     switch (handlers.length) {
@@ -1189,15 +1205,15 @@ System.register(["miruken-core"], function (_export, _context) {
                     }
                 },
                 $guard: function $guard(target, property) {
-                    var _this3 = this;
+                    var _this4 = this;
 
                     if (target) {
-                        var _ret2 = function () {
+                        var _ret3 = function () {
                             var guarded = false;
                             property = property || "guarded";
                             var propExists = property in target;
                             return {
-                                v: _this3.aspect(function () {
+                                v: _this4.aspect(function () {
                                     if (guarded = target[property]) {
                                         return false;
                                     }
@@ -1214,7 +1230,7 @@ System.register(["miruken-core"], function (_export, _context) {
                             };
                         }();
 
-                        if ((typeof _ret2 === "undefined" ? "undefined" : _typeof(_ret2)) === "object") return _ret2.v;
+                        if ((typeof _ret3 === "undefined" ? "undefined" : _typeof(_ret3)) === "object") return _ret3.v;
                     }
                     return this;
                 },
@@ -1310,8 +1326,8 @@ System.register(["miruken-core"], function (_export, _context) {
 
             _export("Batcher", Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
                 constructor: function constructor() {
-                    for (var _len9 = arguments.length, protocols = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
-                        protocols[_key9] = arguments[_key9];
+                    for (var _len10 = arguments.length, protocols = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
+                        protocols[_key10] = arguments[_key10];
                     }
 
                     this.base();
