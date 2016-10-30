@@ -466,11 +466,12 @@ CallbackHandler.implement({
     /**
      * Decorates the handler to provide one or more values.
      * @method $provide
-     * @param   {Array}  ...values  -  values provided
+     * @param   {Array}  ...values  -  values to provide
      * @returns {CallbackHandler}  decorated callback handler.
      * @for CallbackHandler
      */
     $provide(...values) {
+        values = $flatten(values, true);
         if (values.length > 0) {
             const provider = this.decorate();
             values.forEach(value => $provide(provider, value));

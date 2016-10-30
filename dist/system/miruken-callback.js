@@ -786,7 +786,7 @@ System.register(["miruken-core"], function (_export, _context) {
             TimeoutError.prototype = new Error();
             TimeoutError.prototype.constructor = TimeoutError;
 
-            function addDefinition(name, def, allowGets) {
+            function addDefinition(name, def, allowGets, filter) {
                 if (!def) {
                     throw new Error("Definition for @" + name + " is missing");
                 }
@@ -822,8 +822,11 @@ System.register(["miruken-core"], function (_export, _context) {
                         }
                         return allowGets ? result : $NOT_HANDLED;
                     }
-                    lateBinding.key = key;
-                    def(target, constraints, lateBinding);
+                    var handler = $isFunction(filter) ? function () {
+                        return filter.apply(this, arguments) === false ? $NOT_HANDLED : lateBinding.apply(this, arguments);
+                    } : lateBinding;
+                    handler.key = key;
+                    def(target, constraints, handler);
                 };
             }
 
@@ -1158,6 +1161,7 @@ System.register(["miruken-core"], function (_export, _context) {
                         values[_key8] = arguments[_key8];
                     }
 
+                    values = $flatten(values, true);
                     if (values.length > 0) {
                         var _ret2 = function () {
                             var provider = _this3.decorate();

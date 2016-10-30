@@ -9,11 +9,12 @@ import {
 /**
  * Marks methods and properties as handlers.
  * @method validate
- * @param  {Object}  name       - definition name
- * @param  {Object}  def        - definition provider
- * @param  {Object}  allowGets  - allow properties to be handlers
+ * @param  {Object}    name         - definition name
+ * @param  {Object}    def          - definition provider
+ * @param  {Object}    [allowGets]  - true to allow property handlers
+ * @param  {Function}  [filter]     - optional callback filter
  */
-export function addDefinition(name, def, allowGets) {
+export function addDefinition(name, def, allowGets, filter) {
     if (!def) {
         throw new Error(`Definition for @${name} is missing`);
     }
@@ -45,15 +46,22 @@ export function addDefinition(name, def, allowGets) {
             if ($isFunction(result)) {
                 return result.apply(this, arguments);
             }
-            return allowGets ? result : $NOT_HANDLED;                
+            return allowGets ? result : $NOT_HANDLED;
         }
-        lateBinding.key = key;
-        def(target, constraints, lateBinding);
+        const handler = $isFunction(filter) ? function () {
+            return filter.apply(this, arguments) === false
+                ? $NOT_HANDLED
+                : lateBinding.apply(this, arguments);
+            } : lateBinding;
+        handler.key = key;
+        def(target, constraints, handler);
     };
 }
 
 /**
  * Contravariant (in) handlers.
+ * @method handle
+ * @param {Array} ...constraint  -  constraints to handle
  */
 export function handle(...args) {
     return decorate(addDefinition("handle", $handle), args);
@@ -61,13 +69,17 @@ export function handle(...args) {
 
 /**
  * Covariant (out) handlers.
+ * @method provide
+ * @param {Array} ...constraint  -  constraints to provide
  */
 export function provide(...args) {
-    return decorate(addDefinition("provide", $provide, true), args);    
+    return decorate(addDefinition("provide", $provide, true), args);
 }
 
 /**
  * Invariant (eq) handlers.
+ * @method lookup
+ * @param {Array} ...constraint  -  constraints to lookup
  */
 export function lookup(...args) {
     return decorate(addDefinition("lookup", $lookup, true), args);    
