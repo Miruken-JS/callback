@@ -823,7 +823,7 @@ System.register(["miruken-core"], function (_export, _context) {
                         return allowGets ? result : $NOT_HANDLED;
                     }
                     var handler = $isFunction(filter) ? function () {
-                        return filter.apply(this, arguments) === false ? $NOT_HANDLED : lateBinding.apply(this, arguments);
+                        return filter.apply(this, [key].concat(Array.prototype.slice.call(arguments))) === false ? $NOT_HANDLED : lateBinding.apply(this, arguments);
                     } : lateBinding;
                     handler.key = key;
                     def(target, constraints, handler);

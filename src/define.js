@@ -49,7 +49,7 @@ export function addDefinition(name, def, allowGets, filter) {
             return allowGets ? result : $NOT_HANDLED;
         }
         const handler = $isFunction(filter) ? function () {
-            return filter.apply(this, arguments) === false
+            return filter.apply(this, [key, ...arguments]) === false
                 ? $NOT_HANDLED
                 : lateBinding.apply(this, arguments);
             } : lateBinding;
@@ -61,7 +61,7 @@ export function addDefinition(name, def, allowGets, filter) {
 /**
  * Contravariant (in) handlers.
  * @method handle
- * @param {Array} ...constraint  -  constraints to handle
+ * @param {Array} ...constraints  -  constraints to handle
  */
 export function handle(...args) {
     return decorate(addDefinition("handle", $handle), args);
@@ -70,7 +70,7 @@ export function handle(...args) {
 /**
  * Covariant (out) handlers.
  * @method provide
- * @param {Array} ...constraint  -  constraints to provide
+ * @param {Array} ...constraints  -  constraints to provide
  */
 export function provide(...args) {
     return decorate(addDefinition("provide", $provide, true), args);
@@ -79,7 +79,7 @@ export function provide(...args) {
 /**
  * Invariant (eq) handlers.
  * @method lookup
- * @param {Array} ...constraint  -  constraints to lookup
+ * @param {Array} ...constraints  -  constraints to lookup
  */
 export function lookup(...args) {
     return decorate(addDefinition("lookup", $lookup, true), args);    
