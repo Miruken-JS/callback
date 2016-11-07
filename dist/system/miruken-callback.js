@@ -293,7 +293,7 @@ System.register(["miruken-core"], function (_export, _context) {
                         var source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
                         handler = $lift(source);
                     }
-                    var node = new Handler(constraint, handler, removed),
+                    var node = new Binding(constraint, handler, removed),
                         index = createIndex(node.constraint),
                         list = Metadata.getOrCreateOwn(key, owner, function () {
                         return new IndexedList(comparer);
@@ -388,7 +388,7 @@ System.register(["miruken-core"], function (_export, _context) {
 
             _export("$define", $define);
 
-            function Handler(constraint, handler, removed) {
+            function Binding(constraint, handler, removed) {
                 var invariant = $eq.test(constraint);
                 constraint = Modifier.unwrap(constraint);
                 this.constraint = constraint;
@@ -413,9 +413,9 @@ System.register(["miruken-core"], function (_export, _context) {
                 }
             }
 
-            _export("Handler", Handler);
+            _export("Binding", Binding);
 
-            Handler.prototype.equals = function (other) {
+            Binding.prototype.equals = function (other) {
                 return this.constraint === other.constraint && (this.handler === other.handler || this.handler.key === other.handler.key);
             };
             _export("$composer", $composer = void 0);
@@ -892,7 +892,7 @@ System.register(["miruken-core"], function (_export, _context) {
                         many = resolution.isMany;
                     var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
                     if (!resolved) {
-                        var implied = new Handler(key),
+                        var implied = new Binding(key),
                             _delegate = this.delegate;
                         if (_delegate && implied.match($classOf(_delegate), Variance.Contravariant)) {
                             resolution.resolve($decorated(_delegate, true));
@@ -1178,7 +1178,7 @@ System.register(["miruken-core"], function (_export, _context) {
                     return this;
                 },
                 when: function when(constraint) {
-                    var when = new Handler(constraint),
+                    var when = new Binding(constraint),
                         condition = function condition(callback) {
                         if (callback instanceof Deferred) {
                             return when.match($classOf(callback.callback), Variance.Contravariant);

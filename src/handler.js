@@ -1,5 +1,5 @@
 import {
-    Handler, $handle, $provide, $lookup
+    Binding, $handle, $provide, $lookup
 } from "./definition";
 
 import { handle } from "./define";
@@ -78,7 +78,7 @@ export const CallbackHandler = Base.extend({
               many     = resolution.isMany;
         let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (!resolved) { // check if delegate or handler implicitly satisfy key
-            const implied  = new Handler(key),
+            const implied  = new Binding(key),
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
                 resolution.resolve($decorated(delegate, true));
@@ -487,7 +487,7 @@ CallbackHandler.implement({
      * @for CallbackHandler
      */                                                                        
     when(constraint) {
-        const when = new Handler(constraint),
+        const when = new Binding(constraint),
             condition = callback => {
                 if (callback instanceof Deferred) {
                     return when.match($classOf(callback.callback), Variance.Contravariant);

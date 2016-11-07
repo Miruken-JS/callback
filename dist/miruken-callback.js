@@ -89,7 +89,7 @@ export function $define(variance) {
             const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
             handler = $lift(source);
         }
-        const node  = new Handler(constraint, handler, removed),
+        const node  = new Binding(constraint, handler, removed),
               index = createIndex(node.constraint),
               list  = Metadata.getOrCreateOwn(key, owner, () => new IndexedList(comparer));
         list.insert(node, index);
@@ -180,7 +180,7 @@ export function $define(variance) {
     return definitions[key] = definition;
 }
 
-export function Handler(constraint, handler, removed) {
+export function Binding(constraint, handler, removed) {
     const invariant = $eq.test(constraint);
     constraint      = Modifier.unwrap(constraint);
     this.constraint = constraint;
@@ -204,7 +204,7 @@ export function Handler(constraint, handler, removed) {
         this.removed = removed;
     }
 }
-Handler.prototype.equals = function (other) {
+Binding.prototype.equals = function (other) {
     return this.constraint === other.constraint
         && (this.handler === other.handler ||
             this.handler.key === other.handler.key);
@@ -918,7 +918,7 @@ export const CallbackHandler = Base.extend({
               many     = resolution.isMany;
         let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (!resolved) { // check if delegate or handler implicitly satisfy key
-            const implied  = new Handler(key),
+            const implied  = new Binding(key),
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
                 resolution.resolve($decorated(delegate, true));
@@ -1327,7 +1327,7 @@ CallbackHandler.implement({
      * @for CallbackHandler
      */                                                                        
     when(constraint) {
-        const when = new Handler(constraint),
+        const when = new Binding(constraint),
             condition = callback => {
                 if (callback instanceof Deferred) {
                     return when.match($classOf(callback.callback), Variance.Contravariant);

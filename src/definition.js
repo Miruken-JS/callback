@@ -94,7 +94,7 @@ export function $define(variance) {
             const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
             handler = $lift(source);
         }
-        const node  = new Handler(constraint, handler, removed),
+        const node  = new Binding(constraint, handler, removed),
               index = createIndex(node.constraint),
               list  = Metadata.getOrCreateOwn(key, owner, () => new IndexedList(comparer));
         list.insert(node, index);
@@ -185,7 +185,7 @@ export function $define(variance) {
     return definitions[key] = definition;
 }
 
-export function Handler(constraint, handler, removed) {
+export function Binding(constraint, handler, removed) {
     const invariant = $eq.test(constraint);
     constraint      = Modifier.unwrap(constraint);
     this.constraint = constraint;
@@ -209,7 +209,7 @@ export function Handler(constraint, handler, removed) {
         this.removed = removed;
     }
 }
-Handler.prototype.equals = function (other) {
+Binding.prototype.equals = function (other) {
     return this.constraint === other.constraint
         && (this.handler === other.handler ||
             this.handler.key === other.handler.key);

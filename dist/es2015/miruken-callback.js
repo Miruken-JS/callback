@@ -10,7 +10,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj;
 
 exports.$define = $define;
-exports.Handler = Handler;
+exports.Binding = Binding;
 exports.RejectedError = RejectedError;
 exports.TimeoutError = TimeoutError;
 exports.addDefinition = addDefinition;
@@ -116,7 +116,7 @@ function $define(variance) {
             var source = _mirukenCore.$use.test(handler) ? _mirukenCore.Modifier.unwrap(handler) : handler;
             handler = (0, _mirukenCore.$lift)(source);
         }
-        var node = new Handler(constraint, handler, removed),
+        var node = new Binding(constraint, handler, removed),
             index = createIndex(node.constraint),
             list = _mirukenCore.Metadata.getOrCreateOwn(key, owner, function () {
             return new _mirukenCore.IndexedList(comparer);
@@ -209,7 +209,7 @@ function $define(variance) {
     return definitions[key] = definition;
 }
 
-function Handler(constraint, handler, removed) {
+function Binding(constraint, handler, removed) {
     var invariant = _mirukenCore.$eq.test(constraint);
     constraint = _mirukenCore.Modifier.unwrap(constraint);
     this.constraint = constraint;
@@ -233,7 +233,7 @@ function Handler(constraint, handler, removed) {
         this.removed = removed;
     }
 }
-Handler.prototype.equals = function (other) {
+Binding.prototype.equals = function (other) {
     return this.constraint === other.constraint && (this.handler === other.handler || this.handler.key === other.handler.key);
 };
 
@@ -763,7 +763,7 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec =
             many = resolution.isMany;
         var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (!resolved) {
-            var implied = new Handler(key),
+            var implied = new Binding(key),
                 _delegate = this.delegate;
             if (_delegate && implied.match((0, _mirukenCore.$classOf)(_delegate), _mirukenCore.Variance.Contravariant)) {
                 resolution.resolve((0, _mirukenCore.$decorated)(_delegate, true));
@@ -1043,7 +1043,7 @@ CallbackHandler.implement({
         return this;
     },
     when: function when(constraint) {
-        var when = new Handler(constraint),
+        var when = new Binding(constraint),
             condition = function condition(callback) {
             if (callback instanceof Deferred) {
                 return when.match((0, _mirukenCore.$classOf)(callback.callback), _mirukenCore.Variance.Contravariant);

@@ -6,7 +6,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
     });
     exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeCallbackHandler = exports.CascadeCallbackHandler = exports.CallbackHandler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$NOT_HANDLED = exports.$lookup = exports.$provide = exports.$handle = undefined;
     exports.$define = $define;
-    exports.Handler = Handler;
+    exports.Binding = Binding;
     exports.RejectedError = RejectedError;
     exports.TimeoutError = TimeoutError;
     exports.addDefinition = addDefinition;
@@ -128,7 +128,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                 var source = _mirukenCore.$use.test(handler) ? _mirukenCore.Modifier.unwrap(handler) : handler;
                 handler = (0, _mirukenCore.$lift)(source);
             }
-            var node = new Handler(constraint, handler, removed),
+            var node = new Binding(constraint, handler, removed),
                 index = createIndex(node.constraint),
                 list = _mirukenCore.Metadata.getOrCreateOwn(key, owner, function () {
                 return new _mirukenCore.IndexedList(comparer);
@@ -221,7 +221,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         return definitions[key] = definition;
     }
 
-    function Handler(constraint, handler, removed) {
+    function Binding(constraint, handler, removed) {
         var invariant = _mirukenCore.$eq.test(constraint);
         constraint = _mirukenCore.Modifier.unwrap(constraint);
         this.constraint = constraint;
@@ -245,7 +245,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
             this.removed = removed;
         }
     }
-    Handler.prototype.equals = function (other) {
+    Binding.prototype.equals = function (other) {
         return this.constraint === other.constraint && (this.handler === other.handler || this.handler.key === other.handler.key);
     };
 
@@ -775,7 +775,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                 many = resolution.isMany;
             var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
             if (!resolved) {
-                var implied = new Handler(key),
+                var implied = new Binding(key),
                     _delegate = this.delegate;
                 if (_delegate && implied.match((0, _mirukenCore.$classOf)(_delegate), _mirukenCore.Variance.Contravariant)) {
                     resolution.resolve((0, _mirukenCore.$decorated)(_delegate, true));
@@ -1055,7 +1055,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
             return this;
         },
         when: function when(constraint) {
-            var when = new Handler(constraint),
+            var when = new Binding(constraint),
                 condition = function condition(callback) {
                 if (callback instanceof Deferred) {
                     return when.match((0, _mirukenCore.$classOf)(callback.callback), _mirukenCore.Variance.Contravariant);
