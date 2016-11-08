@@ -4,7 +4,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
-    exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeCallbackHandler = exports.CascadeCallbackHandler = exports.CallbackHandler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$lookup = exports.$provide = exports.$handle = undefined;
+    exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeHandler = exports.CascadeHandler = exports.Handler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$lookup = exports.$provide = exports.$handle = undefined;
     exports.$unhandled = $unhandled;
     exports.$define = $define;
     exports.Binding = Binding;
@@ -752,7 +752,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         return (0, _mirukenCore.decorate)(addDefinition("lookup", $lookup, true), args);
     }
 
-    var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
+    var Handler = exports.Handler = _mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
         constructor: function constructor(delegate) {
             Object.defineProperty(this, "delegate", {
                 value: delegate,
@@ -821,8 +821,8 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
     });
 
     _mirukenCore.Base.implement({
-        toCallbackHandler: function toCallbackHandler() {
-            return CallbackHandler(this);
+        toHandler: function toHandler() {
+            return Handler(this);
         }
     });
 
@@ -835,7 +835,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         }
     });
 
-    var CascadeCallbackHandler = exports.CascadeCallbackHandler = CallbackHandler.extend({
+    var CascadeHandler = exports.CascadeHandler = Handler.extend({
         constructor: function constructor(handler, cascadeToHandler) {
             if ((0, _mirukenCore.$isNothing)(handler)) {
                 throw new TypeError("No handler specified.");
@@ -844,12 +844,12 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
             }
             Object.defineProperties(this, {
                 handler: {
-                    value: handler.toCallbackHandler(),
+                    value: handler.toHandler(),
                     writable: false
                 },
 
                 cascadeToHandler: {
-                    value: cascadeToHandler.toCallbackHandler(),
+                    value: cascadeToHandler.toHandler(),
                     writable: false
                 }
             });
@@ -863,7 +863,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         }
     });
 
-    var CompositeCallbackHandler = exports.CompositeCallbackHandler = CallbackHandler.extend({
+    var CompositeHandler = exports.CompositeHandler = Handler.extend({
         constructor: function constructor() {
             for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
                 handlers[_key4] = arguments[_key4];
@@ -880,7 +880,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                     }
 
                     handlers = (0, _mirukenCore.$flatten)(handlers, true).map(function (h) {
-                        return h.toCallbackHandler();
+                        return h.toHandler();
                     });
                     _handlers.push.apply(_handlers, _toConsumableArray(handlers));
                     return this;
@@ -891,7 +891,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                     }
 
                     handlers = (0, _mirukenCore.$flatten)(handlers, true).map(function (h) {
-                        return h.toCallbackHandler();
+                        return h.toHandler();
                     });
                     _handlers.splice.apply(_handlers, [atIndex].concat(_toConsumableArray(handlers)));
                     return this;
@@ -935,25 +935,25 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         }
     });
 
-    CallbackHandler.accepting = function (handler, constraint) {
-        var accepting = new CallbackHandler();
+    Handler.accepting = function (handler, constraint) {
+        var accepting = new Handler();
         $handle(accepting, constraint, handler);
         return accepting;
     };
 
-    CallbackHandler.providing = function (provider, constraint) {
-        var providing = new CallbackHandler();
+    Handler.providing = function (provider, constraint) {
+        var providing = new Handler();
         _$provide(providing, constraint, provider);
         return providing;
     };
 
-    CallbackHandler.implementing = function (methodName, method) {
+    Handler.implementing = function (methodName, method) {
         if (!(0, _mirukenCore.$isString)(methodName) || methodName.length === 0 || !methodName.trim()) {
             throw new TypeError("No methodName specified.");
         } else if (!(0, _mirukenCore.$isFunction)(method)) {
             throw new TypeError("Invalid method: " + method + " is not a function.");
         }
-        return new CallbackHandler().extend({
+        return new Handler().extend({
             handleCallback: function handleCallback(callback, greedy, composer) {
                 if (callback instanceof HandleMethod) {
                     var target = new Object();
@@ -965,7 +965,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         });
     };
 
-    CallbackHandler.implement({
+    Handler.implement({
         defer: function defer(callback) {
             var deferred = new Deferred(callback);
             this.handle(deferred, false, $composer);
@@ -1096,9 +1096,9 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                 case 0:
                     return this;
                 case 1:
-                    return new CascadeCallbackHandler(this, handlers[0]);
+                    return new CascadeHandler(this, handlers[0]);
                 default:
-                    return new (Function.prototype.bind.apply(CompositeCallbackHandler, [null].concat([this], handlers)))();
+                    return new (Function.prototype.bind.apply(CompositeHandler, [null].concat([this], handlers)))();
             }
         },
         $guard: function $guard(target, property) {
@@ -1246,7 +1246,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
 
     var BatchingComplete = Batching.extend();
 
-    var Batcher = exports.Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
+    var Batcher = exports.Batcher = CompositeHandler.extend(BatchingComplete, {
         constructor: function constructor() {
             for (var _len10 = arguments.length, protocols = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
                 protocols[_key10] = arguments[_key10];
@@ -1274,7 +1274,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         }
     });
 
-    CallbackHandler.implement({
+    Handler.implement({
         $batch: function $batch(protocols) {
             var _batcher = new Batcher(protocols),
                 _complete = false,
@@ -1403,7 +1403,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
         return handleMethod.returnValue;
     }
 
-    CallbackHandler.implement({
+    Handler.implement({
         toDelegate: function toDelegate() {
             return new InvocationDelegate(this);
         },

@@ -3,7 +3,7 @@
 System.register(["miruken-core"], function (_export, _context) {
     "use strict";
 
-    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, _$provide, $lookup, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, _$provide, $lookup, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, Handler, compositionScope, CascadeHandler, CompositeHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -867,7 +867,7 @@ System.register(["miruken-core"], function (_export, _context) {
 
             _export("lookup", lookup);
 
-            _export("CallbackHandler", CallbackHandler = Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
+            _export("Handler", Handler = Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
                 constructor: function constructor(delegate) {
                     Object.defineProperty(this, "delegate", {
                         value: delegate,
@@ -935,11 +935,11 @@ System.register(["miruken-core"], function (_export, _context) {
                 }
             }));
 
-            _export("CallbackHandler", CallbackHandler);
+            _export("Handler", Handler);
 
             Base.implement({
-                toCallbackHandler: function toCallbackHandler() {
-                    return CallbackHandler(this);
+                toHandler: function toHandler() {
+                    return Handler(this);
                 }
             });
 
@@ -952,7 +952,7 @@ System.register(["miruken-core"], function (_export, _context) {
                 }
             });
 
-            _export("CascadeCallbackHandler", CascadeCallbackHandler = CallbackHandler.extend({
+            _export("CascadeHandler", CascadeHandler = Handler.extend({
                 constructor: function constructor(handler, cascadeToHandler) {
                     if ($isNothing(handler)) {
                         throw new TypeError("No handler specified.");
@@ -961,12 +961,12 @@ System.register(["miruken-core"], function (_export, _context) {
                     }
                     Object.defineProperties(this, {
                         handler: {
-                            value: handler.toCallbackHandler(),
+                            value: handler.toHandler(),
                             writable: false
                         },
 
                         cascadeToHandler: {
-                            value: cascadeToHandler.toCallbackHandler(),
+                            value: cascadeToHandler.toHandler(),
                             writable: false
                         }
                     });
@@ -980,9 +980,9 @@ System.register(["miruken-core"], function (_export, _context) {
                 }
             }));
 
-            _export("CascadeCallbackHandler", CascadeCallbackHandler);
+            _export("CascadeHandler", CascadeHandler);
 
-            _export("CompositeCallbackHandler", CompositeCallbackHandler = CallbackHandler.extend({
+            _export("CompositeHandler", CompositeHandler = Handler.extend({
                 constructor: function constructor() {
                     for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
                         handlers[_key4] = arguments[_key4];
@@ -999,7 +999,7 @@ System.register(["miruken-core"], function (_export, _context) {
                             }
 
                             handlers = $flatten(handlers, true).map(function (h) {
-                                return h.toCallbackHandler();
+                                return h.toHandler();
                             });
                             _handlers.push.apply(_handlers, _toConsumableArray(handlers));
                             return this;
@@ -1010,7 +1010,7 @@ System.register(["miruken-core"], function (_export, _context) {
                             }
 
                             handlers = $flatten(handlers, true).map(function (h) {
-                                return h.toCallbackHandler();
+                                return h.toHandler();
                             });
                             _handlers.splice.apply(_handlers, [atIndex].concat(_toConsumableArray(handlers)));
                             return this;
@@ -1054,27 +1054,27 @@ System.register(["miruken-core"], function (_export, _context) {
                 }
             }));
 
-            _export("CompositeCallbackHandler", CompositeCallbackHandler);
+            _export("CompositeHandler", CompositeHandler);
 
-            CallbackHandler.accepting = function (handler, constraint) {
-                var accepting = new CallbackHandler();
+            Handler.accepting = function (handler, constraint) {
+                var accepting = new Handler();
                 $handle(accepting, constraint, handler);
                 return accepting;
             };
 
-            CallbackHandler.providing = function (provider, constraint) {
-                var providing = new CallbackHandler();
+            Handler.providing = function (provider, constraint) {
+                var providing = new Handler();
                 _$provide(providing, constraint, provider);
                 return providing;
             };
 
-            CallbackHandler.implementing = function (methodName, method) {
+            Handler.implementing = function (methodName, method) {
                 if (!$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
                     throw new TypeError("No methodName specified.");
                 } else if (!$isFunction(method)) {
                     throw new TypeError("Invalid method: " + method + " is not a function.");
                 }
-                return new CallbackHandler().extend({
+                return new Handler().extend({
                     handleCallback: function handleCallback(callback, greedy, composer) {
                         if (callback instanceof HandleMethod) {
                             var target = new Object();
@@ -1086,7 +1086,7 @@ System.register(["miruken-core"], function (_export, _context) {
                 });
             };
 
-            CallbackHandler.implement({
+            Handler.implement({
                 defer: function defer(callback) {
                     var deferred = new Deferred(callback);
                     this.handle(deferred, false, $composer);
@@ -1217,9 +1217,9 @@ System.register(["miruken-core"], function (_export, _context) {
                         case 0:
                             return this;
                         case 1:
-                            return new CascadeCallbackHandler(this, handlers[0]);
+                            return new CascadeHandler(this, handlers[0]);
                         default:
-                            return new (Function.prototype.bind.apply(CompositeCallbackHandler, [null].concat([this], handlers)))();
+                            return new (Function.prototype.bind.apply(CompositeHandler, [null].concat([this], handlers)))();
                     }
                 },
                 $guard: function $guard(target, property) {
@@ -1342,7 +1342,7 @@ System.register(["miruken-core"], function (_export, _context) {
 
             BatchingComplete = Batching.extend();
 
-            _export("Batcher", Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
+            _export("Batcher", Batcher = CompositeHandler.extend(BatchingComplete, {
                 constructor: function constructor() {
                     for (var _len10 = arguments.length, protocols = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
                         protocols[_key10] = arguments[_key10];
@@ -1372,7 +1372,7 @@ System.register(["miruken-core"], function (_export, _context) {
 
             _export("Batcher", Batcher);
 
-            CallbackHandler.implement({
+            Handler.implement({
                 $batch: function $batch(protocols) {
                     var _batcher = new Batcher(protocols),
                         _complete = false,
@@ -1484,7 +1484,7 @@ System.register(["miruken-core"], function (_export, _context) {
 
             _export("InvocationDelegate", InvocationDelegate);
 
-            CallbackHandler.implement({
+            Handler.implement({
                 toDelegate: function toDelegate() {
                     return new InvocationDelegate(this);
                 },

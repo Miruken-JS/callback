@@ -3,10 +3,7 @@ import {
 } from "miruken-core";
 
 import { Composition } from "./callback";
-
-import {
-    CallbackHandler, CompositeCallbackHandler
-} from "./handler";
+import { Handler, CompositeHandler } from "./handler";
 
 /**
  * Protocol to participate in batched operations.
@@ -17,7 +14,7 @@ export const Batching = StrictProtocol.extend({
     /**
      * Completes the batching operation.
      * @method complete
-     * @param   {CallbackHandler}  composer  - composition handler
+     * @param   {Handler}  composer  - composition handler
      * @returns {Any} the batching result.
      */                
     complete(composer) {}
@@ -29,12 +26,12 @@ export const Batching = StrictProtocol.extend({
  * @class Batcher
  * @constructor
  * @param   {Protocol}  [...protocols]  -  protocols to batch
- * @extends CompositeCallbackHandler
+ * @extends CompositeHandler
  * @uses Batching
  */
 const BatchingComplete = Batching.extend();
 
-export const Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
+export const Batcher = CompositeHandler.extend(BatchingComplete, {
     constructor(...protocols) {
         this.base();
         protocols = $flatten(protocols, true);
@@ -59,13 +56,13 @@ export const Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
     }
 });
 
-CallbackHandler.implement({
+Handler.implement({
     /**
-     * Prepares the CallbackHandler for batching.
+     * Prepares the Handler for batching.
      * @method $batch
      * @param   {Protocol}  [...protocols]  -  protocols to batch
-     * @returns {CallbackHandler}  batching callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  batching callback handler.
+     * @for Handler
      */
     $batch(protocols) {
         let _batcher  = new Batcher(protocols),

@@ -6,7 +6,7 @@ import {
     Composition, HandleMethod, ResolveMethod
 } from "./callback";
 
-import { CallbackHandler } from "./handler";
+import { Handler } from "./handler";
 
 /**
  * InvocationOptions flags enum
@@ -110,7 +110,7 @@ export const InvocationSemantics = Composition.extend({
  * {{#crossLink "HandleMethod"}}{{/crossLink}}.
  * @class InvocationDelegate
  * @constructor
- * @param   {CallbackHandler}  handler  -  forwarding handler 
+ * @param   {Handler}  handler  -  forwarding handler 
  * @extends Delegate
  */
 export const InvocationDelegate = Delegate.extend({
@@ -155,7 +155,7 @@ function delegate(delegate, methodType, protocol, methodName, args, strict) {
     return handleMethod.returnValue;
 }
 
-CallbackHandler.implement({
+Handler.implement({
     /**
      * Converts the callback handler to a {{#crossLink "Delegate"}}{{/crossLink}}.
      * @method toDelegate
@@ -165,44 +165,44 @@ CallbackHandler.implement({
     /**
      * Establishes strict invocation semantics.
      * @method $strict
-     * @returns {CallbackHandler} strict semantics.
-     * @for CallbackHandler
+     * @returns {Handler} strict semantics.
+     * @for Handler
      */
     $strict() { return this.$callOptions(InvocationOptions.Strict); },
     /**
      * Establishes broadcast invocation semantics.
      * @method $broadcast
-     * @returns {CallbackHandler} broadcast semanics.
-     * @for CallbackHandler
+     * @returns {Handler} broadcast semanics.
+     * @for Handler
      */        
     $broadcast() { return this.$callOptions(InvocationOptions.Broadcast); },
     /**
      * Establishes best-effort invocation semantics.
      * @method $bestEffort
-     * @returns {CallbackHandler} best-effort semanics.
-     * @for CallbackHandler
+     * @returns {Handler} best-effort semanics.
+     * @for Handler
      */                
     $bestEffort() { return this.$callOptions(InvocationOptions.BestEffort); },
     /**
      * Establishes notification invocation semantics.
      * @method $notify
      * @returns {InvocationOptionsHandler} notification semanics.
-     * @for CallbackHandler
+     * @for Handler
      */
     $notify() { return this.$callOptions(InvocationOptions.Notify); },
     /**
      * Establishes resolve invocation semantics.
      * @method $resolve
-     * @returns {CallbackHandler} resolved semantics.
-     * @for CallbackHandler
+     * @returns {Handler} resolved semantics.
+     * @for Handler
      */
     $resolve() { return this.$callOptions(InvocationOptions.Resolve); },        
     /**
      * Establishes custom invocation semantics.
      * @method $callOptions
      * @param  {InvocationOptions}  options  -  invocation semantics
-     * @returns {CallbackHandler} custom invocation semanics.
-     * @for CallbackHandler
+     * @returns {Handler} custom invocation semanics.
+     * @for Handler
      */                        
     $callOptions(options) {
         const semantics = new InvocationSemantics(options);

@@ -361,10 +361,10 @@ export const HandleMethod = Base.extend({
             /**
              * Attempts to invoke the method on the target.<br/>
              * During invocation, the receiver will have access to a global **$composer** property
-             * representing the initiating {{#crossLink "CallbackHandler"}}{{/crossLink}}.
+             * representing the initiating {{#crossLink "Handler"}}{{/crossLink}}.
              * @method invokeOn
              * @param   {Object}           target    -  method receiver
-             * @param   {CallbackHandler}  composer  -  composition handler
+             * @param   {Handler}  composer  -  composition handler
              * @returns {boolean} true if the method was accepted.
              */
             invokeOn(target, composer) {
@@ -428,7 +428,7 @@ export const ResolveMethod = HandleMethod.extend({
             /**
              * Attempts to invoke the method on resolved targets.
              * @method invokeResolve
-             * @param   {CallbackHandler}  composer  - composition handler
+             * @param   {Handler}  composer  - composition handler
              * @returns {boolean} true if the method was accepted.
              */
             invokeResolve(composer) {
@@ -861,12 +861,12 @@ export function lookup(...args) {
 /**
  * Base class for handling arbitrary callbacks.<br/>
  * See {{#crossLink "$callbacks"}}{{/crossLink}}
- * @class CallbackHandler
+ * @class Handler
  * @constructor
  * @param  {Object}  [delegate]  -  delegate
  * @extends Base
  */
-export const CallbackHandler = Base.extend({
+export const Handler = Base.extend({
     constructor(delegate) {
         /**
          * Gets the delegate.
@@ -883,7 +883,7 @@ export const CallbackHandler = Base.extend({
      * @method handle
      * @param   {Object}          callback        -  any callback
      * @param   {boolean}         [greedy=false]  -  true if handle greedily
-     * @param   {CallbackHandler} [composer]      -  composition handler
+     * @param   {Handler} [composer]      -  composition handler
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handle(callback, greedy, composer) {
@@ -898,9 +898,9 @@ export const CallbackHandler = Base.extend({
     /**
      * Handles the callback with all arguments populated.
      * @method handleCallback
-     * @param   {Object}          callback    -  any callback
-     * @param   {boolean}         greedy      -  true if handle greedily
-     * @param   {CallbackHandler} [composer]  -  composition handler
+     * @param   {Object}   callback    -  any callback
+     * @param   {boolean}  greedy      -  true if handle greedily
+     * @param   {Handler}  [composer]  -  composition handler
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handleCallback(callback, greedy, composer) {
@@ -957,7 +957,7 @@ export const CallbackHandler = Base.extend({
 });
 
 Base.implement({
-    toCallbackHandler() { return CallbackHandler(this); }
+    toHandler() { return Handler(this); }
 });
 
 const compositionScope = $decorator({
@@ -971,14 +971,14 @@ const compositionScope = $decorator({
 
 /**
  * Represents a two-way
- * {{#crossLink "CallbackHandler"}}{{/crossLink}} path.
- * @class CascadeCallbackHandler
+ * {{#crossLink "Handler"}}{{/crossLink}} path.
+ * @class CascadeHandler
  * @constructor
- * @param  {CallbackHandler}  handler           -  primary handler
- * @param  {CallbackHandler}  cascadeToHandler  -  secondary handler
- * @extends CallbackHandler
+ * @param  {Handler}  handler           -  primary handler
+ * @param  {Handler}  cascadeToHandler  -  secondary handler
+ * @extends Handler
  */
-export const CascadeCallbackHandler = CallbackHandler.extend({
+export const CascadeHandler = Handler.extend({
     constructor(handler, cascadeToHandler) {
         if ($isNothing(handler)) {
             throw new TypeError("No handler specified.");
@@ -988,20 +988,20 @@ export const CascadeCallbackHandler = CallbackHandler.extend({
         Object.defineProperties(this, {
             /**
              * Gets the primary handler.
-             * @property {CallbackHandler} handler
+             * @property {Handler} handler
              * @readOnly
              */
             handler:  {
-                value:     handler.toCallbackHandler(),
+                value:     handler.toHandler(),
                 writable: false
             },
             /**
              * Gets the secondary handler.
-             * @property {CallbackHandler} cascadeToHandler
+             * @property {Handler} cascadeToHandler
              * @readOnly
              */            
             cascadeToHandler: {
-                value:    cascadeToHandler.toCallbackHandler(),
+                value:    cascadeToHandler.toHandler(),
                 writable: false
             }
         });
@@ -1021,14 +1021,14 @@ export const CascadeCallbackHandler = CallbackHandler.extend({
 
 /**
  * Encapsulates zero or more
- * {{#crossLink "CallbackHandler"}}{{/crossLink}}.<br/>
+ * {{#crossLink "Handler"}}{{/crossLink}}.<br/>
  * See [Composite Pattern](http://en.wikipedia.org/wiki/Composite_pattern)
- * @class CompositeCallbackHandler
+ * @class CompositeHandler
  * @constructor
  * @param  {Arguments}  arguments  -  callback handlers
- * @extends CallbackHandler
+ * @extends Handler
  */
-export const CompositeCallbackHandler = CallbackHandler.extend({
+export const CompositeHandler = Handler.extend({
     constructor(...handlers) {
         let _handlers = [];
         this.extend({
@@ -1042,11 +1042,11 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
              * Adds the callback handlers to the composite.
              * @method addHandlers
              * @param   {Any}  ...handlers  -  handlers to add
-             * @returns {CompositeCallbackHandler}  composite
+             * @returns {CompositeHandler}  composite
              * @chainable
              */
             addHandlers(...handlers) {
-                handlers = $flatten(handlers, true).map(h => h.toCallbackHandler());
+                handlers = $flatten(handlers, true).map(h => h.toHandler());
                 _handlers.push(...handlers);
                 return this;
             },
@@ -1055,11 +1055,11 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
              * @method addHandlers
              * @param   {number}  atIndex      -  index to insert at
              * @param   {Any}     ...handlers  -  handlers to insert
-             * @returns {CompositeCallbackHandler}  composite
+             * @returns {CompositeHandler}  composite
              * @chainable
              */
             insertHandlers(atIndex, ...handlers) {
-                handlers = $flatten(handlers, true).map(h => h.toCallbackHandler());
+                handlers = $flatten(handlers, true).map(h => h.toHandler());
                 _handlers.splice(atIndex, ...handlers);                
                 return this;                    
             },                
@@ -1067,7 +1067,7 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
              * Removes callback handlers from the composite.
              * @method removeHandlers
              * @param   {Any}  ...handlers  -  handlers to remove
-             * @returns {CompositeCallbackHandler}  composite
+             * @returns {CompositeHandler}  composite
              * @chainable
              */
             removeHandlers(...handlers) {
@@ -1111,11 +1111,11 @@ export const CompositeCallbackHandler = CallbackHandler.extend({
  * @static
  * @param   {Function}  handler     -  handles callbacks
  * @param   {Any}       constraint  -  callback constraint
- * @returns {CallbackHandler} callback handler.
- * @for CallbackHandler
+ * @returns {Handler} callback handler.
+ * @for Handler
  */
-CallbackHandler.accepting = function (handler, constraint) {
-    const accepting = new CallbackHandler();
+Handler.accepting = function (handler, constraint) {
+    const accepting = new Handler();
     $handle(accepting, constraint, handler);
     return accepting;
 };
@@ -1126,11 +1126,11 @@ CallbackHandler.accepting = function (handler, constraint) {
  * @static
  * @param  {Function}  provider    -  provides callbacks
  * @param  {Any}       constraint  -  callback constraint
- * @returns {CallbackHandler} callback provider.
- * @for CallbackHandler
+ * @returns {Handler} callback provider.
+ * @for Handler
  */
-CallbackHandler.providing = function (provider, constraint) {
-    const providing = new CallbackHandler();
+Handler.providing = function (provider, constraint) {
+    const providing = new Handler();
     $provide(providing, constraint, provider);
     return providing;
 };
@@ -1142,16 +1142,16 @@ CallbackHandler.providing = function (provider, constraint) {
  * @static
  * @param  {string}    methodName  -  method name
  * @param  {Function}  method      -  method function
- * @returns {CallbackHandler} method handler.
- * @for CallbackHandler
+ * @returns {Handler} method handler.
+ * @for Handler
  */
-CallbackHandler.implementing = function (methodName, method) {
+Handler.implementing = function (methodName, method) {
     if (!$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
         throw new TypeError("No methodName specified.");
     } else if (!$isFunction(method)) {
         throw new TypeError(`Invalid method: ${method} is not a function.`);
     }
-    return (new CallbackHandler()).extend({
+    return (new Handler()).extend({
         handleCallback(callback, greedy, composer) {
             if (callback instanceof HandleMethod) {
                 const target = new Object();
@@ -1163,13 +1163,13 @@ CallbackHandler.implementing = function (methodName, method) {
     });
 };
 
-CallbackHandler.implement({
+Handler.implement({
     /**
      * Asynchronusly handles the callback.
      * @method defer
      * @param   {Object}  callback  -  callback
      * @returns {Promise} promise to handled callback.
-     * @for CallbackHandler
+     * @for Handler
      * @async
      */                        
     defer(callback) {
@@ -1182,7 +1182,7 @@ CallbackHandler.implement({
      * @method deferAll
      * @param   {Object}  callback  -  callback
      * @returns {Promise} promise to handled callback.
-     * @for CallbackHandler
+     * @for Handler
      * @async
      */                                
     deferAll(callback) {
@@ -1195,7 +1195,7 @@ CallbackHandler.implement({
      * @method resolve
      * @param   {Any}  key  -  key
      * @returns {Any}  resolved key.  Could be a promise.
-     * @for CallbackHandler
+     * @for Handler
      * @async
      */                                
     resolve(key) {
@@ -1209,7 +1209,7 @@ CallbackHandler.implement({
      * @method resolveAll
      * @param   {Any}   key  -  key
      * @returns {Array} resolved key.  Could be a promise.
-     * @for CallbackHandler
+     * @for Handler
      * @async
      */                                        
     resolveAll(key) {
@@ -1223,7 +1223,7 @@ CallbackHandler.implement({
      * @method lookup
      * @param   {Any}  key  -  key
      * @returns {Any}  value of key.
-     * @for CallbackHandler
+     * @for Handler
      */                                        
     lookup(key) {
         const lookup = (key instanceof Lookup) ? key : new Lookup(key);
@@ -1236,7 +1236,7 @@ CallbackHandler.implement({
      * @method lookupAll
      * @param   {Any}  key  -  key
      * @returns {Array}  value(s) of key.
-     * @for CallbackHandler
+     * @for Handler
      */                                                
     lookupAll(key) {
         const lookup = (key instanceof Lookup) ? key : new Lookup(key, true);
@@ -1248,8 +1248,8 @@ CallbackHandler.implement({
      * Decorates the handler.
      * @method decorate
      * @param   {Object}  decorations  -  decorations
-     * @returns {CallbackHandler} decorated callback handler.
-     * @for CallbackHandler
+     * @returns {Handler} decorated callback handler.
+     * @for Handler
      */        
     decorate(decorations) {
         return $decorate(this, decorations);
@@ -1259,8 +1259,8 @@ CallbackHandler.implement({
      * @method filter
      * @param   {Function}  filter     -  filter
      * @param   {boolean}   reentrant  -  true if reentrant, false otherwise
-     * @returns {CallbackHandler} filtered callback handler.
-     * @for CallbackHandler
+     * @returns {Handler} filtered callback handler.
+     * @for Handler
      */                                                        
     filter(filter, reentrant) {
         if (!$isFunction(filter)) {
@@ -1283,9 +1283,9 @@ CallbackHandler.implement({
      * @param   {Function}  before     -  before action.  Return false to reject
      * @param   {Function}  action     -  after action
      * @param   {boolean}   reentrant  -  true if reentrant, false otherwise
-     * @returns {CallbackHandler}  callback handler aspect.
+     * @returns {Handler}  callback handler aspect.
      * @throws  {RejectedError} An error if before returns an unaccepted promise.
-     * @for CallbackHandler
+     * @for Handler
      */
     aspect(before, after, reentrant) {
         return this.filter((callback, composer, proceed) => {
@@ -1315,8 +1315,8 @@ CallbackHandler.implement({
      * Decorates the handler to provide one or more values.
      * @method $provide
      * @param   {Array}  ...values  -  values to provide
-     * @returns {CallbackHandler}  decorated callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  decorated callback handler.
+     * @for Handler
      */
     $provide(...values) {
         values = $flatten(values, true);
@@ -1331,8 +1331,8 @@ CallbackHandler.implement({
      * Decorates the handler to conditionally handle callbacks.
      * @method when
      * @param   {Any}  constraint  -  matching constraint
-     * @returns {CallbackHandler}  conditional callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  conditional callback handler.
+     * @for Handler
      */                                                                        
     when(constraint) {
         const when = new Binding(constraint),
@@ -1355,14 +1355,14 @@ CallbackHandler.implement({
      * Builds a handler chain.
      * @method next
      * @param   {Arguments}  arguments  -  handler chain members
-     * @returns {CallbackHandler}  chaining callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  chaining callback handler.
+     * @for Handler
      */                                                                                
     next(...handlers) {
         switch(handlers.length) {
         case 0:  return this;
-        case 1:  return new CascadeCallbackHandler(this, handlers[0])
-        default: return new CompositeCallbackHandler(this, ...handlers);
+        case 1:  return new CascadeHandler(this, handlers[0])
+        default: return new CompositeHandler(this, ...handlers);
         }
     },
     /**
@@ -1370,8 +1370,8 @@ CallbackHandler.implement({
      * @method $guard
      * @param   {Object}  target              -  target to guard
      * @param   {string}  [property='guard']  -  property for guard state
-     * @returns {CallbackHandler}  guarding callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  guarding callback handler.
+     * @for Handler
      */        
     $guard(target, property) {
         if (target) {
@@ -1401,8 +1401,8 @@ CallbackHandler.implement({
      * @param   {Object}  target                 -  target to track
      * @param   {Object}  [ms=50]                -  delay to wait before tracking
      * @param   {string}  [property='activity']  -  property for activity state
-     * @returns {CallbackHandler}  activity callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  activity callback handler.
+     * @for Handler
      */                
     $activity(target, ms, property) {
         property = property || "$$activity";
@@ -1435,8 +1435,8 @@ CallbackHandler.implement({
     /**
      * Ensures all return values are promises..
      * @method $promises
-     * @returns {CallbackHandler}  promising callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  promising callback handler.
+     * @for Handler
      */                
     $promise() {
         return this.filter((callback, composer, proceed) => {
@@ -1459,8 +1459,8 @@ CallbackHandler.implement({
      * @method $timeout
      * @param   {number}            ms       -  duration before promise times out
      * @param   {Function | Error}  [error]  -  error instance or custom error class
-     * @returns {CallbackHandler}  timeout callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  timeout callback handler.
+     * @for Handler
      */        
     $timeout(ms, error) {
         return this.filter((callback, composer, proceed) => {
@@ -1534,7 +1534,7 @@ export const Batching = StrictProtocol.extend({
     /**
      * Completes the batching operation.
      * @method complete
-     * @param   {CallbackHandler}  composer  - composition handler
+     * @param   {Handler}  composer  - composition handler
      * @returns {Any} the batching result.
      */                
     complete(composer) {}
@@ -1546,12 +1546,12 @@ export const Batching = StrictProtocol.extend({
  * @class Batcher
  * @constructor
  * @param   {Protocol}  [...protocols]  -  protocols to batch
- * @extends CompositeCallbackHandler
+ * @extends CompositeHandler
  * @uses Batching
  */
 const BatchingComplete = Batching.extend();
 
-export const Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
+export const Batcher = CompositeHandler.extend(BatchingComplete, {
     constructor(...protocols) {
         this.base();
         protocols = $flatten(protocols, true);
@@ -1576,13 +1576,13 @@ export const Batcher = CompositeCallbackHandler.extend(BatchingComplete, {
     }
 });
 
-CallbackHandler.implement({
+Handler.implement({
     /**
-     * Prepares the CallbackHandler for batching.
+     * Prepares the Handler for batching.
      * @method $batch
      * @param   {Protocol}  [...protocols]  -  protocols to batch
-     * @returns {CallbackHandler}  batching callback handler.
-     * @for CallbackHandler
+     * @returns {Handler}  batching callback handler.
+     * @for Handler
      */
     $batch(protocols) {
         let _batcher  = new Batcher(protocols),
@@ -1728,7 +1728,7 @@ export const InvocationSemantics = Composition.extend({
  * {{#crossLink "HandleMethod"}}{{/crossLink}}.
  * @class InvocationDelegate
  * @constructor
- * @param   {CallbackHandler}  handler  -  forwarding handler 
+ * @param   {Handler}  handler  -  forwarding handler 
  * @extends Delegate
  */
 export const InvocationDelegate = Delegate.extend({
@@ -1773,7 +1773,7 @@ function delegate(delegate, methodType, protocol, methodName, args, strict) {
     return handleMethod.returnValue;
 }
 
-CallbackHandler.implement({
+Handler.implement({
     /**
      * Converts the callback handler to a {{#crossLink "Delegate"}}{{/crossLink}}.
      * @method toDelegate
@@ -1783,44 +1783,44 @@ CallbackHandler.implement({
     /**
      * Establishes strict invocation semantics.
      * @method $strict
-     * @returns {CallbackHandler} strict semantics.
-     * @for CallbackHandler
+     * @returns {Handler} strict semantics.
+     * @for Handler
      */
     $strict() { return this.$callOptions(InvocationOptions.Strict); },
     /**
      * Establishes broadcast invocation semantics.
      * @method $broadcast
-     * @returns {CallbackHandler} broadcast semanics.
-     * @for CallbackHandler
+     * @returns {Handler} broadcast semanics.
+     * @for Handler
      */        
     $broadcast() { return this.$callOptions(InvocationOptions.Broadcast); },
     /**
      * Establishes best-effort invocation semantics.
      * @method $bestEffort
-     * @returns {CallbackHandler} best-effort semanics.
-     * @for CallbackHandler
+     * @returns {Handler} best-effort semanics.
+     * @for Handler
      */                
     $bestEffort() { return this.$callOptions(InvocationOptions.BestEffort); },
     /**
      * Establishes notification invocation semantics.
      * @method $notify
      * @returns {InvocationOptionsHandler} notification semanics.
-     * @for CallbackHandler
+     * @for Handler
      */
     $notify() { return this.$callOptions(InvocationOptions.Notify); },
     /**
      * Establishes resolve invocation semantics.
      * @method $resolve
-     * @returns {CallbackHandler} resolved semantics.
-     * @for CallbackHandler
+     * @returns {Handler} resolved semantics.
+     * @for Handler
      */
     $resolve() { return this.$callOptions(InvocationOptions.Resolve); },        
     /**
      * Establishes custom invocation semantics.
      * @method $callOptions
      * @param  {InvocationOptions}  options  -  invocation semantics
-     * @returns {CallbackHandler} custom invocation semanics.
-     * @for CallbackHandler
+     * @returns {Handler} custom invocation semanics.
+     * @for Handler
      */                        
     $callOptions(options) {
         const semantics = new InvocationSemantics(options);

@@ -72,10 +72,10 @@ export const HandleMethod = Base.extend({
             /**
              * Attempts to invoke the method on the target.<br/>
              * During invocation, the receiver will have access to a global **$composer** property
-             * representing the initiating {{#crossLink "CallbackHandler"}}{{/crossLink}}.
+             * representing the initiating {{#crossLink "Handler"}}{{/crossLink}}.
              * @method invokeOn
              * @param   {Object}           target    -  method receiver
-             * @param   {CallbackHandler}  composer  -  composition handler
+             * @param   {Handler}  composer  -  composition handler
              * @returns {boolean} true if the method was accepted.
              */
             invokeOn(target, composer) {
@@ -139,7 +139,7 @@ export const ResolveMethod = HandleMethod.extend({
             /**
              * Attempts to invoke the method on resolved targets.
              * @method invokeResolve
-             * @param   {CallbackHandler}  composer  - composition handler
+             * @param   {Handler}  composer  - composition handler
              * @returns {boolean} true if the method was accepted.
              */
             invokeResolve(composer) {
