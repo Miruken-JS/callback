@@ -10,7 +10,7 @@ import {
 
 import {
     $define, $handle, $provide, $lookup,
-    $NOT_HANDLED
+    $unhandled
 } from "../src/definition"
 
 import { handle, provide, lookup } from "../src/define";
@@ -138,7 +138,7 @@ const CardTable = Activity.extend(Game, {
         this.extend({
             open(numPlayers) {
                 if (minPlayers > numPlayers || numPlayers > maxPlayers)
-                    return $NOT_HANDLED;
+                    return $unhandled;
             },
         });
     }
@@ -478,11 +478,11 @@ describe("CallbackHandler", () => {
             expect(inventory.accountable).to.equal(cashier);
         });
 
-        it("should ignore callback if $NOT_HANDLED", () => {
+        it("should ignore callback if $unhandled", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (CallbackHandler.extend({
                       @handle(Cashier)
-                      ignore(cashier) { return $NOT_HANDLED; }
+                      ignore(cashier) { return $unhandled; }
                   }));
             expect(inventory.handle(cashier)).to.be.false;
         });
@@ -554,7 +554,7 @@ describe("CallbackHandler", () => {
                       @handle(Activity)
                       activity(activity) {
                           this.activity = activity;
-                          return false;
+                          return $unhandled;
                       },
                       @handle(Game)
                       play(game) {
@@ -709,8 +709,8 @@ describe("CallbackHandler", () => {
             const cashier   = new Cashier(750000.00),
                   casino    = new Casino("Venetian").addHandlers(cashier),
                   wireMoney = new WireMoney(250000);
-            Promise.resolve(casino.defer(wireMoney)).then(handled => {
-                expect(handled).to.be.true;
+            Promise.resolve(casino.defer(wireMoney)).then(result => {
+                expect(result).to.equal(wireMoney);
                 expect(wireMoney.received).to.equal(250000);
                 done();
             });
@@ -726,8 +726,8 @@ describe("CallbackHandler", () => {
                   }))),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
-            Promise.resolve(casino.defer(wireMoney)).then(handled => {
-                expect(handled).to.be.true;
+            Promise.resolve(casino.defer(wireMoney)).then(result => {
+                expect(result).to.equal(wireMoney);
                 expect(wireMoney.received).to.equal(50000);
                 done();
             });
@@ -954,10 +954,10 @@ describe("CallbackHandler", () => {
             expect(something.resolve(Cashier)).to.be.undefined;
         });
 
-        it("should not resolve objects if $NOT_HANDLED", () => {
+        it("should not resolve objects if $unhandled", () => {
             const inventory = new (CallbackHandler.extend({
                 @provide(Cashier)
-                notHandled() { return $NOT_HANDLED; }
+                notHandled() { return $unhandled; }
             }));
             expect(inventory.resolve(Cashier)).to.be.undefined;
         });
@@ -1229,11 +1229,11 @@ describe("CallbackHandler", () => {
             const cashier   = new Cashier(750000.00),
                   casino    = new Casino("Venetian").addHandlers(cashier),
                   wireMoney = new WireMoney(250000);
-            Promise.resolve(casino.aspect(True, wire =>  done())
-                .defer(wireMoney)).then(handled => {
-                expect(handled).to.be.true;
-                expect(wireMoney.received).to.equal(250000);
-            });
+            Promise.resolve(casino.aspect(True, wire => done())
+                .defer(wireMoney)).then(result => {
+                    expect(result).to.equal(result);
+                    expect(wireMoney.received).to.equal(250000);
+                });
         });
 
         it("should invoke async with side-effect", done => {
@@ -1596,7 +1596,7 @@ describe("InvocationCallbackHandler", () => {
         it("should ignore invocation if unable to resolve promise", done => {
             const handler = new (CallbackHandler.extend({
                 @provide(Game)
-                game() { return Promise.delay(10).then(() => $NOT_HANDLED); }
+                game() { return Promise.delay(10).then(() => $unhandled); }
               }));
             Game(handler.$resolve().$bestEffort()).open(5).then(id => {
                 expect(id).to.be.undefiend;
@@ -1818,8 +1818,8 @@ describe("CallbackHandler", () => {
                   }))),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
-            Promise.resolve(casino.$timeout(100).defer(wireMoney)).then(handled => {
-                expect(handled).to.be.true;
+            Promise.resolve(casino.$timeout(100).defer(wireMoney)).then(result => {
+                expect(result).to.equal(wireMoney);
                 expect(wireMoney.received).to.equal(50000);
                 done();
             });

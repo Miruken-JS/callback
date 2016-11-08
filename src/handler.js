@@ -1,5 +1,6 @@
 import {
-    Binding, $handle, $provide, $lookup
+    Binding, $handle, $provide, $lookup,
+    $unhandled
 } from "./definition";
 
 import { handle } from "./define";
@@ -62,7 +63,7 @@ export const CallbackHandler = Base.extend({
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handleCallback(callback, greedy, composer) {
-        return $handle.dispatch(this, callback, null, composer, greedy);
+        return $handle.dispatch(this, callback, null, composer, greedy) !== $unhandled;
     },
     @handle(Lookup)
     __lookup(lookup, composer) {
@@ -77,32 +78,38 @@ export const CallbackHandler = Base.extend({
         const key      = resolution.key,
               many     = resolution.isMany;
         let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
-        if (!resolved) { // check if delegate or handler implicitly satisfy key
+        if (resolved === $unhandled) { // check if delegate or handler implicitly satisfy key
             const implied  = new Binding(key),
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
                 resolution.resolve($decorated(delegate, true));
                 resolved = true;
             }
-            if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
+            if ((resolved === $unhandled || many) &&
+                implied.match($classOf(this), Variance.Contravariant)) {
                 resolution.resolve($decorated(this, true));
                 resolved = true;
             }
         }
-        return resolved;
+        if (resolved === $unhandled) { return resolved };
     },
     @handle(HandleMethod)
     __handleMethod(method, composer) {
-        return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
+        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
+            return $unhandled;
+        }
     },
     @handle(ResolveMethod)
     __resolveMethod(method, composer) {
-        return method.invokeResolve(composer);
+        if (!method.invokeResolve(composer)) {
+            return $unhandled;            
+        }
     },
     @handle(Composition)
     __composition(composable, composer) {
         const callback = composable.callback;
-        return !!(callback && $handle.dispatch(this, callback, null, composer));
+        if ($isNothing(callback)) { return $unhandled; }
+        return $handle.dispatch(this, callback, null, composer);
     }
 }, {
     coerce(object) { return new this(object); }

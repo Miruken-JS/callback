@@ -3,12 +3,13 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeCallbackHandler = exports.CascadeCallbackHandler = exports.CallbackHandler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$NOT_HANDLED = exports.$lookup = exports.$provide = exports.$handle = undefined;
+exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeCallbackHandler = exports.CascadeCallbackHandler = exports.CallbackHandler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$lookup = exports.$provide = exports.$handle = undefined;
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj;
 
+exports.$unhandled = $unhandled;
 exports.$define = $define;
 exports.Binding = Binding;
 exports.RejectedError = RejectedError;
@@ -57,7 +58,9 @@ var $handle = exports.$handle = $define(_mirukenCore.Variance.Contravariant);
 var _$provide = $define(_mirukenCore.Variance.Covariant);
 exports.$provide = _$provide;
 var $lookup = exports.$lookup = $define(_mirukenCore.Variance.Invariant);
-var $NOT_HANDLED = exports.$NOT_HANDLED = Object.freeze({});
+function $unhandled(result) {
+    return result === $unhandled;
+}
 
 function $define(variance) {
     var handled = void 0,
@@ -177,7 +180,9 @@ function $define(variance) {
             return dispatched;
         }
 
-        return dispatched;
+        if (!dispatched) {
+            return $unhandled;
+        }
     };
     function _dispatch(target, callback, constraint, v, list, composer, all, results) {
         var dispatched = false;
@@ -238,12 +243,14 @@ Binding.prototype.equals = function (other) {
 };
 
 function createIndex(constraint) {
-    if (constraint) {
-        if ((0, _mirukenCore.$isString)(constraint)) {
-            return constraint;
-        } else if ((0, _mirukenCore.$isFunction)(constraint)) {
-            return (0, _mirukenCore.assignID)(constraint);
-        }
+    if (!constraint) {
+        return;
+    }
+    if ((0, _mirukenCore.$isString)(constraint)) {
+        return constraint;
+    }
+    if ((0, _mirukenCore.$isFunction)(constraint)) {
+        return (0, _mirukenCore.assignID)(constraint);
     }
 }
 
@@ -310,11 +317,11 @@ function compareInvariant(node, insert) {
 }
 
 function requiresResult(result) {
-    return result !== null && result !== undefined && result !== $NOT_HANDLED;
+    return result != null && result !== $unhandled;
 }
 
 function impliesSuccess(result) {
-    return result ? result !== $NOT_HANDLED : result === undefined;
+    return result !== $unhandled;
 }
 
 var $composer = exports.$composer = void 0;
@@ -392,7 +399,7 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
                             result = method.apply(target, args);
                             break;
                     }
-                    if (result === $NOT_HANDLED) {
+                    if (result === $unhandled) {
                         return false;
                     }
                     _returnValue = result;
@@ -527,9 +534,9 @@ var Deferred = exports.Deferred = _mirukenCore.Base.extend({
             get callbackResult() {
                 if (_result === undefined) {
                     if (_pending.length === 1) {
-                        _result = Promise.resolve(_pending[0]).then(_mirukenCore.True);
+                        _result = Promise.resolve(_pending[0]);
                     } else if (_pending.length > 1) {
-                        _result = Promise.all(_pending).then(_mirukenCore.True);
+                        _result = Promise.all(_pending);
                     } else {
                         _result = Promise.resolve(_tracked);
                     }
@@ -699,10 +706,10 @@ function addDefinition(name, def, allowGets, filter) {
             if ((0, _mirukenCore.$isFunction)(result)) {
                 return result.apply(this, arguments);
             }
-            return allowGets ? result : $NOT_HANDLED;
+            return allowGets ? result : $unhandled;
         }
         var handler = (0, _mirukenCore.$isFunction)(filter) ? function () {
-            return filter.apply(this, [key].concat(Array.prototype.slice.call(arguments))) === false ? $NOT_HANDLED : lateBinding.apply(this, arguments);
+            return filter.apply(this, [key].concat(Array.prototype.slice.call(arguments))) === false ? $unhandled : lateBinding.apply(this, arguments);
         } : lateBinding;
         handler.key = key;
         def(target, constraints, handler);
@@ -750,7 +757,7 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec =
         return !!this.handleCallback(callback, !!greedy, composer);
     },
     handleCallback: function handleCallback(callback, greedy, composer) {
-        return $handle.dispatch(this, callback, null, composer, greedy);
+        return $handle.dispatch(this, callback, null, composer, greedy) !== $unhandled;
     },
     __lookup: function __lookup(lookup, composer) {
         return $lookup.dispatch(this, lookup, lookup.key, composer, lookup.isMany, lookup.addResult);
@@ -762,29 +769,38 @@ var CallbackHandler = exports.CallbackHandler = _mirukenCore.Base.extend((_dec =
         var key = resolution.key,
             many = resolution.isMany;
         var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
-        if (!resolved) {
+        if (resolved === $unhandled) {
             var implied = new Binding(key),
                 _delegate = this.delegate;
             if (_delegate && implied.match((0, _mirukenCore.$classOf)(_delegate), _mirukenCore.Variance.Contravariant)) {
                 resolution.resolve((0, _mirukenCore.$decorated)(_delegate, true));
                 resolved = true;
             }
-            if ((!resolved || many) && implied.match((0, _mirukenCore.$classOf)(this), _mirukenCore.Variance.Contravariant)) {
+            if ((resolved === $unhandled || many) && implied.match((0, _mirukenCore.$classOf)(this), _mirukenCore.Variance.Contravariant)) {
                 resolution.resolve((0, _mirukenCore.$decorated)(this, true));
                 resolved = true;
             }
         }
-        return resolved;
+        if (resolved === $unhandled) {
+            return resolved;
+        };
     },
     __handleMethod: function __handleMethod(method, composer) {
-        return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
+        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
+            return $unhandled;
+        }
     },
     __resolveMethod: function __resolveMethod(method, composer) {
-        return method.invokeResolve(composer);
+        if (!method.invokeResolve(composer)) {
+            return $unhandled;
+        }
     },
     __composition: function __composition(composable, composer) {
         var callback = composable.callback;
-        return !!(callback && $handle.dispatch(this, callback, null, composer));
+        if ((0, _mirukenCore.$isNothing)(callback)) {
+            return $unhandled;
+        }
+        return $handle.dispatch(this, callback, null, composer);
     }
 }, (_applyDecoratedDescriptor(_obj, "__lookup", [_dec], Object.getOwnPropertyDescriptor(_obj, "__lookup"), _obj), _applyDecoratedDescriptor(_obj, "__defered", [_dec2], Object.getOwnPropertyDescriptor(_obj, "__defered"), _obj), _applyDecoratedDescriptor(_obj, "__resolution", [_dec3], Object.getOwnPropertyDescriptor(_obj, "__resolution"), _obj), _applyDecoratedDescriptor(_obj, "__handleMethod", [_dec4], Object.getOwnPropertyDescriptor(_obj, "__handleMethod"), _obj), _applyDecoratedDescriptor(_obj, "__resolveMethod", [_dec5], Object.getOwnPropertyDescriptor(_obj, "__resolveMethod"), _obj), _applyDecoratedDescriptor(_obj, "__composition", [_dec6], Object.getOwnPropertyDescriptor(_obj, "__composition"), _obj)), _obj)), {
     coerce: function coerce(object) {

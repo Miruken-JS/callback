@@ -9,24 +9,26 @@ const definitions = {};
 
 /**
  * Definition for handling callbacks contravariantly.
- * @method $handle
+ * @property {Function} $handle
  */
 export const $handle = $define(Variance.Contravariant);
 /**
  * Definition for providing callbacks covariantly.
- * @method $provide  
+ * @property {Function} $provide  
  */        
 export const $provide = $define(Variance.Covariant);
 /**
  * Definition for matching callbacks invariantly.
- * @method $lookup  
+ * @property {Function} $lookup  
  */                
 export const $lookup = $define(Variance.Invariant);
 /**
- * return value to indicate a callback was not handled.
- * @property {Object} $NOT_HANDLED
+ * Indicates a callback was not handled.
+ * @property {Function} $unhandled
  */                
-export const $NOT_HANDLED = Object.freeze({});
+export function $unhandled(result) {
+    return result === $unhandled;
+}
 
 /**
  * Defines a new handler grouping.
@@ -146,14 +148,14 @@ export function $define(variance) {
                 Metadata.collect(key, target, list => {
                     dispatched = _dispatch(target, callback, constraint, v,
                                            list, composer, all, results)
-                        || dispatched;
+                              || dispatched;
                     return dispatched && !all;
                 });
             }
             return dispatched;
         }
-        
-        return dispatched;
+
+        if (!dispatched) { return $unhandled; }
     };
     function _dispatch(target, callback, constraint, v, list, composer, all, results) {
         let   dispatched = false;
@@ -216,12 +218,12 @@ Binding.prototype.equals = function (other) {
 }
 
 function createIndex(constraint) {
-    if (constraint) {
-        if ($isString(constraint)) {
-            return constraint;
-        } else if ($isFunction(constraint)) {
-            return assignID(constraint);
-        }
+    if (!constraint) { return; }
+    if ($isString(constraint)) {
+        return constraint;
+    }
+    if ($isFunction(constraint)) {
+        return assignID(constraint);
     }
 }
 
@@ -291,9 +293,9 @@ function compareInvariant(node, insert) {
 }
 
 function requiresResult(result) {
-    return ((result !== null) && (result !== undefined) && (result !== $NOT_HANDLED));
+    return ((result != null) && (result !== $unhandled));
 }
 
 function impliesSuccess(result) {
-    return result ? (result !== $NOT_HANDLED) : (result === undefined);
+    return result !== $unhandled;
 }

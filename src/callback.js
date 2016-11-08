@@ -1,10 +1,10 @@
 import {
-    True, Base, Undefined, MethodType,
+    Base, Undefined, MethodType,
     $isProtocol, $isPromise, $isFunction,
     $isNothing, $instant, $flatten
 } from "miruken-core";
 
-import { $NOT_HANDLED } from "./definition";
+import { $unhandled } from "./definition";
 
 export let $composer;
 
@@ -103,7 +103,7 @@ export const HandleMethod = Base.extend({
                         result = method.apply(target, args);
                         break;
                     }
-                    if (result === $NOT_HANDLED) {
+                    if (result === $unhandled) {
                         return false;
                     }
                     _returnValue = result;
@@ -292,9 +292,9 @@ export const Deferred = Base.extend({
             get callbackResult() {
                 if (_result === undefined) {
                     if (_pending.length === 1) {
-                        _result = Promise.resolve(_pending[0]).then(True);
+                        _result = Promise.resolve(_pending[0]);
                     } else if (_pending.length > 1) {
-                        _result = Promise.all(_pending).then(True);
+                        _result = Promise.all(_pending);
                     } else {
                         _result = Promise.resolve(_tracked);
                     }

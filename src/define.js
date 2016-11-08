@@ -1,5 +1,5 @@
 import {
-    $handle, $provide, $lookup, $NOT_HANDLED
+    $handle, $provide, $lookup, $unhandled
 } from "./definition";
 
 import {
@@ -46,11 +46,11 @@ export function addDefinition(name, def, allowGets, filter) {
             if ($isFunction(result)) {
                 return result.apply(this, arguments);
             }
-            return allowGets ? result : $NOT_HANDLED;
+            return allowGets ? result : $unhandled;
         }
         const handler = $isFunction(filter) ? function () {
             return filter.apply(this, [key, ...arguments]) === false
-                ? $NOT_HANDLED
+                ? $unhandled
                 : lateBinding.apply(this, arguments);
             } : lateBinding;
         handler.key = key;

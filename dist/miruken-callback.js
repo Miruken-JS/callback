@@ -1,27 +1,29 @@
-import {False,Undefined,Base,Abstract,Metadata,Variance,Modifier,IndexedList,typeOf,assignID,$isNothing,$isString,$isFunction,$isObject,$isClass,$isProtocol,$classOf,$eq,$use,$lift,True,MethodType,$isPromise,$instant,$flatten,decorate,isDescriptor,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
+import {False,Undefined,Base,Abstract,Metadata,Variance,Modifier,IndexedList,typeOf,assignID,$isNothing,$isString,$isFunction,$isObject,$isClass,$isProtocol,$classOf,$eq,$use,$lift,MethodType,$isPromise,$instant,$flatten,decorate,isDescriptor,$decorator,$decorate,$decorated,StrictProtocol,Flags,Delegate,Resolving} from 'miruken-core';
 
 const definitions = {};
 
 /**
  * Definition for handling callbacks contravariantly.
- * @method $handle
+ * @property {Function} $handle
  */
 export const $handle = $define(Variance.Contravariant);
 /**
  * Definition for providing callbacks covariantly.
- * @method $provide  
+ * @property {Function} $provide  
  */        
 export const $provide = $define(Variance.Covariant);
 /**
  * Definition for matching callbacks invariantly.
- * @method $lookup  
+ * @property {Function} $lookup  
  */                
 export const $lookup = $define(Variance.Invariant);
 /**
- * return value to indicate a callback was not handled.
- * @property {Object} $NOT_HANDLED
+ * Indicates a callback was not handled.
+ * @property {Function} $unhandled
  */                
-export const $NOT_HANDLED = Object.freeze({});
+export function $unhandled(result) {
+    return result === $unhandled;
+}
 
 /**
  * Defines a new handler grouping.
@@ -141,14 +143,14 @@ export function $define(variance) {
                 Metadata.collect(key, target, list => {
                     dispatched = _dispatch(target, callback, constraint, v,
                                            list, composer, all, results)
-                        || dispatched;
+                              || dispatched;
                     return dispatched && !all;
                 });
             }
             return dispatched;
         }
-        
-        return dispatched;
+
+        if (!dispatched) { return $unhandled; }
     };
     function _dispatch(target, callback, constraint, v, list, composer, all, results) {
         let   dispatched = false;
@@ -211,12 +213,12 @@ Binding.prototype.equals = function (other) {
 }
 
 function createIndex(constraint) {
-    if (constraint) {
-        if ($isString(constraint)) {
-            return constraint;
-        } else if ($isFunction(constraint)) {
-            return assignID(constraint);
-        }
+    if (!constraint) { return; }
+    if ($isString(constraint)) {
+        return constraint;
+    }
+    if ($isFunction(constraint)) {
+        return assignID(constraint);
     }
 }
 
@@ -286,11 +288,11 @@ function compareInvariant(node, insert) {
 }
 
 function requiresResult(result) {
-    return ((result !== null) && (result !== undefined) && (result !== $NOT_HANDLED));
+    return ((result != null) && (result !== $unhandled));
 }
 
 function impliesSuccess(result) {
-    return result ? (result !== $NOT_HANDLED) : (result === undefined);
+    return result !== $unhandled;
 }
 
 export let $composer;
@@ -390,7 +392,7 @@ export const HandleMethod = Base.extend({
                         result = method.apply(target, args);
                         break;
                     }
-                    if (result === $NOT_HANDLED) {
+                    if (result === $unhandled) {
                         return false;
                     }
                     _returnValue = result;
@@ -579,9 +581,9 @@ export const Deferred = Base.extend({
             get callbackResult() {
                 if (_result === undefined) {
                     if (_pending.length === 1) {
-                        _result = Promise.resolve(_pending[0]).then(True);
+                        _result = Promise.resolve(_pending[0]);
                     } else if (_pending.length > 1) {
-                        _result = Promise.all(_pending).then(True);
+                        _result = Promise.all(_pending);
                     } else {
                         _result = Promise.resolve(_tracked);
                     }
@@ -817,11 +819,11 @@ export function addDefinition(name, def, allowGets, filter) {
             if ($isFunction(result)) {
                 return result.apply(this, arguments);
             }
-            return allowGets ? result : $NOT_HANDLED;
+            return allowGets ? result : $unhandled;
         }
         const handler = $isFunction(filter) ? function () {
             return filter.apply(this, [key, ...arguments]) === false
-                ? $NOT_HANDLED
+                ? $unhandled
                 : lateBinding.apply(this, arguments);
             } : lateBinding;
         handler.key = key;
@@ -902,7 +904,7 @@ export const CallbackHandler = Base.extend({
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handleCallback(callback, greedy, composer) {
-        return $handle.dispatch(this, callback, null, composer, greedy);
+        return $handle.dispatch(this, callback, null, composer, greedy) !== $unhandled;
     },
     @handle(Lookup)
     __lookup(lookup, composer) {
@@ -917,32 +919,38 @@ export const CallbackHandler = Base.extend({
         const key      = resolution.key,
               many     = resolution.isMany;
         let   resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
-        if (!resolved) { // check if delegate or handler implicitly satisfy key
+        if (resolved === $unhandled) { // check if delegate or handler implicitly satisfy key
             const implied  = new Binding(key),
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
                 resolution.resolve($decorated(delegate, true));
                 resolved = true;
             }
-            if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
+            if ((resolved === $unhandled || many) &&
+                implied.match($classOf(this), Variance.Contravariant)) {
                 resolution.resolve($decorated(this, true));
                 resolved = true;
             }
         }
-        return resolved;
+        if (resolved === $unhandled) { return resolved };
     },
     @handle(HandleMethod)
     __handleMethod(method, composer) {
-        return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
+        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
+            return $unhandled;
+        }
     },
     @handle(ResolveMethod)
     __resolveMethod(method, composer) {
-        return method.invokeResolve(composer);
+        if (!method.invokeResolve(composer)) {
+            return $unhandled;            
+        }
     },
     @handle(Composition)
     __composition(composable, composer) {
         const callback = composable.callback;
-        return !!(callback && $handle.dispatch(this, callback, null, composer));
+        if ($isNothing(callback)) { return $unhandled; }
+        return $handle.dispatch(this, callback, null, composer);
     }
 }, {
     coerce(object) { return new this(object); }

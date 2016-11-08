@@ -3,7 +3,7 @@
 System.register(["miruken-core"], function (_export, _context) {
     "use strict";
 
-    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, True, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, _$provide, $lookup, $NOT_HANDLED, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, _$provide, $lookup, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, CallbackHandler, compositionScope, CascadeCallbackHandler, CompositeCallbackHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -47,12 +47,14 @@ System.register(["miruken-core"], function (_export, _context) {
     }
 
     function createIndex(constraint) {
-        if (constraint) {
-            if ($isString(constraint)) {
-                return constraint;
-            } else if ($isFunction(constraint)) {
-                return assignID(constraint);
-            }
+        if (!constraint) {
+            return;
+        }
+        if ($isString(constraint)) {
+            return constraint;
+        }
+        if ($isFunction(constraint)) {
+            return assignID(constraint);
         }
     }
 
@@ -119,11 +121,11 @@ System.register(["miruken-core"], function (_export, _context) {
     }
 
     function requiresResult(result) {
-        return result !== null && result !== undefined && result !== $NOT_HANDLED;
+        return result != null && result !== $unhandled;
     }
 
     function impliesSuccess(result) {
-        return result ? result !== $NOT_HANDLED : result === undefined;
+        return result !== $unhandled;
     }
 
     function aspectProceed(callback, composer, proceed, after, state) {
@@ -197,7 +199,6 @@ System.register(["miruken-core"], function (_export, _context) {
             $eq = _mirukenCore.$eq;
             $use = _mirukenCore.$use;
             $lift = _mirukenCore.$lift;
-            True = _mirukenCore.True;
             MethodType = _mirukenCore.MethodType;
             $isPromise = _mirukenCore.$isPromise;
             $instant = _mirukenCore.$instant;
@@ -232,9 +233,11 @@ System.register(["miruken-core"], function (_export, _context) {
 
             _export("$lookup", $lookup);
 
-            _export("$NOT_HANDLED", $NOT_HANDLED = Object.freeze({}));
+            function $unhandled(result) {
+                return result === $unhandled;
+            }
 
-            _export("$NOT_HANDLED", $NOT_HANDLED);
+            _export("$unhandled", $unhandled);
 
             function $define(variance) {
                 var handled = void 0,
@@ -354,7 +357,9 @@ System.register(["miruken-core"], function (_export, _context) {
                         return dispatched;
                     }
 
-                    return dispatched;
+                    if (!dispatched) {
+                        return $unhandled;
+                    }
                 };
                 function _dispatch(target, callback, constraint, v, list, composer, all, results) {
                     var dispatched = false;
@@ -495,7 +500,7 @@ System.register(["miruken-core"], function (_export, _context) {
                                         result = method.apply(target, args);
                                         break;
                                 }
-                                if (result === $NOT_HANDLED) {
+                                if (result === $unhandled) {
                                     return false;
                                 }
                                 _returnValue = result;
@@ -636,9 +641,9 @@ System.register(["miruken-core"], function (_export, _context) {
                         get callbackResult() {
                             if (_result === undefined) {
                                 if (_pending.length === 1) {
-                                    _result = Promise.resolve(_pending[0]).then(True);
+                                    _result = Promise.resolve(_pending[0]);
                                 } else if (_pending.length > 1) {
-                                    _result = Promise.all(_pending).then(True);
+                                    _result = Promise.all(_pending);
                                 } else {
                                     _result = Promise.resolve(_tracked);
                                 }
@@ -820,10 +825,10 @@ System.register(["miruken-core"], function (_export, _context) {
                         if ($isFunction(result)) {
                             return result.apply(this, arguments);
                         }
-                        return allowGets ? result : $NOT_HANDLED;
+                        return allowGets ? result : $unhandled;
                     }
                     var handler = $isFunction(filter) ? function () {
-                        return filter.apply(this, [key].concat(Array.prototype.slice.call(arguments))) === false ? $NOT_HANDLED : lateBinding.apply(this, arguments);
+                        return filter.apply(this, [key].concat(Array.prototype.slice.call(arguments))) === false ? $unhandled : lateBinding.apply(this, arguments);
                     } : lateBinding;
                     handler.key = key;
                     def(target, constraints, handler);
@@ -879,7 +884,7 @@ System.register(["miruken-core"], function (_export, _context) {
                     return !!this.handleCallback(callback, !!greedy, composer);
                 },
                 handleCallback: function handleCallback(callback, greedy, composer) {
-                    return $handle.dispatch(this, callback, null, composer, greedy);
+                    return $handle.dispatch(this, callback, null, composer, greedy) !== $unhandled;
                 },
                 __lookup: function __lookup(lookup, composer) {
                     return $lookup.dispatch(this, lookup, lookup.key, composer, lookup.isMany, lookup.addResult);
@@ -891,29 +896,38 @@ System.register(["miruken-core"], function (_export, _context) {
                     var key = resolution.key,
                         many = resolution.isMany;
                     var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
-                    if (!resolved) {
+                    if (resolved === $unhandled) {
                         var implied = new Binding(key),
                             _delegate = this.delegate;
                         if (_delegate && implied.match($classOf(_delegate), Variance.Contravariant)) {
                             resolution.resolve($decorated(_delegate, true));
                             resolved = true;
                         }
-                        if ((!resolved || many) && implied.match($classOf(this), Variance.Contravariant)) {
+                        if ((resolved === $unhandled || many) && implied.match($classOf(this), Variance.Contravariant)) {
                             resolution.resolve($decorated(this, true));
                             resolved = true;
                         }
                     }
-                    return resolved;
+                    if (resolved === $unhandled) {
+                        return resolved;
+                    };
                 },
                 __handleMethod: function __handleMethod(method, composer) {
-                    return method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer);
+                    if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
+                        return $unhandled;
+                    }
                 },
                 __resolveMethod: function __resolveMethod(method, composer) {
-                    return method.invokeResolve(composer);
+                    if (!method.invokeResolve(composer)) {
+                        return $unhandled;
+                    }
                 },
                 __composition: function __composition(composable, composer) {
                     var callback = composable.callback;
-                    return !!(callback && $handle.dispatch(this, callback, null, composer));
+                    if ($isNothing(callback)) {
+                        return $unhandled;
+                    }
+                    return $handle.dispatch(this, callback, null, composer);
                 }
             }, (_applyDecoratedDescriptor(_obj, "__lookup", [_dec], Object.getOwnPropertyDescriptor(_obj, "__lookup"), _obj), _applyDecoratedDescriptor(_obj, "__defered", [_dec2], Object.getOwnPropertyDescriptor(_obj, "__defered"), _obj), _applyDecoratedDescriptor(_obj, "__resolution", [_dec3], Object.getOwnPropertyDescriptor(_obj, "__resolution"), _obj), _applyDecoratedDescriptor(_obj, "__handleMethod", [_dec4], Object.getOwnPropertyDescriptor(_obj, "__handleMethod"), _obj), _applyDecoratedDescriptor(_obj, "__resolveMethod", [_dec5], Object.getOwnPropertyDescriptor(_obj, "__resolveMethod"), _obj), _applyDecoratedDescriptor(_obj, "__composition", [_dec6], Object.getOwnPropertyDescriptor(_obj, "__composition"), _obj)), _obj)), {
                 coerce: function coerce(object) {
