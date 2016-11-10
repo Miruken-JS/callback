@@ -237,7 +237,7 @@ describe("Definitions", () => {
         it("Should reject invalid variance option", () => {
             expect(() => {
         $define({ variance: 1000 });
-            }).to.throw(TypeError, "Invalid variance type supplied");
+            }).to.throw(TypeError, "$define expects a Variance parameter");
         });
     });
 

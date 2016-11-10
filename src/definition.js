@@ -1,8 +1,9 @@
 import {
-    False, Undefined, Base, Abstract, Metadata,
-    Variance, Modifier, IndexedList, typeOf, assignID,
+    False, Undefined, Base, Variance,
+    Metadata, Modifier, IndexedList, assignID,
     $isNothing, $isString, $isFunction, $isObject,
-    $isClass, $isProtocol, $classOf, $eq, $use, $lift
+    $isClass, $isProtocol, $classOf, $eq, $use,
+    $lift
 } from "miruken-core";
 
 const definitions = {};
@@ -12,16 +13,19 @@ const definitions = {};
  * @property {Function} $handle
  */
 export const $handle = $define(Variance.Contravariant);
+
 /**
  * Definition for providing callbacks covariantly.
  * @property {Function} $provide  
  */        
 export const $provide = $define(Variance.Covariant);
+
 /**
  * Definition for matching callbacks invariantly.
  * @property {Function} $lookup  
  */                
 export const $lookup = $define(Variance.Invariant);
+
 /**
  * Indicates a callback was not handled.
  * @property {Function} $unhandled
@@ -34,19 +38,17 @@ export function $unhandled(result) {
  * Defines a new handler grouping.
  * This is the main extensibility point for handling callbacks.
  * @method $define
- * @param   {Variance}  variance  - group variance
- * @return  {Function}  function to add to a group.
- * @throws  {TypeError} if group already defined.
- * @for $
+ * @param   {Variance}  [variance=Variance.Contravariant]  -  group variance
+ * @return  {Function}  function to register with group
  */
 export function $define(variance) {
-    let handled, comparer;
     variance = variance || Variance.Contravariant;
     if (!(variance instanceof Variance)) {
-        throw new TypeError("Invalid variance type supplied");
+        throw new TypeError("$define expects a Variance parameter");
     }
 
     const key = Symbol();
+    let handled, comparer;
     
     switch (variance) {
     case Variance.Covariant:
@@ -96,17 +98,17 @@ export function $define(variance) {
             const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
             handler = $lift(source);
         }
-        const node  = new Binding(constraint, handler, removed),
-              index = createIndex(node.constraint),
-              list  = Metadata.getOrCreateOwn(key, owner, () => new IndexedList(comparer));
-        list.insert(node, index);
+        const binding = new Binding(constraint, handler, removed),
+              index   = createIndex(binding.constraint),
+              list    = Metadata.getOrCreateOwn(key, owner, () => new IndexedList(comparer));
+        list.insert(binding, index);
         return function (notifyRemoved) {
-            list.remove(node);
+            list.remove(binding);
             if (list.isEmpty()) {
                 Metadata.remove(key, owner);
             }
-            if (node.removed && (notifyRemoved !== false)) {
-                node.removed(owner);
+            if (binding.removed && (notifyRemoved !== false)) {
+                binding.removed(owner);
             }
         };
     };
@@ -162,21 +164,21 @@ export function $define(variance) {
         const invariant  = (v === Variance.Invariant),
               index      = createIndex(constraint);
         if (!invariant || index) {
-            let node = list.getFirst(index) || list.head;
-            while (node) {
-                if (node.match(constraint, v)) {
-                    const result = node.handler.call(target, callback, composer);
+            let binding = list.getFirst(index) || list.head;
+            while (binding) {
+                if (binding.match(constraint, v)) {
+                    const result = binding.handler.call(target, callback, composer);
                     if (handled(result)) {
                         if (results) {
                             results.call(callback, result);
                         }
-                        if (!all) return true;
+                        if (!all) { return true; }
                         dispatched = true;
                     }
                 } else if (invariant) {
                     break;  // stop matching if invariant not satisifed
                 }
-                node = node.next;
+                binding = binding.next;
             }
         }
         return dispatched;
@@ -249,12 +251,11 @@ function matchProtocol(match, variance) {
 
 function matchClass(match, variance) {
     const constraint = this.constraint;
-    if (constraint === match) {
-        return true;
-    } else if (variance === Variance.Contravariant) {
+    if (constraint === match) { return true; }
+    if (variance === Variance.Contravariant) {
         return match.prototype instanceof constraint;
     }
-    else if (variance === Variance.Covariant) {
+    if (variance === Variance.Covariant) {
         return match.prototype &&
             (constraint.prototype instanceof match
              || ($isProtocol(match) && match.isAdoptedBy(constraint)));
@@ -270,26 +271,26 @@ function matchRegExp(match, variance) {
     return (variance !== Variance.Invariant) && this.constraint.test(match);
 }
 
-function compareCovariant(node, insert) {
-    if (insert.match(node.constraint, Variance.Invariant)) {
+function compareCovariant(binding, insert) {
+    if (insert.match(binding.constraint, Variance.Invariant)) {
         return 0;
-    } else if (insert.match(node.constraint, Variance.Covariant)) {
+    } else if (insert.match(binding.constraint, Variance.Covariant)) {
         return -1;
     }
     return 1;
 }
 
-function compareContravariant(node, insert) {
-    if (insert.match(node.constraint, Variance.Invariant)) {
+function compareContravariant(binding, insert) {
+    if (insert.match(binding.constraint, Variance.Invariant)) {
         return 0;
-    } else if (insert.match(node.constraint, Variance.Contravariant)) {
+    } else if (insert.match(binding.constraint, Variance.Contravariant)) {
         return -1;
     }
     return 1;
 }
 
-function compareInvariant(node, insert) {
-    return insert.match(node.constraint, Variance.Invariant) ? 0 : -1;
+function compareInvariant(binding, insert) {
+    return insert.match(binding.constraint, Variance.Invariant) ? 0 : -1;
 }
 
 function requiresResult(result) {

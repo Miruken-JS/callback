@@ -21,6 +21,8 @@ exports.lookup = lookup;
 
 var _mirukenCore = require("miruken-core");
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 function _applyDecoratedDescriptor(target, property, decorators, descriptor, context) {
@@ -55,22 +57,25 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
 var definitions = {};
 
 var $handle = exports.$handle = $define(_mirukenCore.Variance.Contravariant);
+
 var _$provide = $define(_mirukenCore.Variance.Covariant);
+
 exports.$provide = _$provide;
 var $lookup = exports.$lookup = $define(_mirukenCore.Variance.Invariant);
+
 function $unhandled(result) {
     return result === $unhandled;
 }
 
 function $define(variance) {
-    var handled = void 0,
-        comparer = void 0;
     variance = variance || _mirukenCore.Variance.Contravariant;
     if (!(variance instanceof _mirukenCore.Variance)) {
-        throw new TypeError("Invalid variance type supplied");
+        throw new TypeError("$define expects a Variance parameter");
     }
 
     var key = Symbol();
+    var handled = void 0,
+        comparer = void 0;
 
     switch (variance) {
         case _mirukenCore.Variance.Covariant:
@@ -119,19 +124,19 @@ function $define(variance) {
             var source = _mirukenCore.$use.test(handler) ? _mirukenCore.Modifier.unwrap(handler) : handler;
             handler = (0, _mirukenCore.$lift)(source);
         }
-        var node = new Binding(constraint, handler, removed),
-            index = createIndex(node.constraint),
+        var binding = new Binding(constraint, handler, removed),
+            index = createIndex(binding.constraint),
             list = _mirukenCore.Metadata.getOrCreateOwn(key, owner, function () {
             return new _mirukenCore.IndexedList(comparer);
         });
-        list.insert(node, index);
+        list.insert(binding, index);
         return function (notifyRemoved) {
-            list.remove(node);
+            list.remove(binding);
             if (list.isEmpty()) {
                 _mirukenCore.Metadata.remove(key, owner);
             }
-            if (node.removed && notifyRemoved !== false) {
-                node.removed(owner);
+            if (binding.removed && notifyRemoved !== false) {
+                binding.removed(owner);
             }
         };
     };
@@ -189,21 +194,23 @@ function $define(variance) {
         var invariant = v === _mirukenCore.Variance.Invariant,
             index = createIndex(constraint);
         if (!invariant || index) {
-            var node = list.getFirst(index) || list.head;
-            while (node) {
-                if (node.match(constraint, v)) {
-                    var result = node.handler.call(target, callback, composer);
+            var binding = list.getFirst(index) || list.head;
+            while (binding) {
+                if (binding.match(constraint, v)) {
+                    var result = binding.handler.call(target, callback, composer);
                     if (handled(result)) {
                         if (results) {
                             results.call(callback, result);
                         }
-                        if (!all) return true;
+                        if (!all) {
+                            return true;
+                        }
                         dispatched = true;
                     }
                 } else if (invariant) {
                     break;
                 }
-                node = node.next;
+                binding = binding.next;
             }
         }
         return dispatched;
@@ -278,9 +285,11 @@ function matchClass(match, variance) {
     var constraint = this.constraint;
     if (constraint === match) {
         return true;
-    } else if (variance === _mirukenCore.Variance.Contravariant) {
+    }
+    if (variance === _mirukenCore.Variance.Contravariant) {
         return match.prototype instanceof constraint;
-    } else if (variance === _mirukenCore.Variance.Covariant) {
+    }
+    if (variance === _mirukenCore.Variance.Covariant) {
         return match.prototype && (constraint.prototype instanceof match || (0, _mirukenCore.$isProtocol)(match) && match.isAdoptedBy(constraint));
     }
     return false;
@@ -294,26 +303,26 @@ function matchRegExp(match, variance) {
     return variance !== _mirukenCore.Variance.Invariant && this.constraint.test(match);
 }
 
-function compareCovariant(node, insert) {
-    if (insert.match(node.constraint, _mirukenCore.Variance.Invariant)) {
+function compareCovariant(binding, insert) {
+    if (insert.match(binding.constraint, _mirukenCore.Variance.Invariant)) {
         return 0;
-    } else if (insert.match(node.constraint, _mirukenCore.Variance.Covariant)) {
+    } else if (insert.match(binding.constraint, _mirukenCore.Variance.Covariant)) {
         return -1;
     }
     return 1;
 }
 
-function compareContravariant(node, insert) {
-    if (insert.match(node.constraint, _mirukenCore.Variance.Invariant)) {
+function compareContravariant(binding, insert) {
+    if (insert.match(binding.constraint, _mirukenCore.Variance.Invariant)) {
         return 0;
-    } else if (insert.match(node.constraint, _mirukenCore.Variance.Contravariant)) {
+    } else if (insert.match(binding.constraint, _mirukenCore.Variance.Contravariant)) {
         return -1;
     }
     return 1;
 }
 
-function compareInvariant(node, insert) {
-    return insert.match(node.constraint, _mirukenCore.Variance.Invariant) ? 0 : -1;
+function compareInvariant(binding, insert) {
+    return insert.match(binding.constraint, _mirukenCore.Variance.Invariant) ? 0 : -1;
 }
 
 function requiresResult(result) {
@@ -951,6 +960,22 @@ Handler.implementing = function (methodName, method) {
             return false;
         }
     });
+};
+
+Handler.registerPolicy = function (policyType, key) {
+    if (Handler.prototype.hasOwnProperty(key)) {
+        return false;
+    }
+    Handler.implement(_defineProperty({}, key, function (policy) {
+        var _dec7, _desc2, _value2, _obj2;
+
+        return policy ? this.decorate((_dec7 = handle(policyType), (_obj2 = {
+            mergePolicy: function mergePolicy(receiver) {
+                policy.mergeInto(receiver);
+            }
+        }, (_applyDecoratedDescriptor(_obj2, "mergePolicy", [_dec7], Object.getOwnPropertyDescriptor(_obj2, "mergePolicy"), _obj2)), _obj2))) : this;
+    }));
+    return true;
 };
 
 Handler.implement({

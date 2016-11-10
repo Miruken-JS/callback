@@ -461,7 +461,7 @@ export function RejectedError(callback) {
         Error.call(this);
     }
 }
-RejectedError.prototype             = new Error;
+RejectedError.prototype             = new Error();
 RejectedError.prototype.constructor = RejectedError;
 
 /**
@@ -487,5 +487,5 @@ export function TimeoutError(callback, message) {
         Error.call(this);
     }
 }
-TimeoutError.prototype             = new Error;
+TimeoutError.prototype             = new Error();
 TimeoutError.prototype.constructor = TimeoutError;

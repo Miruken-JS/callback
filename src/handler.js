@@ -18,8 +18,7 @@ import {
 } from "miruken-core";
 
 /**
- * Base class for handling arbitrary callbacks.<br/>
- * See {{#crossLink "$callbacks"}}{{/crossLink}}
+ * Base class for handling arbitrary callbacks.
  * @class Handler
  * @constructor
  * @param  {Object}  [delegate]  -  delegate
@@ -321,6 +320,32 @@ Handler.implementing = function (methodName, method) {
         }
     });
 };
+
+/**                                                                                                                                          
+ * Register the policy to be applied by a Handler.
+ * @method registerPolicy
+ * @static
+ * @param   {Function}        policyType  -  type of policy
+ * @param   {string|symbol}   key         -  policy key  
+ * @returns {boolean} true if successful, false otherwise.
+ * @for Handler
+ */ 
+Handler.registerPolicy = function (policyType, key) {
+    if (Handler.prototype.hasOwnProperty(key)) {
+        return false;
+    }
+    Handler.implement({
+        [key](policy) {
+            return policy ? this.decorate({
+                @handle(policyType)
+                mergePolicy(receiver) {
+                    policy.mergeInto(receiver)                
+                }
+            }) : this;
+        }
+    });
+    return true;
+}
 
 Handler.implement({
     /**

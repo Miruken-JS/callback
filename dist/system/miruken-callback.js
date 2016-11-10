@@ -3,7 +3,22 @@
 System.register(["miruken-core"], function (_export, _context) {
     "use strict";
 
-    var False, Undefined, Base, Abstract, Metadata, Variance, Modifier, IndexedList, typeOf, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, _$provide, $lookup, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, Handler, compositionScope, CascadeHandler, CompositeHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+    var False, Undefined, Base, Variance, Metadata, Modifier, IndexedList, assignID, $isNothing, $isString, $isFunction, $isObject, $isClass, $isProtocol, $classOf, $eq, $use, $lift, MethodType, $isPromise, $instant, $flatten, decorate, isDescriptor, $decorator, $decorate, $decorated, StrictProtocol, Flags, Delegate, Resolving, _typeof, _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj, definitions, $handle, _$provide, $lookup, $composer, HandleMethod, ResolveMethod, Lookup, Deferred, Resolution, Composition, Handler, compositionScope, CascadeHandler, CompositeHandler, Batching, BatchingComplete, Batcher, InvocationOptions, InvocationSemantics, InvocationDelegate;
+
+    function _defineProperty(obj, key, value) {
+        if (key in obj) {
+            Object.defineProperty(obj, key, {
+                value: value,
+                enumerable: true,
+                configurable: true,
+                writable: true
+            });
+        } else {
+            obj[key] = value;
+        }
+
+        return obj;
+    }
 
     function _toConsumableArray(arr) {
         if (Array.isArray(arr)) {
@@ -82,9 +97,11 @@ System.register(["miruken-core"], function (_export, _context) {
         var constraint = this.constraint;
         if (constraint === match) {
             return true;
-        } else if (variance === Variance.Contravariant) {
+        }
+        if (variance === Variance.Contravariant) {
             return match.prototype instanceof constraint;
-        } else if (variance === Variance.Covariant) {
+        }
+        if (variance === Variance.Covariant) {
             return match.prototype && (constraint.prototype instanceof match || $isProtocol(match) && match.isAdoptedBy(constraint));
         }
         return false;
@@ -98,26 +115,26 @@ System.register(["miruken-core"], function (_export, _context) {
         return variance !== Variance.Invariant && this.constraint.test(match);
     }
 
-    function compareCovariant(node, insert) {
-        if (insert.match(node.constraint, Variance.Invariant)) {
+    function compareCovariant(binding, insert) {
+        if (insert.match(binding.constraint, Variance.Invariant)) {
             return 0;
-        } else if (insert.match(node.constraint, Variance.Covariant)) {
+        } else if (insert.match(binding.constraint, Variance.Covariant)) {
             return -1;
         }
         return 1;
     }
 
-    function compareContravariant(node, insert) {
-        if (insert.match(node.constraint, Variance.Invariant)) {
+    function compareContravariant(binding, insert) {
+        if (insert.match(binding.constraint, Variance.Invariant)) {
             return 0;
-        } else if (insert.match(node.constraint, Variance.Contravariant)) {
+        } else if (insert.match(binding.constraint, Variance.Contravariant)) {
             return -1;
         }
         return 1;
     }
 
-    function compareInvariant(node, insert) {
-        return insert.match(node.constraint, Variance.Invariant) ? 0 : -1;
+    function compareInvariant(binding, insert) {
+        return insert.match(binding.constraint, Variance.Invariant) ? 0 : -1;
     }
 
     function requiresResult(result) {
@@ -182,12 +199,10 @@ System.register(["miruken-core"], function (_export, _context) {
             False = _mirukenCore.False;
             Undefined = _mirukenCore.Undefined;
             Base = _mirukenCore.Base;
-            Abstract = _mirukenCore.Abstract;
-            Metadata = _mirukenCore.Metadata;
             Variance = _mirukenCore.Variance;
+            Metadata = _mirukenCore.Metadata;
             Modifier = _mirukenCore.Modifier;
             IndexedList = _mirukenCore.IndexedList;
-            typeOf = _mirukenCore.typeOf;
             assignID = _mirukenCore.assignID;
             $isNothing = _mirukenCore.$isNothing;
             $isString = _mirukenCore.$isString;
@@ -240,14 +255,14 @@ System.register(["miruken-core"], function (_export, _context) {
             _export("$unhandled", $unhandled);
 
             function $define(variance) {
-                var handled = void 0,
-                    comparer = void 0;
                 variance = variance || Variance.Contravariant;
                 if (!(variance instanceof Variance)) {
-                    throw new TypeError("Invalid variance type supplied");
+                    throw new TypeError("$define expects a Variance parameter");
                 }
 
                 var key = Symbol();
+                var handled = void 0,
+                    comparer = void 0;
 
                 switch (variance) {
                     case Variance.Covariant:
@@ -296,19 +311,19 @@ System.register(["miruken-core"], function (_export, _context) {
                         var source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
                         handler = $lift(source);
                     }
-                    var node = new Binding(constraint, handler, removed),
-                        index = createIndex(node.constraint),
+                    var binding = new Binding(constraint, handler, removed),
+                        index = createIndex(binding.constraint),
                         list = Metadata.getOrCreateOwn(key, owner, function () {
                         return new IndexedList(comparer);
                     });
-                    list.insert(node, index);
+                    list.insert(binding, index);
                     return function (notifyRemoved) {
-                        list.remove(node);
+                        list.remove(binding);
                         if (list.isEmpty()) {
                             Metadata.remove(key, owner);
                         }
-                        if (node.removed && notifyRemoved !== false) {
-                            node.removed(owner);
+                        if (binding.removed && notifyRemoved !== false) {
+                            binding.removed(owner);
                         }
                     };
                 };
@@ -366,21 +381,23 @@ System.register(["miruken-core"], function (_export, _context) {
                     var invariant = v === Variance.Invariant,
                         index = createIndex(constraint);
                     if (!invariant || index) {
-                        var node = list.getFirst(index) || list.head;
-                        while (node) {
-                            if (node.match(constraint, v)) {
-                                var result = node.handler.call(target, callback, composer);
+                        var binding = list.getFirst(index) || list.head;
+                        while (binding) {
+                            if (binding.match(constraint, v)) {
+                                var result = binding.handler.call(target, callback, composer);
                                 if (handled(result)) {
                                     if (results) {
                                         results.call(callback, result);
                                     }
-                                    if (!all) return true;
+                                    if (!all) {
+                                        return true;
+                                    }
                                     dispatched = true;
                                 }
                             } else if (invariant) {
                                 break;
                             }
-                            node = node.next;
+                            binding = binding.next;
                         }
                     }
                     return dispatched;
@@ -1084,6 +1101,22 @@ System.register(["miruken-core"], function (_export, _context) {
                         return false;
                     }
                 });
+            };
+
+            Handler.registerPolicy = function (policyType, key) {
+                if (Handler.prototype.hasOwnProperty(key)) {
+                    return false;
+                }
+                Handler.implement(_defineProperty({}, key, function (policy) {
+                    var _dec7, _desc2, _value2, _obj2;
+
+                    return policy ? this.decorate((_dec7 = handle(policyType), (_obj2 = {
+                        mergePolicy: function mergePolicy(receiver) {
+                            policy.mergeInto(receiver);
+                        }
+                    }, (_applyDecoratedDescriptor(_obj2, "mergePolicy", [_dec7], Object.getOwnPropertyDescriptor(_obj2, "mergePolicy"), _obj2)), _obj2))) : this;
+                }));
+                return true;
             };
 
             Handler.implement({
