@@ -877,11 +877,8 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
             });
         },
         handleCallback: function handleCallback(callback, greedy, composer) {
-            var handled = greedy ? this.handler.handleCallback(callback, true, composer) | this.cascadeToHandler.handleCallback(callback, true, composer) : this.handler.handleCallback(callback, false, composer) || this.cascadeToHandler.handleCallback(callback, false, composer);
-            if (!handled || greedy) {
-                handled = this.base(callback, greedy, composer) || handled;
-            }
-            return !!handled;
+            var handled = this.base(callback, greedy, composer);
+            return !!(greedy ? handled | (this.handler.handleCallback(callback, true, composer) | this.cascadeToHandler.handleCallback(callback, true, composer)) : handled || this.handler.handleCallback(callback, false, composer) || this.cascadeToHandler.handleCallback(callback, false, composer));
         }
     });
 
@@ -939,8 +936,11 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                     return this;
                 },
                 handleCallback: function handleCallback(callback, greedy, composer) {
-                    var handled = false,
-                        count = _handlers.length;
+                    var handled = this.base(callback, greedy, composer);
+                    if (handled && !greedy) {
+                        return true;
+                    }
+                    var count = _handlers.length;
                     for (var idx = 0; idx < count; ++idx) {
                         var handler = _handlers[idx];
                         if (handler.handleCallback(callback, greedy, composer)) {
@@ -950,7 +950,7 @@ define(["exports", "miruken-core"], function (exports, _mirukenCore) {
                             handled = true;
                         }
                     }
-                    return this.base(callback, greedy, composer) || handled;
+                    return handled;
                 }
             });
             this.addHandlers(handlers);

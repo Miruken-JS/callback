@@ -165,15 +165,12 @@ export const CascadeHandler = Handler.extend({
         });
     },
     handleCallback(callback, greedy, composer) {
-        let handled = greedy
-            ? (this.handler.handleCallback(callback, true, composer)
+        let handled = this.base(callback, greedy, composer);
+        return !!(greedy
+            ? handled | (this.handler.handleCallback(callback, true, composer)
                | this.cascadeToHandler.handleCallback(callback, true, composer))
-            : (this.handler.handleCallback(callback, false, composer)
-               || this.cascadeToHandler.handleCallback(callback, false, composer));
-        if (!handled || greedy) {
-            handled = this.base(callback, greedy, composer) || handled;
-        }
-        return !!handled;
+            : handled || (this.handler.handleCallback(callback, false, composer)
+               || this.cascadeToHandler.handleCallback(callback, false, composer)));
     }
 });
 
@@ -245,8 +242,9 @@ export const CompositeHandler = Handler.extend({
                 return this;
             },
             handleCallback(callback, greedy, composer) {
-                let handled = false,
-                    count   = _handlers.length;
+                let handled = this.base(callback, greedy, composer);
+                if (handled && !greedy) { return true; }
+                let count   = _handlers.length;
                 for (let idx = 0; idx < count; ++idx) {
                     const handler = _handlers[idx];
                     if (handler.handleCallback(callback, greedy, composer)) {
@@ -256,7 +254,7 @@ export const CompositeHandler = Handler.extend({
                         handled = true;
                     }
                 }
-                return this.base(callback, greedy, composer) || handled;
+                return handled;
             }
         });
         this.addHandlers(handlers);

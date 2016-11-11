@@ -27,7 +27,7 @@ export const $provide = $define(Variance.Covariant);
 export const $lookup = $define(Variance.Invariant);
 
 /**
- * Indicates a callback was not handled.
+ * Sentinel indicating a callback was not handled.
  * @property {Function} $unhandled
  */                
 export function $unhandled(result) {
