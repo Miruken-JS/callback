@@ -5,6 +5,7 @@ System.config({
     "github:*": "jspm_packages/github/*",
     "npm:*": "jspm_packages/npm/*"
   },
+
   map: {
     "babel": "npm:babel@6.5.2",
     "babel-core": "npm:babel-core@6.16.0",

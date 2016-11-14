@@ -1,9 +1,7 @@
 var gulp             = require('gulp');
 var runSequence      = require('run-sequence');
-var to5              = require('gulp-babel');
 var paths            = require('../paths');
 var compilerOptions  = require('../babel-options');
-var assign           = Object.assign || require('object.assign');
 var rollup           = require("rollup").rollup;
 var rollupMultiEntry = require("rollup-plugin-multi-entry");
 var rollupBabel      = require("rollup-plugin-babel");
@@ -12,8 +10,7 @@ var jsName = paths.packageName + '.js';
 
 gulp.task("rollup", function(done) {
     rollup({
-        entry:   "src/**/*.js",//paths.output + "temp/**/*.js",
-        dest:    paths.output + jsName,
+        entry:   paths.source,
         plugins: [
             rollupMultiEntry(),
             rollupBabel(compilerOptions.es2015())
