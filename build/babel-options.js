@@ -3,9 +3,7 @@ var paths = require('./paths');
 
 exports.base = function() {
     return {
-        filename: '',
-        filenameRelative: '',
-        sourceMap: true,
+        sourceMap: false,
         sourceRoot: '',
         moduleRoot: path.resolve('src').replace(/\\/g, '/'),
         moduleIds: false,

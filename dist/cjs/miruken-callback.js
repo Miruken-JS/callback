@@ -1,75 +1,24 @@
-"use strict";
+'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-exports.InvocationDelegate = exports.InvocationSemantics = exports.InvocationOptions = exports.Batcher = exports.Batching = exports.CompositeHandler = exports.CascadeHandler = exports.Handler = exports.Composition = exports.Resolution = exports.Deferred = exports.Lookup = exports.ResolveMethod = exports.HandleMethod = exports.$composer = exports.$lookup = exports.$provide = exports.$handle = undefined;
+Object.defineProperty(exports, '__esModule', { value: true });
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _desc, _value, _obj;
-
-exports.$unhandled = $unhandled;
-exports.$define = $define;
-exports.Binding = Binding;
-exports.RejectedError = RejectedError;
-exports.TimeoutError = TimeoutError;
-exports.addDefinition = addDefinition;
-exports.handle = handle;
-exports.provide = provide;
-exports.lookup = lookup;
-
-var _mirukenCore = require("miruken-core");
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
-function _applyDecoratedDescriptor(target, property, decorators, descriptor, context) {
-    var desc = {};
-    Object['ke' + 'ys'](descriptor).forEach(function (key) {
-        desc[key] = descriptor[key];
-    });
-    desc.enumerable = !!desc.enumerable;
-    desc.configurable = !!desc.configurable;
-
-    if ('value' in desc || desc.initializer) {
-        desc.writable = true;
-    }
-
-    desc = decorators.slice().reverse().reduce(function (desc, decorator) {
-        return decorator(target, property, desc) || desc;
-    }, desc);
-
-    if (context && desc.initializer !== void 0) {
-        desc.value = desc.initializer ? desc.initializer.call(context) : void 0;
-        desc.initializer = undefined;
-    }
-
-    if (desc.initializer === void 0) {
-        Object['define' + 'Property'](target, property, desc);
-        desc = null;
-    }
-
-    return desc;
-}
+var mirukenCore = require('miruken-core');
 
 var definitions = {};
 
-var $handle = exports.$handle = $define(_mirukenCore.Variance.Contravariant);
+var $handle = $define(mirukenCore.Variance.Contravariant);
 
-var _$provide = $define(_mirukenCore.Variance.Covariant);
+var $provide$1 = $define(mirukenCore.Variance.Covariant);
 
-exports.$provide = _$provide;
-var $lookup = exports.$lookup = $define(_mirukenCore.Variance.Invariant);
+var $lookup = $define(mirukenCore.Variance.Invariant);
 
 function $unhandled(result) {
     return result === $unhandled;
 }
 
 function $define(variance) {
-    variance = variance || _mirukenCore.Variance.Contravariant;
-    if (!(variance instanceof _mirukenCore.Variance)) {
+    variance = variance || mirukenCore.Variance.Contravariant;
+    if (!(variance instanceof mirukenCore.Variance)) {
         throw new TypeError("$define expects a Variance parameter");
     }
 
@@ -78,15 +27,15 @@ function $define(variance) {
         comparer = void 0;
 
     switch (variance) {
-        case _mirukenCore.Variance.Covariant:
+        case mirukenCore.Variance.Covariant:
             handled = requiresResult;
             comparer = compareCovariant;
             break;
-        case _mirukenCore.Variance.Contravariant:
+        case mirukenCore.Variance.Contravariant:
             handled = impliesSuccess;
             comparer = compareContravariant;
             break;
-        case _mirukenCore.Variance.Invariant:
+        case mirukenCore.Variance.Invariant:
             handled = requiresResult;
             comparer = compareInvariant;
             break;
@@ -103,48 +52,48 @@ function $define(variance) {
                         result(notifyRemoved);
                         undefine(notifyRemoved);
                     };
-                }, _mirukenCore.Undefined);
+                }, mirukenCore.Undefined);
             }
         }
         return _definition(owner, constraint, handler, removed);
     }
     function _definition(owner, constraint, handler, removed) {
-        if ((0, _mirukenCore.$isNothing)(owner)) {
+        if (mirukenCore.$isNothing(owner)) {
             throw new TypeError("Definitions must have an owner.");
-        } else if ((0, _mirukenCore.$isNothing)(handler)) {
+        } else if (mirukenCore.$isNothing(handler)) {
             handler = constraint;
-            constraint = (0, _mirukenCore.$classOf)(_mirukenCore.Modifier.unwrap(constraint));
+            constraint = mirukenCore.$classOf(mirukenCore.Modifier.unwrap(constraint));
         }
-        if ((0, _mirukenCore.$isNothing)(handler)) {
+        if (mirukenCore.$isNothing(handler)) {
             throw new TypeError("Incomplete definition: missing handler for constraint " + constraint);
-        } else if (removed && !(0, _mirukenCore.$isFunction)(removed)) {
+        } else if (removed && !mirukenCore.$isFunction(removed)) {
             throw new TypeError("The removed argument is not a function.");
         }
-        if (!(0, _mirukenCore.$isFunction)(handler)) {
-            var source = _mirukenCore.$use.test(handler) ? _mirukenCore.Modifier.unwrap(handler) : handler;
-            handler = (0, _mirukenCore.$lift)(source);
+        if (!mirukenCore.$isFunction(handler)) {
+            var source = mirukenCore.$use.test(handler) ? mirukenCore.Modifier.unwrap(handler) : handler;
+            handler = mirukenCore.$lift(source);
         }
         var binding = new Binding(constraint, handler, removed),
             index = createIndex(binding.constraint),
-            list = _mirukenCore.Metadata.getOrCreateOwn(key, owner, function () {
-            return new _mirukenCore.IndexedList(comparer);
+            list = mirukenCore.Metadata.getOrCreateOwn(key, owner, function () {
+            return new mirukenCore.IndexedList(comparer);
         });
         list.insert(binding, index);
         return function (notifyRemoved) {
             list.remove(binding);
             if (list.isEmpty()) {
-                _mirukenCore.Metadata.remove(key, owner);
+                mirukenCore.Metadata.remove(key, owner);
             }
             if (binding.removed && notifyRemoved !== false) {
                 binding.removed(owner);
             }
         };
-    };
+    }
     definition.removeAll = function (owner) {
-        var list = _mirukenCore.Metadata.getOwn(key, owner);
+        var list = mirukenCore.Metadata.getOwn(key, owner);
         if (!list) {
             return;
-        };
+        }
         var head = list.head;
         while (head) {
             if (head.removed) {
@@ -152,7 +101,7 @@ function $define(variance) {
             }
             head = head.next;
         }
-        _mirukenCore.Metadata.remove(key, owner);
+        mirukenCore.Metadata.remove(key, owner);
     };
     definition.dispatch = function (handler, callback, constraint, composer, all, results) {
         var v = variance;
@@ -160,12 +109,12 @@ function $define(variance) {
         constraint = constraint || callback;
 
         if (constraint) {
-            if (_mirukenCore.$eq.test(constraint)) {
-                v = _mirukenCore.Variance.Invariant;
+            if (mirukenCore.$eq.test(constraint)) {
+                v = mirukenCore.Variance.Invariant;
             }
-            constraint = _mirukenCore.Modifier.unwrap(constraint);
-            if ((0, _mirukenCore.$isObject)(constraint)) {
-                constraint = (0, _mirukenCore.$classOf)(constraint);
+            constraint = mirukenCore.Modifier.unwrap(constraint);
+            if (mirukenCore.$isObject(constraint)) {
+                constraint = mirukenCore.$classOf(constraint);
             }
         }
 
@@ -177,7 +126,7 @@ function $define(variance) {
         function dispatch(target) {
             var dispatched = false;
             if (target) {
-                _mirukenCore.Metadata.collect(key, target, function (list) {
+                mirukenCore.Metadata.collect(key, target, function (list) {
                     dispatched = _dispatch(target, callback, constraint, v, list, composer, all, results) || dispatched;
                     return dispatched && !all;
                 });
@@ -191,7 +140,7 @@ function $define(variance) {
     };
     function _dispatch(target, callback, constraint, v, list, composer, all, results) {
         var dispatched = false;
-        var invariant = v === _mirukenCore.Variance.Invariant,
+        var invariant = v === mirukenCore.Variance.Invariant,
             index = createIndex(constraint);
         if (!invariant || index) {
             var binding = list.getFirst(index) || list.head;
@@ -222,24 +171,24 @@ function $define(variance) {
 }
 
 function Binding(constraint, handler, removed) {
-    var invariant = _mirukenCore.$eq.test(constraint);
-    constraint = _mirukenCore.Modifier.unwrap(constraint);
+    var invariant = mirukenCore.$eq.test(constraint);
+    constraint = mirukenCore.Modifier.unwrap(constraint);
     this.constraint = constraint;
     this.handler = handler;
-    if ((0, _mirukenCore.$isNothing)(constraint)) {
-        this.match = invariant ? _mirukenCore.False : matchEverything;
-    } else if ((0, _mirukenCore.$isProtocol)(constraint)) {
+    if (mirukenCore.$isNothing(constraint)) {
+        this.match = invariant ? mirukenCore.False : matchEverything;
+    } else if (mirukenCore.$isProtocol(constraint)) {
         this.match = invariant ? matchInvariant : matchProtocol;
-    } else if ((0, _mirukenCore.$isClass)(constraint)) {
+    } else if (mirukenCore.$isClass(constraint)) {
         this.match = invariant ? matchInvariant : matchClass;
-    } else if ((0, _mirukenCore.$isString)(constraint)) {
+    } else if (mirukenCore.$isString(constraint)) {
         this.match = matchString;
     } else if (constraint instanceof RegExp) {
-        this.match = invariant ? _mirukenCore.False : matchRegExp;
-    } else if ((0, _mirukenCore.$isFunction)(constraint)) {
+        this.match = invariant ? mirukenCore.False : matchRegExp;
+    } else if (mirukenCore.$isFunction(constraint)) {
         this.match = constraint;
     } else {
-        this.match = _mirukenCore.False;
+        this.match = mirukenCore.False;
     }
     if (removed) {
         this.removed = removed;
@@ -253,11 +202,11 @@ function createIndex(constraint) {
     if (!constraint) {
         return;
     }
-    if ((0, _mirukenCore.$isString)(constraint)) {
+    if (mirukenCore.$isString(constraint)) {
         return constraint;
     }
-    if ((0, _mirukenCore.$isFunction)(constraint)) {
-        return (0, _mirukenCore.assignID)(constraint);
+    if (mirukenCore.$isFunction(constraint)) {
+        return mirukenCore.assignID(constraint);
     }
 }
 
@@ -266,16 +215,16 @@ function matchInvariant(match) {
 }
 
 function matchEverything(match, variance) {
-    return variance !== _mirukenCore.Variance.Invariant;
+    return variance !== mirukenCore.Variance.Invariant;
 }
 
 function matchProtocol(match, variance) {
     var constraint = this.constraint;
     if (constraint === match) {
         return true;
-    } else if (variance === _mirukenCore.Variance.Covariant) {
-        return (0, _mirukenCore.$isProtocol)(match) && match.isAdoptedBy(constraint);
-    } else if (variance === _mirukenCore.Variance.Contravariant) {
+    } else if (variance === mirukenCore.Variance.Covariant) {
+        return mirukenCore.$isProtocol(match) && match.isAdoptedBy(constraint);
+    } else if (variance === mirukenCore.Variance.Contravariant) {
         return constraint.isAdoptedBy(match);
     }
     return false;
@@ -286,43 +235,43 @@ function matchClass(match, variance) {
     if (constraint === match) {
         return true;
     }
-    if (variance === _mirukenCore.Variance.Contravariant) {
+    if (variance === mirukenCore.Variance.Contravariant) {
         return match.prototype instanceof constraint;
     }
-    if (variance === _mirukenCore.Variance.Covariant) {
-        return match.prototype && (constraint.prototype instanceof match || (0, _mirukenCore.$isProtocol)(match) && match.isAdoptedBy(constraint));
+    if (variance === mirukenCore.Variance.Covariant) {
+        return match.prototype && (constraint.prototype instanceof match || mirukenCore.$isProtocol(match) && match.isAdoptedBy(constraint));
     }
     return false;
 }
 
 function matchString(match) {
-    return (0, _mirukenCore.$isString)(match) && this.constraint == match;
+    return mirukenCore.$isString(match) && this.constraint == match;
 }
 
 function matchRegExp(match, variance) {
-    return variance !== _mirukenCore.Variance.Invariant && this.constraint.test(match);
+    return variance !== mirukenCore.Variance.Invariant && this.constraint.test(match);
 }
 
 function compareCovariant(binding, insert) {
-    if (insert.match(binding.constraint, _mirukenCore.Variance.Invariant)) {
+    if (insert.match(binding.constraint, mirukenCore.Variance.Invariant)) {
         return 0;
-    } else if (insert.match(binding.constraint, _mirukenCore.Variance.Covariant)) {
+    } else if (insert.match(binding.constraint, mirukenCore.Variance.Covariant)) {
         return -1;
     }
     return 1;
 }
 
 function compareContravariant(binding, insert) {
-    if (insert.match(binding.constraint, _mirukenCore.Variance.Invariant)) {
+    if (insert.match(binding.constraint, mirukenCore.Variance.Invariant)) {
         return 0;
-    } else if (insert.match(binding.constraint, _mirukenCore.Variance.Contravariant)) {
+    } else if (insert.match(binding.constraint, mirukenCore.Variance.Contravariant)) {
         return -1;
     }
     return 1;
 }
 
 function compareInvariant(binding, insert) {
-    return insert.match(binding.constraint, _mirukenCore.Variance.Invariant) ? 0 : -1;
+    return insert.match(binding.constraint, mirukenCore.Variance.Invariant) ? 0 : -1;
 }
 
 function requiresResult(result) {
@@ -333,11 +282,11 @@ function impliesSuccess(result) {
     return result !== $unhandled;
 }
 
-var $composer = exports.$composer = void 0;
+exports.$composer = void 0;
 
-var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
+var HandleMethod = mirukenCore.Base.extend({
     constructor: function constructor(methodType, protocol, methodName, args, strict) {
-        if (protocol && !(0, _mirukenCore.$isProtocol)(protocol)) {
+        if (protocol && !mirukenCore.$isProtocol(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
         }
         var _returnValue = void 0,
@@ -388,23 +337,23 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
                 }
                 var method = void 0,
                     result = void 0;
-                if (methodType === _mirukenCore.MethodType.Invoke) {
+                if (methodType === mirukenCore.MethodType.Invoke) {
                     method = target[methodName];
-                    if (!(0, _mirukenCore.$isFunction)(method)) {
+                    if (!mirukenCore.$isFunction(method)) {
                         return false;
                     }
                 }
-                var oldComposer = $composer;
+                var oldComposer = exports.$composer;
                 try {
-                    exports.$composer = $composer = composer;
+                    exports.$composer = composer;
                     switch (methodType) {
-                        case _mirukenCore.MethodType.Get:
+                        case mirukenCore.MethodType.Get:
                             result = target[methodName];
                             break;
-                        case _mirukenCore.MethodType.Set:
+                        case mirukenCore.MethodType.Set:
                             result = target[methodName] = args;
                             break;
-                        case _mirukenCore.MethodType.Invoke:
+                        case mirukenCore.MethodType.Invoke:
                             result = method.apply(target, args);
                             break;
                     }
@@ -417,14 +366,14 @@ var HandleMethod = exports.HandleMethod = _mirukenCore.Base.extend({
                     _exception = exception;
                     throw exception;
                 } finally {
-                    exports.$composer = $composer = oldComposer;
+                    exports.$composer = oldComposer;
                 }
             }
         });
     }
 });
 
-var ResolveMethod = exports.ResolveMethod = HandleMethod.extend({
+var ResolveMethod = HandleMethod.extend({
     constructor: function constructor(methodType, protocol, methodName, args, strict, all, required) {
         this.base(methodType, protocol, methodName, args, strict);
         this.extend({
@@ -434,7 +383,7 @@ var ResolveMethod = exports.ResolveMethod = HandleMethod.extend({
                 var handled = false,
                     targets = composer.resolveAll(protocol);
 
-                if ((0, _mirukenCore.$isPromise)(targets)) {
+                if (mirukenCore.$isPromise(targets)) {
                     this.returnValue = new Promise(function (resolve, reject) {
                         targets.then(function (targets) {
                             invokeTargets.call(_this, targets);
@@ -469,15 +418,15 @@ var ResolveMethod = exports.ResolveMethod = HandleMethod.extend({
     }
 });
 
-var Lookup = exports.Lookup = _mirukenCore.Base.extend({
+var Lookup = mirukenCore.Base.extend({
     constructor: function constructor(key, many) {
-        if ((0, _mirukenCore.$isNothing)(key)) {
+        if (mirukenCore.$isNothing(key)) {
             throw new TypeError("The key is required.");
         }
         many = !!many;
         var _results = [],
             _result = void 0,
-            _instant = _mirukenCore.$instant.test(key);
+            _instant = mirukenCore.$instant.test(key);
         this.extend({
             get key() {
                 return key;
@@ -498,9 +447,9 @@ var Lookup = exports.Lookup = _mirukenCore.Base.extend({
                             _result = _results[0];
                         }
                     } else if (_instant) {
-                        _result = (0, _mirukenCore.$flatten)(_results);
+                        _result = mirukenCore.$flatten(_results);
                     } else {
-                        _result = Promise.all(_results).then(_mirukenCore.$flatten);
+                        _result = Promise.all(_results).then(mirukenCore.$flatten);
                     }
                 }
                 return _result;
@@ -509,7 +458,7 @@ var Lookup = exports.Lookup = _mirukenCore.Base.extend({
                 _result = value;
             },
             addResult: function addResult(result) {
-                if ((many || _results.length === 0) && !(_instant && (0, _mirukenCore.$isPromise)(result))) {
+                if ((many || _results.length === 0) && !(_instant && mirukenCore.$isPromise(result))) {
                     _results.push(result);
                     _result = undefined;
                 }
@@ -518,9 +467,9 @@ var Lookup = exports.Lookup = _mirukenCore.Base.extend({
     }
 });
 
-var Deferred = exports.Deferred = _mirukenCore.Base.extend({
+var Deferred = mirukenCore.Base.extend({
     constructor: function constructor(callback, many) {
-        if ((0, _mirukenCore.$isNothing)(callback)) {
+        if (mirukenCore.$isNothing(callback)) {
             throw new TypeError("The callback is required.");
         }
         many = !!many;
@@ -556,7 +505,7 @@ var Deferred = exports.Deferred = _mirukenCore.Base.extend({
                 _result = value;
             },
             track: function track(promise) {
-                if ((many || _pending.length === 0) && (0, _mirukenCore.$isPromise)(promise)) {
+                if ((many || _pending.length === 0) && mirukenCore.$isPromise(promise)) {
                     _pending.push(promise);
                     _result = undefined;
                 }
@@ -569,16 +518,16 @@ var Deferred = exports.Deferred = _mirukenCore.Base.extend({
     }
 });
 
-var Resolution = exports.Resolution = _mirukenCore.Base.extend({
+var Resolution = mirukenCore.Base.extend({
     constructor: function constructor(key, many) {
-        if ((0, _mirukenCore.$isNothing)(key)) {
+        if (mirukenCore.$isNothing(key)) {
             throw new TypeError("The key is required.");
         }
         many = !!many;
         var _resolutions = [],
             _promised = false,
             _result = void 0,
-            _instant = _mirukenCore.$instant.test(key);
+            _instant = mirukenCore.$instant.test(key);
         this.extend({
             get key() {
                 return key;
@@ -599,13 +548,13 @@ var Resolution = exports.Resolution = _mirukenCore.Base.extend({
             get callbackResult() {
                 if (_result === undefined) {
                     if (!many) {
-                        var resolutions = (0, _mirukenCore.$flatten)(_resolutions, true);
+                        var resolutions = mirukenCore.$flatten(_resolutions, true);
                         if (resolutions.length > 0) {
                             _result = resolutions[0];
                         }
                     } else {
-                        _result = this.instant ? (0, _mirukenCore.$flatten)(_resolutions, true) : Promise.all(_resolutions).then(function (res) {
-                            return (0, _mirukenCore.$flatten)(res, true);
+                        _result = this.instant ? mirukenCore.$flatten(_resolutions, true) : Promise.all(_resolutions).then(function (res) {
+                            return mirukenCore.$flatten(res, true);
                         });
                     }
                 }
@@ -618,11 +567,11 @@ var Resolution = exports.Resolution = _mirukenCore.Base.extend({
                 if (!many && _resolutions.length > 0) {
                     return;
                 }
-                var promised = (0, _mirukenCore.$isPromise)(resolution);
+                var promised = mirukenCore.$isPromise(resolution);
                 if (!_instant || !promised) {
                     _promised = _promised || promised;
                     if (promised && many) {
-                        resolution = resolution.catch(_mirukenCore.Undefined);
+                        resolution = resolution.catch(mirukenCore.Undefined);
                     }
                     _resolutions.push(resolution);
                     _result = undefined;
@@ -632,7 +581,7 @@ var Resolution = exports.Resolution = _mirukenCore.Base.extend({
     }
 });
 
-var Composition = exports.Composition = _mirukenCore.Base.extend({
+var Composition = mirukenCore.Base.extend({
     constructor: function constructor(callback) {
         if (callback) {
             this.extend({
@@ -689,18 +638,18 @@ function addDefinition(name, def, allowGets, filter) {
         throw new Error("Invalid definition @" + name + ": key is missing");
     }
     return function (target, key, descriptor, constraints) {
-        if (!(0, _mirukenCore.isDescriptor)(descriptor)) {
+        if (!mirukenCore.isDescriptor(descriptor)) {
             throw new SyntaxError("@" + name + " cannot be applied to classes");
         }
         if (key === "constructor") {
             throw new SyntaxError("@" + name + " cannot be applied to constructors");
         }
-        var get = descriptor.get;
-        var value = descriptor.value;
+        var get = descriptor.get,
+            value = descriptor.value;
 
-        if (!(0, _mirukenCore.$isFunction)(value)) {
+        if (!mirukenCore.$isFunction(value)) {
             if (allowGets) {
-                if (!(0, _mirukenCore.$isFunction)(get)) {
+                if (!mirukenCore.$isFunction(get)) {
                     throw new SyntaxError("@" + name + " can only be applied to methods and getters");
                 }
             } else {
@@ -712,12 +661,12 @@ function addDefinition(name, def, allowGets, filter) {
         }
         function lateBinding() {
             var result = this[key];
-            if ((0, _mirukenCore.$isFunction)(result)) {
+            if (mirukenCore.$isFunction(result)) {
                 return result.apply(this, arguments);
             }
             return allowGets ? result : $unhandled;
         }
-        var handler = (0, _mirukenCore.$isFunction)(filter) ? function () {
+        var handler = mirukenCore.$isFunction(filter) ? function () {
             return filter.apply(this, [key].concat(Array.prototype.slice.call(arguments))) === false ? $unhandled : lateBinding.apply(this, arguments);
         } : lateBinding;
         handler.key = key;
@@ -730,7 +679,7 @@ function handle() {
         args[_key] = arguments[_key];
     }
 
-    return (0, _mirukenCore.decorate)(addDefinition("handle", $handle), args);
+    return mirukenCore.decorate(addDefinition("handle", $handle), args);
 }
 
 function provide() {
@@ -738,7 +687,7 @@ function provide() {
         args[_key2] = arguments[_key2];
     }
 
-    return (0, _mirukenCore.decorate)(addDefinition("provide", _$provide, true), args);
+    return mirukenCore.decorate(addDefinition("provide", $provide$1, true), args);
 }
 
 function lookup() {
@@ -746,10 +695,53 @@ function lookup() {
         args[_key3] = arguments[_key3];
     }
 
-    return (0, _mirukenCore.decorate)(addDefinition("lookup", $lookup, true), args);
+    return mirukenCore.decorate(addDefinition("lookup", $lookup, true), args);
 }
 
-var Handler = exports.Handler = _mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _dec;
+var _dec2;
+var _dec3;
+var _dec4;
+var _dec5;
+var _dec6;
+var _obj;
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+function _applyDecoratedDescriptor(target, property, decorators, descriptor, context) {
+    var desc = {};
+    Object['ke' + 'ys'](descriptor).forEach(function (key) {
+        desc[key] = descriptor[key];
+    });
+    desc.enumerable = !!desc.enumerable;
+    desc.configurable = !!desc.configurable;
+
+    if ('value' in desc || desc.initializer) {
+        desc.writable = true;
+    }
+
+    desc = decorators.slice().reverse().reduce(function (desc, decorator) {
+        return decorator(target, property, desc) || desc;
+    }, desc);
+
+    if (context && desc.initializer !== void 0) {
+        desc.value = desc.initializer ? desc.initializer.call(context) : void 0;
+        desc.initializer = undefined;
+    }
+
+    if (desc.initializer === void 0) {
+        Object['define' + 'Property'](target, property, desc);
+        desc = null;
+    }
+
+    return desc;
+}
+
+var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
     constructor: function constructor(delegate) {
         Object.defineProperty(this, "delegate", {
             value: delegate,
@@ -757,10 +749,10 @@ var Handler = exports.Handler = _mirukenCore.Base.extend((_dec = handle(Lookup),
         });
     },
     handle: function handle(callback, greedy, composer) {
-        if ((0, _mirukenCore.$isNothing)(callback)) {
+        if (mirukenCore.$isNothing(callback)) {
             return false;
         }
-        if ((0, _mirukenCore.$isNothing)(composer)) {
+        if (mirukenCore.$isNothing(composer)) {
             composer = compositionScope(this);
         }
         return !!this.handleCallback(callback, !!greedy, composer);
@@ -768,8 +760,8 @@ var Handler = exports.Handler = _mirukenCore.Base.extend((_dec = handle(Lookup),
     handleCallback: function handleCallback(callback, greedy, composer) {
         return $handle.dispatch(this, callback, null, composer, greedy) !== $unhandled;
     },
-    __lookup: function __lookup(lookup, composer) {
-        return $lookup.dispatch(this, lookup, lookup.key, composer, lookup.isMany, lookup.addResult);
+    __lookup: function __lookup(lookup$$1, composer) {
+        return $lookup.dispatch(this, lookup$$1, lookup$$1.key, composer, lookup$$1.isMany, lookup$$1.addResult);
     },
     __defered: function __defered(deferred, composer) {
         return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);
@@ -777,22 +769,22 @@ var Handler = exports.Handler = _mirukenCore.Base.extend((_dec = handle(Lookup),
     __resolution: function __resolution(resolution, composer) {
         var key = resolution.key,
             many = resolution.isMany;
-        var resolved = _$provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
+        var resolved = $provide$1.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (resolved === $unhandled) {
             var implied = new Binding(key),
-                _delegate = this.delegate;
-            if (_delegate && implied.match((0, _mirukenCore.$classOf)(_delegate), _mirukenCore.Variance.Contravariant)) {
-                resolution.resolve((0, _mirukenCore.$decorated)(_delegate, true));
+                delegate = this.delegate;
+            if (delegate && implied.match(mirukenCore.$classOf(delegate), mirukenCore.Variance.Contravariant)) {
+                resolution.resolve(mirukenCore.$decorated(delegate, true));
                 resolved = true;
             }
-            if ((resolved === $unhandled || many) && implied.match((0, _mirukenCore.$classOf)(this), _mirukenCore.Variance.Contravariant)) {
-                resolution.resolve((0, _mirukenCore.$decorated)(this, true));
+            if ((resolved === $unhandled || many) && implied.match(mirukenCore.$classOf(this), mirukenCore.Variance.Contravariant)) {
+                resolution.resolve(mirukenCore.$decorated(this, true));
                 resolved = true;
             }
         }
         if (resolved === $unhandled) {
             return resolved;
-        };
+        }
     },
     __handleMethod: function __handleMethod(method, composer) {
         if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
@@ -806,7 +798,7 @@ var Handler = exports.Handler = _mirukenCore.Base.extend((_dec = handle(Lookup),
     },
     __composition: function __composition(composable, composer) {
         var callback = composable.callback;
-        if ((0, _mirukenCore.$isNothing)(callback)) {
+        if (mirukenCore.$isNothing(callback)) {
             return $unhandled;
         }
         return $handle.dispatch(this, callback, null, composer);
@@ -817,13 +809,13 @@ var Handler = exports.Handler = _mirukenCore.Base.extend((_dec = handle(Lookup),
     }
 });
 
-_mirukenCore.Base.implement({
+mirukenCore.Base.implement({
     toHandler: function toHandler() {
         return Handler(this);
     }
 });
 
-var compositionScope = (0, _mirukenCore.$decorator)({
+var compositionScope = mirukenCore.$decorator({
     handleCallback: function handleCallback(callback, greedy, composer) {
         if (callback.constructor !== Composition) {
             callback = new Composition(callback);
@@ -832,11 +824,11 @@ var compositionScope = (0, _mirukenCore.$decorator)({
     }
 });
 
-var CascadeHandler = exports.CascadeHandler = Handler.extend({
+var CascadeHandler = Handler.extend({
     constructor: function constructor(handler, cascadeToHandler) {
-        if ((0, _mirukenCore.$isNothing)(handler)) {
+        if (mirukenCore.$isNothing(handler)) {
             throw new TypeError("No handler specified.");
-        } else if ((0, _mirukenCore.$isNothing)(cascadeToHandler)) {
+        } else if (mirukenCore.$isNothing(cascadeToHandler)) {
             throw new TypeError("No cascadeToHandler specified.");
         }
         Object.defineProperties(this, {
@@ -857,10 +849,10 @@ var CascadeHandler = exports.CascadeHandler = Handler.extend({
     }
 });
 
-var CompositeHandler = exports.CompositeHandler = Handler.extend({
+var CompositeHandler = Handler.extend({
     constructor: function constructor() {
-        for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
-            handlers[_key4] = arguments[_key4];
+        for (var _len = arguments.length, handlers = Array(_len), _key = 0; _key < _len; _key++) {
+            handlers[_key] = arguments[_key];
         }
 
         var _handlers = [];
@@ -869,33 +861,33 @@ var CompositeHandler = exports.CompositeHandler = Handler.extend({
                 return _handlers.slice();
             },
             addHandlers: function addHandlers() {
-                for (var _len5 = arguments.length, handlers = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
-                    handlers[_key5] = arguments[_key5];
+                for (var _len2 = arguments.length, handlers = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+                    handlers[_key2] = arguments[_key2];
                 }
 
-                handlers = (0, _mirukenCore.$flatten)(handlers, true).map(function (h) {
+                handlers = mirukenCore.$flatten(handlers, true).map(function (h) {
                     return h.toHandler();
                 });
                 _handlers.push.apply(_handlers, _toConsumableArray(handlers));
                 return this;
             },
             insertHandlers: function insertHandlers(atIndex) {
-                for (var _len6 = arguments.length, handlers = Array(_len6 > 1 ? _len6 - 1 : 0), _key6 = 1; _key6 < _len6; _key6++) {
-                    handlers[_key6 - 1] = arguments[_key6];
+                for (var _len3 = arguments.length, handlers = Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
+                    handlers[_key3 - 1] = arguments[_key3];
                 }
 
-                handlers = (0, _mirukenCore.$flatten)(handlers, true).map(function (h) {
+                handlers = mirukenCore.$flatten(handlers, true).map(function (h) {
                     return h.toHandler();
                 });
                 _handlers.splice.apply(_handlers, [atIndex].concat(_toConsumableArray(handlers)));
                 return this;
             },
             removeHandlers: function removeHandlers() {
-                for (var _len7 = arguments.length, handlers = Array(_len7), _key7 = 0; _key7 < _len7; _key7++) {
-                    handlers[_key7] = arguments[_key7];
+                for (var _len4 = arguments.length, handlers = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+                    handlers[_key4] = arguments[_key4];
                 }
 
-                (0, _mirukenCore.$flatten)(handlers).forEach(function (handler) {
+                mirukenCore.$flatten(handlers).forEach(function (handler) {
                     if (!handler) {
                         return;
                     }
@@ -940,14 +932,14 @@ Handler.accepting = function (handler, constraint) {
 
 Handler.providing = function (provider, constraint) {
     var providing = new Handler();
-    _$provide(providing, constraint, provider);
+    $provide$1(providing, constraint, provider);
     return providing;
 };
 
 Handler.implementing = function (methodName, method) {
-    if (!(0, _mirukenCore.$isString)(methodName) || methodName.length === 0 || !methodName.trim()) {
+    if (!mirukenCore.$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
         throw new TypeError("No methodName specified.");
-    } else if (!(0, _mirukenCore.$isFunction)(method)) {
+    } else if (!mirukenCore.$isFunction(method)) {
         throw new TypeError("Invalid method: " + method + " is not a function.");
     }
     return new Handler().extend({
@@ -981,60 +973,60 @@ Handler.registerPolicy = function (policyType, key) {
 Handler.implement({
     defer: function defer(callback) {
         var deferred = new Deferred(callback);
-        this.handle(deferred, false, $composer);
+        this.handle(deferred, false, exports.$composer);
         return deferred.callbackResult;
     },
     deferAll: function deferAll(callback) {
         var deferred = new Deferred(callback, true);
-        this.handle(deferred, true, $composer);
+        this.handle(deferred, true, exports.$composer);
         return deferred.callbackResult;
     },
     resolve: function resolve(key) {
         var resolution = key instanceof Resolution ? key : new Resolution(key);
-        if (this.handle(resolution, false, $composer)) {
+        if (this.handle(resolution, false, exports.$composer)) {
             return resolution.callbackResult;
         }
     },
     resolveAll: function resolveAll(key) {
         var resolution = key instanceof Resolution ? key : new Resolution(key, true);
-        return this.handle(resolution, true, $composer) ? resolution.callbackResult : [];
+        return this.handle(resolution, true, exports.$composer) ? resolution.callbackResult : [];
     },
-    lookup: function lookup(key) {
-        var lookup = key instanceof Lookup ? key : new Lookup(key);
-        if (this.handle(lookup, false, $composer)) {
-            return lookup.callbackResult;
+    lookup: function lookup$$1(key) {
+        var lookup$$1 = key instanceof Lookup ? key : new Lookup(key);
+        if (this.handle(lookup$$1, false, exports.$composer)) {
+            return lookup$$1.callbackResult;
         }
     },
     lookupAll: function lookupAll(key) {
-        var lookup = key instanceof Lookup ? key : new Lookup(key, true);
-        return this.handle(lookup, true, $composer) ? lookup.callbackResult : [];
+        var lookup$$1 = key instanceof Lookup ? key : new Lookup(key, true);
+        return this.handle(lookup$$1, true, exports.$composer) ? lookup$$1.callbackResult : [];
     },
     decorate: function decorate(decorations) {
-        return (0, _mirukenCore.$decorate)(this, decorations);
+        return mirukenCore.$decorate(this, decorations);
     },
     filter: function filter(_filter, reentrant) {
-        if (!(0, _mirukenCore.$isFunction)(_filter)) {
+        if (!mirukenCore.$isFunction(_filter)) {
             throw new TypeError("Invalid filter: " + _filter + " is not a function.");
         }
         return this.decorate({
             handleCallback: function handleCallback(callback, greedy, composer) {
-                var _this2 = this;
+                var _this = this;
 
                 if (!reentrant && callback instanceof Composition) {
                     return this.base(callback, greedy, composer);
                 }
                 var base = this.base;
                 return _filter(callback, composer, function () {
-                    return base.call(_this2, callback, greedy, composer);
+                    return base.call(_this, callback, greedy, composer);
                 });
             }
         });
     },
     aspect: function aspect(before, after, reentrant) {
         return this.filter(function (callback, composer, proceed) {
-            if ((0, _mirukenCore.$isFunction)(before)) {
+            if (mirukenCore.$isFunction(before)) {
                 var test = before(callback, composer);
-                if ((0, _mirukenCore.$isPromise)(test)) {
+                if (mirukenCore.$isPromise(test)) {
                     var _ret = function () {
                         var hasResult = "callbackResult" in callback,
                             accept = test.then(function (accepted) {
@@ -1061,18 +1053,18 @@ Handler.implement({
         }, reentrant);
     },
     $provide: function $provide() {
-        var _this3 = this;
+        var _this2 = this;
 
-        for (var _len8 = arguments.length, values = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
-            values[_key8] = arguments[_key8];
+        for (var _len5 = arguments.length, values = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+            values[_key5] = arguments[_key5];
         }
 
-        values = (0, _mirukenCore.$flatten)(values, true);
+        values = mirukenCore.$flatten(values, true);
         if (values.length > 0) {
             var _ret2 = function () {
-                var provider = _this3.decorate();
+                var provider = _this2.decorate();
                 values.forEach(function (value) {
-                    return _$provide(provider, value);
+                    return $provide$1(provider, value);
                 });
                 return {
                     v: provider
@@ -1087,11 +1079,11 @@ Handler.implement({
         var when = new Binding(constraint),
             condition = function condition(callback) {
             if (callback instanceof Deferred) {
-                return when.match((0, _mirukenCore.$classOf)(callback.callback), _mirukenCore.Variance.Contravariant);
+                return when.match(mirukenCore.$classOf(callback.callback), mirukenCore.Variance.Contravariant);
             } else if (callback instanceof Resolution) {
-                return when.match(callback.key, _mirukenCore.Variance.Covariant);
+                return when.match(callback.key, mirukenCore.Variance.Covariant);
             } else {
-                return when.match((0, _mirukenCore.$classOf)(callback), _mirukenCore.Variance.Contravariant);
+                return when.match(mirukenCore.$classOf(callback), mirukenCore.Variance.Contravariant);
             }
         };
         return this.decorate({
@@ -1101,8 +1093,8 @@ Handler.implement({
         });
     },
     next: function next() {
-        for (var _len9 = arguments.length, handlers = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
-            handlers[_key9] = arguments[_key9];
+        for (var _len6 = arguments.length, handlers = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
+            handlers[_key6] = arguments[_key6];
         }
 
         switch (handlers.length) {
@@ -1111,11 +1103,11 @@ Handler.implement({
             case 1:
                 return new CascadeHandler(this, handlers[0]);
             default:
-                return new (Function.prototype.bind.apply(CompositeHandler, [null].concat([this], handlers)))();
+                return new (Function.prototype.bind.apply(CompositeHandler, [null].concat([this], _toConsumableArray(handlers))))();
         }
     },
     $guard: function $guard(target, property) {
-        var _this4 = this;
+        var _this3 = this;
 
         if (target) {
             var _ret3 = function () {
@@ -1123,7 +1115,7 @@ Handler.implement({
                 property = property || "guarded";
                 var propExists = property in target;
                 return {
-                    v: _this4.aspect(function () {
+                    v: _this3.aspect(function () {
                         if (guarded = target[property]) {
                             return false;
                         }
@@ -1178,7 +1170,7 @@ Handler.implement({
                 var handled = proceed();
                 if (handled) {
                     var result = callback.callbackResult;
-                    callback.callbackResult = (0, _mirukenCore.$isPromise)(result) ? result : Promise.resolve(result);
+                    callback.callbackResult = mirukenCore.$isPromise(result) ? result : Promise.resolve(result);
                 }
                 return handled;
             } catch (ex) {
@@ -1193,7 +1185,7 @@ Handler.implement({
             if (handled) {
                 (function () {
                     var result = callback.callbackResult;
-                    if ((0, _mirukenCore.$isPromise)(result)) {
+                    if (mirukenCore.$isPromise(result)) {
                         callback.callbackResult = new Promise(function (resolve, reject) {
                             var timeout = void 0;
                             result.then(function (res) {
@@ -1210,10 +1202,10 @@ Handler.implement({
                             timeout = setTimeout(function () {
                                 if (!error) {
                                     error = new TimeoutError(callback);
-                                } else if ((0, _mirukenCore.$isFunction)(error)) {
+                                } else if (mirukenCore.$isFunction(error)) {
                                     error = Reflect.construct(error, [callback]);
                                 }
-                                if ((0, _mirukenCore.$isFunction)(result.reject)) {
+                                if (mirukenCore.$isFunction(result.reject)) {
                                     result.reject(error);
                                 }
                                 reject(error);
@@ -1233,10 +1225,10 @@ function aspectProceed(callback, composer, proceed, after, state) {
         var handled = proceed();
         if (handled) {
             var result = callback.callbackResult;
-            if ((0, _mirukenCore.$isPromise)(result)) {
+            if (mirukenCore.$isPromise(result)) {
                 promise = result;
 
-                if ((0, _mirukenCore.$isFunction)(after)) {
+                if (mirukenCore.$isFunction(after)) {
                     promise.then(function (result) {
                         return after(callback, composer, state);
                     }).catch(function (error) {
@@ -1247,26 +1239,26 @@ function aspectProceed(callback, composer, proceed, after, state) {
         }
         return handled;
     } finally {
-        if (!promise && (0, _mirukenCore.$isFunction)(after)) {
+        if (!promise && mirukenCore.$isFunction(after)) {
             after(callback, composer, state);
         }
     }
 }
 
-var Batching = exports.Batching = _mirukenCore.StrictProtocol.extend({
+var Batching = mirukenCore.StrictProtocol.extend({
     complete: function complete(composer) {}
 });
 
 var BatchingComplete = Batching.extend();
 
-var Batcher = exports.Batcher = CompositeHandler.extend(BatchingComplete, {
+var Batcher = CompositeHandler.extend(BatchingComplete, {
     constructor: function constructor() {
-        for (var _len10 = arguments.length, protocols = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
-            protocols[_key10] = arguments[_key10];
+        for (var _len = arguments.length, protocols = Array(_len), _key = 0; _key < _len; _key++) {
+            protocols[_key] = arguments[_key];
         }
 
         this.base();
-        protocols = (0, _mirukenCore.$flatten)(protocols, true);
+        protocols = mirukenCore.$flatten(protocols, true);
         this.extend({
             shouldBatch: function shouldBatch(protocol) {
                 return protocol && (protocols.length == 0 || protocols.indexOf(protocol) >= 0);
@@ -1278,7 +1270,7 @@ var Batcher = exports.Batcher = CompositeHandler.extend(BatchingComplete, {
             results = this.getHandlers().reduce(function (res, handler) {
             var result = Batching(handler).complete(composer);
             if (result) {
-                promise = promise || (0, _mirukenCore.$isPromise)(result);
+                promise = promise || mirukenCore.$isPromise(result);
                 res.push(result);
                 return res;
             }
@@ -1306,7 +1298,7 @@ Handler.implement({
                     if ((handled = b.handleCallback(callback, greedy, composer)) && !greedy) {
                         if (_batcher) {
                             var result = callback.callbackResult;
-                            if ((0, _mirukenCore.$isPromise)(result)) {
+                            if (mirukenCore.$isPromise(result)) {
                                 _promises.push(result);
                             }
                         }
@@ -1332,7 +1324,7 @@ Handler.implement({
     }
 });
 
-var InvocationOptions = exports.InvocationOptions = (0, _mirukenCore.Flags)({
+var InvocationOptions = mirukenCore.Flags({
     None: 0,
 
     Broadcast: 1 << 0,
@@ -1346,7 +1338,7 @@ var InvocationOptions = exports.InvocationOptions = (0, _mirukenCore.Flags)({
     Notify: 1 << 0 | 1 << 1
 });
 
-var InvocationSemantics = exports.InvocationSemantics = Composition.extend({
+var InvocationSemantics = Composition.extend({
     constructor: function constructor(options) {
         var _options = InvocationOptions.None.addFlag(options),
             _specified = _options;
@@ -1374,7 +1366,7 @@ var InvocationSemantics = exports.InvocationSemantics = Composition.extend({
     }
 });
 
-var InvocationDelegate = exports.InvocationDelegate = _mirukenCore.Delegate.extend({
+var InvocationDelegate = mirukenCore.Delegate.extend({
     constructor: function constructor(handler) {
         this.extend({
             get handler() {
@@ -1383,20 +1375,20 @@ var InvocationDelegate = exports.InvocationDelegate = _mirukenCore.Delegate.exte
         });
     },
     get: function get(protocol, propertyName, strict) {
-        return delegate(this, _mirukenCore.MethodType.Get, protocol, propertyName, null, strict);
+        return delegate(this, mirukenCore.MethodType.Get, protocol, propertyName, null, strict);
     },
     set: function set(protocol, propertyName, propertyValue, strict) {
-        return delegate(this, _mirukenCore.MethodType.Set, protocol, propertyName, propertyValue, strict);
+        return delegate(this, mirukenCore.MethodType.Set, protocol, propertyName, propertyValue, strict);
     },
     invoke: function invoke(protocol, methodName, args, strict) {
-        return delegate(this, _mirukenCore.MethodType.Invoke, protocol, methodName, args, strict);
+        return delegate(this, mirukenCore.MethodType.Invoke, protocol, methodName, args, strict);
     }
 });
 
 function delegate(delegate, methodType, protocol, methodName, args, strict) {
     var broadcast = false,
         bestEffort = false,
-        useResolve = _mirukenCore.Resolving.isAdoptedBy(protocol),
+        useResolve = mirukenCore.Resolving.isAdoptedBy(protocol),
         handler = delegate.handler;
 
     var semantics = new InvocationSemantics();
@@ -1464,3 +1456,30 @@ Handler.implement({
         });
     }
 });
+
+exports.Batching = Batching;
+exports.Batcher = Batcher;
+exports.HandleMethod = HandleMethod;
+exports.ResolveMethod = ResolveMethod;
+exports.Lookup = Lookup;
+exports.Deferred = Deferred;
+exports.Resolution = Resolution;
+exports.Composition = Composition;
+exports.RejectedError = RejectedError;
+exports.TimeoutError = TimeoutError;
+exports.addDefinition = addDefinition;
+exports.handle = handle;
+exports.provide = provide;
+exports.lookup = lookup;
+exports.$handle = $handle;
+exports.$provide = $provide$1;
+exports.$lookup = $lookup;
+exports.$unhandled = $unhandled;
+exports.$define = $define;
+exports.Binding = Binding;
+exports.Handler = Handler;
+exports.CascadeHandler = CascadeHandler;
+exports.CompositeHandler = CompositeHandler;
+exports.InvocationOptions = InvocationOptions;
+exports.InvocationSemantics = InvocationSemantics;
+exports.InvocationDelegate = InvocationDelegate;
