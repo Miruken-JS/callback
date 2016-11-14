@@ -10,7 +10,7 @@
   "homepage": "http://miruken.com",
   "license": "MIT",
   "author": "Craig Neuwirt <Craig.Neuwirt@Improving.com>",
-  "main": "dist/commonjs/miruken-callback.js",
+  "main": "dist/cjs/miruken-callback.js",
   "repository": {
     "type": "git",
     "url": "http://github.com/miruken/callback"
