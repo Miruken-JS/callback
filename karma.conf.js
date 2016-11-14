@@ -25,7 +25,7 @@ module.exports = function(config) {
         },
 
         babelPreprocessor: {
-            options: babelOptions  
+            options: babelOptions
         },
 
         reporters: ['coverage', 'progress'],
