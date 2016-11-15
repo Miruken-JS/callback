@@ -257,8 +257,11 @@ function matchClass(match, variance) {
     return false;
 }
 
-function matchString(match) {
-    return $isString(match) && this.constraint == match;
+function matchString(match, variance) {
+    if (!$isString(match)) { return false;}
+    return variance === Variance.Invariant
+         ? this.constraint == match
+         : this.constraint.toLowerCase() == match.toLowerCase();
 }
 
 function matchRegExp(match, variance) {
@@ -1056,7 +1059,7 @@ export const CompositeHandler = Handler.extend({
              */
             insertHandlers(atIndex, ...handlers) {
                 handlers = $flatten(handlers, true).map(h => h.toHandler());
-                _handlers.splice(atIndex, ...handlers);                
+                _handlers.splice(atIndex, 0, ...handlers);                
                 return this;                    
             },                
             /**

@@ -295,8 +295,11 @@ function matchClass(match, variance) {
     return false;
 }
 
-function matchString(match) {
-    return (0, _mirukenCore.$isString)(match) && this.constraint == match;
+function matchString(match, variance) {
+    if (!(0, _mirukenCore.$isString)(match)) {
+        return false;
+    }
+    return variance === _mirukenCore.Variance.Invariant ? this.constraint == match : this.constraint.toLowerCase() == match.toLowerCase();
 }
 
 function matchRegExp(match, variance) {
@@ -887,7 +890,7 @@ var CompositeHandler = exports.CompositeHandler = Handler.extend({
                 handlers = (0, _mirukenCore.$flatten)(handlers, true).map(function (h) {
                     return h.toHandler();
                 });
-                _handlers.splice.apply(_handlers, [atIndex].concat(_toConsumableArray(handlers)));
+                _handlers.splice.apply(_handlers, [atIndex, 0].concat(_toConsumableArray(handlers)));
                 return this;
             },
             removeHandlers: function removeHandlers() {

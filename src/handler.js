@@ -215,7 +215,7 @@ export const CompositeHandler = Handler.extend({
              */
             insertHandlers(atIndex, ...handlers) {
                 handlers = $flatten(handlers, true).map(h => h.toHandler());
-                _handlers.splice(atIndex, ...handlers);                
+                _handlers.splice(atIndex, 0, ...handlers);                
                 return this;                    
             },                
             /**

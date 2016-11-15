@@ -870,6 +870,24 @@ describe("Handler", () => {
             expect(cardGames.resolve("BlackJack")).to.equal(blackjack);
         });
 
+        it("should resolve by string literal case-insensitive", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (Handler.extend({
+                      @provide("BlackJack")
+                      blackjack() { return blackjack; }
+                  }));
+            expect(cardGames.resolve("BLACKJACK")).to.equal(blackjack);
+        });
+
+        it("should resolve by string literal case-sensitive", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (Handler.extend({
+                      @provide("BlackJack")
+                      blackjack() { return blackjack; }
+                  }));
+            expect(cardGames.resolve($eq("BLACKJACK"))).to.be.undefined;
+        });
+        
         it("should resolve by string instance", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
@@ -879,6 +897,24 @@ describe("Handler", () => {
             expect(cardGames.resolve(new String("BlackJack"))).to.equal(blackjack);
         });
 
+        it("should resolve by string instance case-insensitive", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (Handler.extend({
+                      @provide("BlackJack")
+                      blackjack() { return blackjack; }
+                  }));
+            expect(cardGames.resolve(new String("blackjack"))).to.equal(blackjack);
+        });
+
+        it("should resolve by string instance case-sensitive", () => {
+            const blackjack = new CardTable("BlackJack", 1, 5),
+                  cardGames = new (Handler.extend({
+                      @provide("BlackJack")
+                      blackjack() { return blackjack; }
+                  }));
+            expect(cardGames.resolve($eq(new String("blackjack")))).to.be.undefined;
+        });
+        
         it("should resolve string by regular expression", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({

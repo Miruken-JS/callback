@@ -263,8 +263,11 @@ function matchClass(match, variance) {
     return false;
 }
 
-function matchString(match) {
-    return $isString(match) && this.constraint == match;
+function matchString(match, variance) {
+    if (!$isString(match)) { return false;}
+    return variance === Variance.Invariant
+         ? this.constraint == match
+         : this.constraint.toLowerCase() == match.toLowerCase();
 }
 
 function matchRegExp(match, variance) {
