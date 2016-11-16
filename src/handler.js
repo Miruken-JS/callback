@@ -248,9 +248,7 @@ export const CompositeHandler = Handler.extend({
                 for (let idx = 0; idx < count; ++idx) {
                     const handler = _handlers[idx];
                     if (handler.handleCallback(callback, greedy, composer)) {
-                        if (!greedy) {
-                            return true;
-                        }
+                        if (!greedy) { return true; }
                         handled = true;
                     }
                 }
