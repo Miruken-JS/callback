@@ -215,7 +215,7 @@ export const CompositeHandler = Handler.extend({
              */
             insertHandlers(atIndex, ...handlers) {
                 handlers = $flatten(handlers, true).map(h => h.toHandler());
-                _handlers.splice(atIndex, ...handlers);                
+                _handlers.splice(atIndex, 0, ...handlers);                
                 return this;                    
             },                
             /**
@@ -248,9 +248,7 @@ export const CompositeHandler = Handler.extend({
                 for (let idx = 0; idx < count; ++idx) {
                     const handler = _handlers[idx];
                     if (handler.handleCallback(callback, greedy, composer)) {
-                        if (!greedy) {
-                            return true;
-                        }
+                        if (!greedy) { return true; }
                         handled = true;
                     }
                 }
