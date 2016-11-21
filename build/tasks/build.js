@@ -5,6 +5,7 @@ var compilerOptions  = require('../babel-options');
 var rollup           = require("rollup").rollup;
 var rollupMultiEntry = require("rollup-plugin-multi-entry");
 var rollupBabel      = require("rollup-plugin-babel");
+var camelCase        = require("camelcase");
 
 var jsName = paths.packageName + '.js';
 
@@ -22,7 +23,10 @@ gulp.task("rollup", function(done) {
             bundle.write({
                 dest:       paths.output + moduleType + '/' + jsName,
                 format:     moduleType,
-                moduleName: paths.packageName
+                moduleName: camelCase(paths.packageName),
+                globals: {
+                    "miruken-core": "mirukenCore"
+                }
             });
         }); 
         console.log('Build complete');

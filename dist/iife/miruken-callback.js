@@ -1484,4 +1484,4 @@ exports.InvocationOptions = InvocationOptions;
 exports.InvocationSemantics = InvocationSemantics;
 exports.InvocationDelegate = InvocationDelegate;
 
-}((this.miruken-callback = this.miruken-callback || {}),mirukenCore));
+}((this.mirukenCallback = this.mirukenCallback || {}),mirukenCore));
