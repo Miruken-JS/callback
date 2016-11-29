@@ -777,11 +777,11 @@ var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Def
             var implied = new Binding(key),
                 delegate = this.delegate;
             if (delegate && implied.match(mirukenCore.$classOf(delegate), mirukenCore.Variance.Contravariant)) {
-                resolution.resolve(mirukenCore.$decorated(delegate, true));
+                resolution.resolve(delegate, true);
                 resolved = true;
             }
             if ((resolved === $unhandled || many) && implied.match(mirukenCore.$classOf(this), mirukenCore.Variance.Contravariant)) {
-                resolution.resolve(mirukenCore.$decorated(this, true));
+                resolution.resolve(this);
                 resolved = true;
             }
         }
@@ -976,33 +976,33 @@ Handler.registerPolicy = function (policyType, key) {
 Handler.implement({
     defer: function defer(callback) {
         var deferred = new Deferred(callback);
-        this.handle(deferred, false, exports.$composer);
+        this.handle(deferred, false);
         return deferred.callbackResult;
     },
     deferAll: function deferAll(callback) {
         var deferred = new Deferred(callback, true);
-        this.handle(deferred, true, exports.$composer);
+        this.handle(deferred, true);
         return deferred.callbackResult;
     },
     resolve: function resolve(key) {
         var resolution = key instanceof Resolution ? key : new Resolution(key);
-        if (this.handle(resolution, false, exports.$composer)) {
+        if (this.handle(resolution, false)) {
             return resolution.callbackResult;
         }
     },
     resolveAll: function resolveAll(key) {
         var resolution = key instanceof Resolution ? key : new Resolution(key, true);
-        return this.handle(resolution, true, exports.$composer) ? resolution.callbackResult : [];
+        return this.handle(resolution, true) ? resolution.callbackResult : [];
     },
     lookup: function lookup$$1(key) {
         var lookup$$1 = key instanceof Lookup ? key : new Lookup(key);
-        if (this.handle(lookup$$1, false, exports.$composer)) {
+        if (this.handle(lookup$$1, false)) {
             return lookup$$1.callbackResult;
         }
     },
     lookupAll: function lookupAll(key) {
         var lookup$$1 = key instanceof Lookup ? key : new Lookup(key, true);
-        return this.handle(lookup$$1, true, exports.$composer) ? lookup$$1.callbackResult : [];
+        return this.handle(lookup$$1, true) ? lookup$$1.callbackResult : [];
     },
     decorate: function decorate(decorations) {
         return mirukenCore.$decorate(this, decorations);
