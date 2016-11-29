@@ -6,7 +6,7 @@ import {
 import { handle } from "./define";
 
 import {
-    Lookup, Deferred, Resolution, $composer,
+    Lookup, Deferred, Resolution,
     HandleMethod, ResolveMethod, Composition,
     RejectedError, TimeoutError
 } from "./callback"; 
@@ -14,7 +14,7 @@ import {
 import {
     Base, Variance, $isNothing, $isFunction,
     $isString, $isPromise, $classOf, $flatten,
-    $decorator, $decorate, $decorated
+    $decorator, $decorate
 } from "miruken-core";
 
 /**
@@ -81,12 +81,12 @@ export const Handler = Base.extend({
             const implied  = new Binding(key),
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
-                resolution.resolve($decorated(delegate, true));
+                resolution.resolve(delegate, true);
                 resolved = true;
             }
             if ((resolved === $unhandled || many) &&
                 implied.match($classOf(this), Variance.Contravariant)) {
-                resolution.resolve($decorated(this, true));
+                resolution.resolve(this);
                 resolved = true;
             }
         }
@@ -354,7 +354,7 @@ Handler.implement({
      */                        
     defer(callback) {
         const deferred = new Deferred(callback);
-        this.handle(deferred, false, $composer);
+        this.handle(deferred, false);
         return deferred.callbackResult;            
     },
     /**
@@ -367,7 +367,7 @@ Handler.implement({
      */                                
     deferAll(callback) {
         const deferred = new Deferred(callback, true);
-        this.handle(deferred, true, $composer);
+        this.handle(deferred, true);
         return deferred.callbackResult;
     },
     /**
@@ -380,7 +380,7 @@ Handler.implement({
      */                                
     resolve(key) {
         const resolution = (key instanceof Resolution) ? key : new Resolution(key);
-        if (this.handle(resolution, false, $composer)) {
+        if (this.handle(resolution, false)) {
             return resolution.callbackResult;
         }
     },
@@ -394,9 +394,7 @@ Handler.implement({
      */                                        
     resolveAll(key) {
         const resolution = (key instanceof Resolution) ? key : new Resolution(key, true);
-        return this.handle(resolution, true, $composer)
-            ? resolution.callbackResult
-            : [];
+        return this.handle(resolution, true) ? resolution.callbackResult : [];
     },
     /**
      * Looks up the key.
@@ -407,7 +405,7 @@ Handler.implement({
      */                                        
     lookup(key) {
         const lookup = (key instanceof Lookup) ? key : new Lookup(key);
-        if (this.handle(lookup, false, $composer)) {
+        if (this.handle(lookup, false)) {
             return lookup.callbackResult;
         }
     },
@@ -420,7 +418,7 @@ Handler.implement({
      */                                                
     lookupAll(key) {
         const lookup = (key instanceof Lookup) ? key : new Lookup(key, true);
-        return this.handle(lookup, true, $composer)
+        return this.handle(lookup, true)
             ? lookup.callbackResult
             : [];
     },
