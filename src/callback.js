@@ -74,7 +74,7 @@ export const HandleMethod = Base.extend({
              * During invocation, the receiver will have access to a global **$composer** property
              * representing the initiating {{#crossLink "Handler"}}{{/crossLink}}.
              * @method invokeOn
-             * @param   {Object}           target    -  method receiver
+             * @param   {Object}   target    -  method receiver
              * @param   {Handler}  composer  -  composition handler
              * @returns {boolean} true if the method was accepted.
              */
@@ -374,7 +374,7 @@ export const Resolution = Base.extend({
                             _result = resolutions[0];
                         }
                     } else {
-                        _result = this.instant
+                        _result = !_promised
                             ? $flatten(_resolutions, true)
                             : Promise.all(_resolutions).then(res => $flatten(res, true));
                     }
@@ -384,21 +384,38 @@ export const Resolution = Base.extend({
             set callbackResult(value) { _result = value; },
             /**
              * Adds a resolution.
-             * @param {Any} resolution  -  resolution
+             * @param  {Any}      resolution  -  resolution
+             * @param  {Handler}  composer    -  composition handler
+             * @returns {boolean} true if accepted, false otherwise.
              */
-            resolve(resolution) {
+            resolve(resolution, composer) {
                 if (!many && _resolutions.length > 0) {
-                    return;
+                    return false;
                 }
-                const promised = $isPromise(resolution);
-                if (!_instant || !promised) {
-                    _promised = _promised || promised;
-                    if (promised && many) {
+                if ($isPromise(resolution)) {
+                    if (_instant) { return false; }
+                    _promised = true;
+                    resolution = resolution.then(r => {
+                        if (this.isSatisfied(r)) { return r; }
+                    });
+                    if (many) {
                         resolution = resolution.catch(Undefined);
                     }
-                    _resolutions.push(resolution);
-                    _result   = undefined;
+                } else if (!this.isSatisfied(resolution)) {
+                    return false;
                 }
+                _resolutions.push(resolution);
+                _result = undefined;
+                return true;
+            },
+            /**
+             * Determines if `resolution` is acceptable.
+             * @param  {Any}      resolution  -  resolution
+             * @param  {Handler}  composer    -  composition handler
+             * @returns {boolean} true if accepted, false otherwise.
+             */            
+            isSatisfied(resolution, composer) {
+                return true;
             }
         });
     }

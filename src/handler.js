@@ -81,13 +81,11 @@ export const Handler = Base.extend({
             const implied  = new Binding(key),
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
-                resolution.resolve(delegate, true);
-                resolved = true;
+                resolved = resolution.resolve(delegate, composer);
             }
             if ((resolved === $unhandled || many) &&
                 implied.match($classOf(this), Variance.Contravariant)) {
-                resolution.resolve(this);
-                resolved = true;
+                resolved = resolution.resolve(this, composer);
             }
         }
         if (resolved === $unhandled) { return resolved };

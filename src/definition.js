@@ -170,7 +170,7 @@ export function $define(variance) {
                     const result = binding.handler.call(target, callback, composer);
                     if (handled(result)) {
                         if (results) {
-                            results.call(callback, result);
+                            results.call(callback, result, composer);
                         }
                         if (!all) { return true; }
                         dispatched = true;
