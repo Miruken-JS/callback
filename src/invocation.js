@@ -1,12 +1,15 @@
 import {
-    Base, Flags, MethodType, Delegate, Resolving
+    Base, Flags, MethodType,Delegate,
+    StrictProtocol, Resolving, $isString,
+    $isFunction, $isProtocol, $isPromise
 } from "miruken-core";
 
-import {
-    Composition, HandleMethod, ResolveMethod
-} from "./callback";
-
+import { Composition, Resolution} from "./callback";
 import { Handler } from "./handler";
+import { handle } from "./define";
+import { $unhandled } from "./definition";
+
+export let $composer;
 
 /**
  * InvocationOptions flags enum
@@ -106,6 +109,167 @@ export const InvocationSemantics = Composition.extend({
 });
 
 /**
+ * Invokes a method on a target.
+ * @class HandleMethod
+ * @constructor
+ * @param  {number}              methodType  -  get, set or invoke
+ * @param  {Protocol}            protocol    -  initiating protocol
+ * @param  {string}              methodName  -  method name
+ * @param  {Array}               [...args]   -  method arguments
+ * @param  {InvocationSemanics}  semantics   -  invocation semantics
+ * @extends Base
+ */
+export const HandleMethod = Base.extend({
+    constructor(methodType, protocol, methodName, args, semantics) {
+        if (protocol && !$isProtocol(protocol)) {
+            throw new TypeError("Invalid protocol supplied.");
+        }
+        let _returnValue, _exception;
+        this.extend({
+            /**
+             * Gets the type of method.
+             * @property {number} methodType
+             * @readOnly
+             */
+            get methodType() { return methodType; },
+            /**
+             * Gets the Protocol the method belongs to.
+             * @property {Protocol} protocol
+             * @readOnly
+             */
+            get protocol() { return protocol; },
+            /**
+             * Gets the name of the method.
+             * @property {string} methodName
+             * @readOnly
+             */
+            get methodName() { return methodName; },
+            /**
+             * Gets/sets the arguments of the method.
+             * @property {Array} methodArgs
+             * @readOnly
+             */
+            get methodArgs() { return args; },
+            set methodArgs(value) { args = value; },
+            /**
+             * Get/sets the return value of the method.
+             * @property {Any} returnValue.
+             */
+            get returnValue() { return _returnValue; },
+            set returnValue(value) { _returnValue = value; },
+            /**
+             * Gets/sets the execption raised by the method.
+             * @property {Any} method exception.
+             */
+            get exception() { return _exception; },
+            set exception(exception) { _exception = exception; },
+            /**
+             * Gets/sets the effective callback result.
+             * @property {Any} callback result
+             */                
+            get callbackResult() { return _returnValue; },
+            set callbackResult(value) { _returnValue = value; },
+            /**
+             * Attempts to invoke the method on the target.<br/>
+             * During invocation, the receiver will have access to a global **$composer** property
+             * representing the initiating {{#crossLink "Handler"}}{{/crossLink}}.
+             * @method invokeOn
+             * @param   {Object}   target    -  method receiver
+             * @param   {Handler}  composer  -  composition handler
+             * @returns {boolean} true if the method was accepted.
+             */
+            invokeOn(target, composer) {
+                if (!target) { return false };
+                if (protocol) {
+                    const strict = semantics.getOption(InvocationOptions.Strict);
+                    if (strict && !protocol.isAdoptedBy(target)) {
+                        return false;
+                    }
+                }
+                let method, result;
+                if (methodType === MethodType.Invoke) {
+                    method = target[methodName];
+                    if (!$isFunction(method)) { return false; }
+                }
+                const oldComposer = $composer;                    
+                try {
+                    $composer = composer;
+                    switch (methodType) {
+                    case MethodType.Get:
+                        result = target[methodName];
+                        break;
+                    case MethodType.Set:
+                        result = target[methodName] = args;
+                        break;
+                    case MethodType.Invoke:
+                        result = method.apply(target, args);
+                        break;
+                    }
+                    if (result === $unhandled) {
+                        return false;
+                    }
+                    _returnValue = result;
+                    return true;                        
+                } catch (exception) {
+                    _exception = exception;
+                    throw exception;
+                } finally {
+                    $composer = oldComposer;
+                }
+            },
+            createNotHandledError() {
+                let qualifier = "";
+                switch (methodType) {
+                case MethodType.Get:
+                    qualifier = " (get)";
+                    break;
+                case MethodType.Set:
+                    qualifier = " (set)";
+                    break;                    
+                }
+                return new TypeError(`Protocol ${protocol.name}:${methodName}${qualifier} could not be handled.`);
+            }
+        });
+    }
+});
+
+/**
+ * Invokes a method using resolution to determine the targets.
+ * @class ResolveMethod
+ * @constructor
+ * @param  {any}            key           -  resolution key
+ * @param  {boolean}        many          -  resolution cardinality
+ * @param  {HandleMethod}   handleMethod  -  method callback
+ * @param  {boolean}        bestEffort    -  true if best effort
+ * @extends Resolution
+ */
+export const ResolveMethod = Resolution.extend({
+    constructor(key, many, handleMethod, bestEffort) {
+        var _handled;
+        this.base(key, many);
+        this.extend({
+            get callbackResult() {
+                const result = this.base();
+                if( $isPromise(result)) {
+                    return result.then(r => _handled || bestEffort
+                         ? handleMethod.callbackResult
+                         : Promise.reject(handleMethod.createNotHandledError()));
+                }
+                if (_handled || bestEffort) {
+                    return handleMethod.callbackResult;                    
+                }
+                throw handleMethod.createNotHandledError();
+            },
+            isSatisfied(resolution, composer) {
+                const handled = handleMethod.invokeOn(resolution, composer);
+                _handled = _handled || handled;
+                return handled;
+            }            
+        });
+    }
+});
+
+/**
  * Delegates properties and methods to a callback handler using 
  * {{#crossLink "HandleMethod"}}{{/crossLink}}.
  * @class InvocationDelegate
@@ -119,40 +283,49 @@ export const InvocationDelegate = Delegate.extend({
             get handler() { return handler; }
         });
     },
-    get(protocol, propertyName, strict) {
-        return delegate(this, MethodType.Get, protocol, propertyName, null, strict);
+    get(protocol, propertyName) {
+        return delegate(this, MethodType.Get, protocol, propertyName, null);
     },
-    set(protocol, propertyName, propertyValue, strict) {
-        return delegate(this, MethodType.Set, protocol, propertyName, propertyValue, strict);
+    set(protocol, propertyName, propertyValue) {
+        return delegate(this, MethodType.Set, protocol, propertyName, propertyValue);
     },
-    invoke(protocol, methodName, args, strict) {
-        return delegate(this, MethodType.Invoke, protocol, methodName, args, strict);
+    invoke(protocol, methodName, args) {
+        return delegate(this, MethodType.Invoke, protocol, methodName, args);
     }
 });
 
-function delegate(delegate, methodType, protocol, methodName, args, strict) {
-    let broadcast  = false,
-        bestEffort = false,
-        useResolve = Resolving.isAdoptedBy(protocol),
-        handler    = delegate.handler;
+function delegate(delegate, methodType, protocol, methodName, args) {
+    let handler   = delegate.handler,
+        options   = InvocationOptions.None,
+        semantics = new InvocationSemantics();
+    handler.handle(semantics, true);
 
-    const semantics = new InvocationSemantics();
-    if (handler.handle(semantics, true)) {
-        strict     = !!(strict | semantics.getOption(InvocationOptions.Strict));
-        broadcast  = semantics.getOption(InvocationOptions.Broadcast);
-        bestEffort = semantics.getOption(InvocationOptions.BestEffort);
-        useResolve = useResolve || semantics.getOption(InvocationOptions.Resolve);
+    if (!semantics.isSpecified(InvocationOptions.Strict)
+        && StrictProtocol.isAdoptedBy(protocol))
+        options |= InvocationOptions.Strict;
+
+    if (!semantics.isSpecified(InvocationOptions.Resolve)
+        && Resolving.isAdoptedBy(protocol))
+        options |= InvocationOptions.Resolve;
+
+    if (options != InvocationOptions.None)
+    {
+        semantics.setOption(options, true);
+        handler = handler.$callOptions(options);
+    }
+
+    const broadcast    = semantics.getOption(InvocationOptions.Broadcast),
+          bestEffort   = semantics.getOption(InvocationOptions.BestEffort),
+          handleMethod = new HandleMethod(methodType, protocol, methodName, args, semantics),
+          callback     = semantics.getOption(InvocationOptions.Resolve)
+                       ? new ResolveMethod(protocol, broadcast, handleMethod, bestEffort)
+                       : handleMethod;
+        
+    if (!handler.handle(callback, broadcast) && !bestEffort) {
+        throw handleMethod.createNotHandledError();
     }
     
-    const handleMethod = useResolve
-        ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort)
-        : new HandleMethod(methodType, protocol, methodName, args, strict);
-    
-    if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
-        throw new TypeError(`Object ${handler} has no method '${methodName}'`);
-    }
-    
-    return handleMethod.returnValue;
+    return callback.callbackResult;
 }
 
 Handler.implement({
@@ -216,26 +389,55 @@ Handler.implement({
                     semantics.mergeInto(callback);
                     handled = true;
                 } else if (!greedy) {
-                    // Greedy must be false when resolving since Resolution.isMany
-                    // represents greedy in that case
-                    if (semantics.isSpecified(
-                        InvocationOptions.Broadcast | InvocationOptions.Resolve)) {
-                        greedy = semantics.getOption(InvocationOptions.Broadcast)
-                            && !semantics.getOption(InvocationOptions.Resolve);
+                    if (semantics.isSpecified(InvocationOptions.Broadcast)) {
+                        greedy = semantics.getOption(InvocationOptions.Broadcast);
                     } else {
                         const inv = new InvocationSemantics();
                         if (this.handle(inv, true) &&
                             inv.isSpecified(InvocationOptions.Broadcast)) {
-                            greedy = inv.getOption(InvocationOptions.Broadcast)
-                                && !inv.getOption(InvocationOptions.Resolve);
+                            greedy = inv.getOption(InvocationOptions.Broadcast);
                         }
                     }
                 }
                 if (greedy || !handled) {
-                    handled = handled | this.base(callback, greedy, composer);
+                    handled = this.base(callback, greedy, composer) || handled;
                 }
                 return !!handled;
             }
         });
+    },
+    @handle(HandleMethod)
+    __handleMethod(method, composer) {
+        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
+            return $unhandled;
+        }
     }    
 });
+
+/**
+ * Shortcut for handling a 
+ * {{#crossLink "HandleMethod"}}{{/crossLink}} callback.
+ * @method
+ * @static
+ * @param  {string}    methodName  -  method name
+ * @param  {Function}  method      -  method function
+ * @returns {Handler} method handler.
+ * @for Handler
+ */
+Handler.implementing = function (methodName, method) {
+    if (!$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
+        throw new TypeError("No methodName specified.");
+    } else if (!$isFunction(method)) {
+        throw new TypeError(`Invalid method: ${method} is not a function.`);
+    }
+    return (new Handler()).extend({
+        handleCallback(callback, greedy, composer) {
+            if (callback instanceof HandleMethod) {
+                const target = new Object();
+                target[methodName] = method;
+                return callback.invokeOn(target);
+            }
+            return false;
+        }
+    });
+};

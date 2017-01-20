@@ -169,11 +169,10 @@ export function $define(variance) {
                 if (binding.match(constraint, v)) {
                     const result = binding.handler.call(target, callback, composer);
                     if (handled(result)) {
-                        if (results) {
-                            results.call(callback, result, composer);
+                        if (!results || results.call(callback, result, composer) !== false) {
+                            if (!all) { return true; }
+                            dispatched = true;
                         }
-                        if (!all) { return true; }
-                        dispatched = true;
                     }
                 } else if (invariant) {
                     break;  // stop matching if invariant not satisifed

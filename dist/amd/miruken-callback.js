@@ -1,5 +1,232 @@
 define(['exports', 'miruken-core'], function (exports, mirukenCore) { 'use strict';
 
+var Lookup = mirukenCore.Base.extend({
+    constructor: function constructor(key, many) {
+        if (mirukenCore.$isNothing(key)) {
+            throw new TypeError("The key is required.");
+        }
+        many = !!many;
+        var _results = [],
+            _result = void 0,
+            _instant = mirukenCore.$instant.test(key);
+        this.extend({
+            get key() {
+                return key;
+            },
+
+            get isMany() {
+                return many;
+            },
+
+            get results() {
+                return _results;
+            },
+
+            get callbackResult() {
+                if (_result === undefined) {
+                    if (!many) {
+                        if (_results.length > 0) {
+                            _result = _results[0];
+                        }
+                    } else if (_instant) {
+                        _result = mirukenCore.$flatten(_results);
+                    } else {
+                        _result = Promise.all(_results).then(mirukenCore.$flatten);
+                    }
+                }
+                return _result;
+            },
+            set callbackResult(value) {
+                _result = value;
+            },
+            addResult: function addResult(result) {
+                if ((many || _results.length === 0) && !(_instant && mirukenCore.$isPromise(result))) {
+                    _results.push(result);
+                    _result = undefined;
+                }
+            }
+        });
+    }
+});
+
+var Deferred = mirukenCore.Base.extend({
+    constructor: function constructor(callback, many) {
+        if (mirukenCore.$isNothing(callback)) {
+            throw new TypeError("The callback is required.");
+        }
+        many = !!many;
+        var _pending = [],
+            _tracked = void 0,
+            _result = void 0;
+        this.extend({
+            get isMany() {
+                return many;
+            },
+
+            get callback() {
+                return callback;
+            },
+
+            get pending() {
+                return _pending;
+            },
+
+            get callbackResult() {
+                if (_result === undefined) {
+                    if (_pending.length === 1) {
+                        _result = Promise.resolve(_pending[0]);
+                    } else if (_pending.length > 1) {
+                        _result = Promise.all(_pending);
+                    } else {
+                        _result = Promise.resolve(_tracked);
+                    }
+                }
+                return _result;
+            },
+            set callbackResult(value) {
+                _result = value;
+            },
+            track: function track(promise) {
+                if ((many || _pending.length === 0) && mirukenCore.$isPromise(promise)) {
+                    _pending.push(promise);
+                    _result = undefined;
+                }
+                if (!_tracked) {
+                    _tracked = true;
+                    _result = undefined;
+                }
+            }
+        });
+    }
+});
+
+var Resolution = mirukenCore.Base.extend({
+    constructor: function constructor(key, many) {
+        if (mirukenCore.$isNothing(key)) {
+            throw new TypeError("The key is required.");
+        }
+        many = !!many;
+        var _resolutions = [],
+            _promised = false,
+            _result = void 0,
+            _instant = mirukenCore.$instant.test(key);
+        this.extend({
+            get key() {
+                return key;
+            },
+
+            get isMany() {
+                return many;
+            },
+
+            get instant() {
+                return !_promised;
+            },
+
+            get resolutions() {
+                return _resolutions;
+            },
+
+            get callbackResult() {
+                if (_result === undefined) {
+                    if (!many) {
+                        var resolutions = mirukenCore.$flatten(_resolutions, true);
+                        if (resolutions.length > 0) {
+                            _result = resolutions[0];
+                        }
+                    } else {
+                        _result = !_promised ? mirukenCore.$flatten(_resolutions, true) : Promise.all(_resolutions).then(function (res) {
+                            return mirukenCore.$flatten(res, true);
+                        });
+                    }
+                }
+                return _result;
+            },
+            set callbackResult(value) {
+                _result = value;
+            },
+            resolve: function resolve(resolution, composer) {
+                var _this = this;
+
+                if (!many && _resolutions.length > 0) {
+                    return false;
+                }
+                if (mirukenCore.$isPromise(resolution)) {
+                    if (_instant) {
+                        return false;
+                    }
+                    _promised = true;
+                    resolution = resolution.then(function (r) {
+                        if (_this.isSatisfied(r)) {
+                            return r;
+                        }
+                    });
+                    if (many) {
+                        resolution = resolution.catch(mirukenCore.Undefined);
+                    }
+                } else if (!this.isSatisfied(resolution)) {
+                    return false;
+                }
+                _resolutions.push(resolution);
+                _result = undefined;
+                return true;
+            },
+            isSatisfied: function isSatisfied(resolution, composer) {
+                return true;
+            }
+        });
+    }
+});
+
+var Composition = mirukenCore.Base.extend({
+    constructor: function constructor(callback) {
+        if (callback) {
+            this.extend({
+                get callback() {
+                    return callback;
+                },
+
+                get callbackResult() {
+                    return callback.callbackResult;
+                },
+                set callbackResult(value) {
+                    callback.callbackResult = value;
+                }
+            });
+        }
+    }
+}, {
+    isComposed: function isComposed(callback, type) {
+        return callback instanceof this && callback.callback instanceof type;
+    }
+});
+
+function RejectedError(callback) {
+    this.callback = callback;
+
+    if (Error.captureStackTrace) {
+        Error.captureStackTrace(this, this.constructor);
+    } else {
+        Error.call(this);
+    }
+}
+RejectedError.prototype = new Error();
+RejectedError.prototype.constructor = RejectedError;
+
+function TimeoutError(callback, message) {
+    this.callback = callback;
+
+    this.message = message || "Timeout occurred";
+
+    if (Error.captureStackTrace) {
+        Error.captureStackTrace(this, this.constructor);
+    } else {
+        Error.call(this);
+    }
+}
+TimeoutError.prototype = new Error();
+TimeoutError.prototype.constructor = TimeoutError;
+
 var definitions = {};
 
 var $handle = $define(mirukenCore.Variance.Contravariant);
@@ -144,13 +371,12 @@ function $define(variance) {
                 if (binding.match(constraint, v)) {
                     var result = binding.handler.call(target, callback, composer);
                     if (handled(result)) {
-                        if (results) {
-                            results.call(callback, result);
+                        if (!results || results.call(callback, result, composer) !== false) {
+                            if (!all) {
+                                return true;
+                            }
+                            dispatched = true;
                         }
-                        if (!all) {
-                            return true;
-                        }
-                        dispatched = true;
                     }
                 } else if (invariant) {
                     break;
@@ -281,354 +507,6 @@ function impliesSuccess(result) {
     return result !== $unhandled;
 }
 
-exports.$composer = void 0;
-
-var HandleMethod = mirukenCore.Base.extend({
-    constructor: function constructor(methodType, protocol, methodName, args, strict) {
-        if (protocol && !mirukenCore.$isProtocol(protocol)) {
-            throw new TypeError("Invalid protocol supplied.");
-        }
-        var _returnValue = void 0,
-            _exception = void 0;
-        this.extend({
-            get methodType() {
-                return methodType;
-            },
-
-            get protocol() {
-                return protocol;
-            },
-
-            get methodName() {
-                return methodName;
-            },
-
-            get methodArgs() {
-                return args;
-            },
-            set methodArgs(value) {
-                args = value;
-            },
-
-            get returnValue() {
-                return _returnValue;
-            },
-            set returnValue(value) {
-                _returnValue = value;
-            },
-
-            get exception() {
-                return _exception;
-            },
-            set exception(exception) {
-                _exception = exception;
-            },
-
-            get callbackResult() {
-                return _returnValue;
-            },
-            set callbackResult(value) {
-                _returnValue = value;
-            },
-            invokeOn: function invokeOn(target, composer) {
-                if (!target || strict && protocol && !protocol.isAdoptedBy(target)) {
-                    return false;
-                }
-                var method = void 0,
-                    result = void 0;
-                if (methodType === mirukenCore.MethodType.Invoke) {
-                    method = target[methodName];
-                    if (!mirukenCore.$isFunction(method)) {
-                        return false;
-                    }
-                }
-                var oldComposer = exports.$composer;
-                try {
-                    exports.$composer = composer;
-                    switch (methodType) {
-                        case mirukenCore.MethodType.Get:
-                            result = target[methodName];
-                            break;
-                        case mirukenCore.MethodType.Set:
-                            result = target[methodName] = args;
-                            break;
-                        case mirukenCore.MethodType.Invoke:
-                            result = method.apply(target, args);
-                            break;
-                    }
-                    if (result === $unhandled) {
-                        return false;
-                    }
-                    _returnValue = result;
-                    return true;
-                } catch (exception) {
-                    _exception = exception;
-                    throw exception;
-                } finally {
-                    exports.$composer = oldComposer;
-                }
-            }
-        });
-    }
-});
-
-var ResolveMethod = HandleMethod.extend({
-    constructor: function constructor(methodType, protocol, methodName, args, strict, all, required) {
-        this.base(methodType, protocol, methodName, args, strict);
-        this.extend({
-            invokeResolve: function invokeResolve(composer) {
-                var _this = this;
-
-                var handled = false,
-                    targets = composer.resolveAll(protocol);
-
-                if (mirukenCore.$isPromise(targets)) {
-                    this.returnValue = new Promise(function (resolve, reject) {
-                        targets.then(function (targets) {
-                            invokeTargets.call(_this, targets);
-                            if (_this.execption) {
-                                reject(_this.exeception);
-                            } else if (handled) {
-                                resolve(_this.returnValue);
-                            } else if (required) {
-                                reject(new TypeError("Object " + composer + " has no method '" + methodName + "'"));
-                            } else {
-                                resolve();
-                            }
-                        }, reject);
-                    });
-                    return true;
-                }
-
-                invokeTargets.call(this, targets);
-
-                function invokeTargets(targets) {
-                    for (var i = 0; i < targets.length; ++i) {
-                        handled = handled | this.invokeOn(targets[i], composer);
-                        if (handled && !all) {
-                            break;
-                        }
-                    }
-                }
-
-                return handled;
-            }
-        });
-    }
-});
-
-var Lookup = mirukenCore.Base.extend({
-    constructor: function constructor(key, many) {
-        if (mirukenCore.$isNothing(key)) {
-            throw new TypeError("The key is required.");
-        }
-        many = !!many;
-        var _results = [],
-            _result = void 0,
-            _instant = mirukenCore.$instant.test(key);
-        this.extend({
-            get key() {
-                return key;
-            },
-
-            get isMany() {
-                return many;
-            },
-
-            get results() {
-                return _results;
-            },
-
-            get callbackResult() {
-                if (_result === undefined) {
-                    if (!many) {
-                        if (_results.length > 0) {
-                            _result = _results[0];
-                        }
-                    } else if (_instant) {
-                        _result = mirukenCore.$flatten(_results);
-                    } else {
-                        _result = Promise.all(_results).then(mirukenCore.$flatten);
-                    }
-                }
-                return _result;
-            },
-            set callbackResult(value) {
-                _result = value;
-            },
-            addResult: function addResult(result) {
-                if ((many || _results.length === 0) && !(_instant && mirukenCore.$isPromise(result))) {
-                    _results.push(result);
-                    _result = undefined;
-                }
-            }
-        });
-    }
-});
-
-var Deferred = mirukenCore.Base.extend({
-    constructor: function constructor(callback, many) {
-        if (mirukenCore.$isNothing(callback)) {
-            throw new TypeError("The callback is required.");
-        }
-        many = !!many;
-        var _pending = [],
-            _tracked = void 0,
-            _result = void 0;
-        this.extend({
-            get isMany() {
-                return many;
-            },
-
-            get callback() {
-                return callback;
-            },
-
-            get pending() {
-                return _pending;
-            },
-
-            get callbackResult() {
-                if (_result === undefined) {
-                    if (_pending.length === 1) {
-                        _result = Promise.resolve(_pending[0]);
-                    } else if (_pending.length > 1) {
-                        _result = Promise.all(_pending);
-                    } else {
-                        _result = Promise.resolve(_tracked);
-                    }
-                }
-                return _result;
-            },
-            set callbackResult(value) {
-                _result = value;
-            },
-            track: function track(promise) {
-                if ((many || _pending.length === 0) && mirukenCore.$isPromise(promise)) {
-                    _pending.push(promise);
-                    _result = undefined;
-                }
-                if (!_tracked) {
-                    _tracked = true;
-                    _result = undefined;
-                }
-            }
-        });
-    }
-});
-
-var Resolution = mirukenCore.Base.extend({
-    constructor: function constructor(key, many) {
-        if (mirukenCore.$isNothing(key)) {
-            throw new TypeError("The key is required.");
-        }
-        many = !!many;
-        var _resolutions = [],
-            _promised = false,
-            _result = void 0,
-            _instant = mirukenCore.$instant.test(key);
-        this.extend({
-            get key() {
-                return key;
-            },
-
-            get isMany() {
-                return many;
-            },
-
-            get instant() {
-                return !_promised;
-            },
-
-            get resolutions() {
-                return _resolutions;
-            },
-
-            get callbackResult() {
-                if (_result === undefined) {
-                    if (!many) {
-                        var resolutions = mirukenCore.$flatten(_resolutions, true);
-                        if (resolutions.length > 0) {
-                            _result = resolutions[0];
-                        }
-                    } else {
-                        _result = this.instant ? mirukenCore.$flatten(_resolutions, true) : Promise.all(_resolutions).then(function (res) {
-                            return mirukenCore.$flatten(res, true);
-                        });
-                    }
-                }
-                return _result;
-            },
-            set callbackResult(value) {
-                _result = value;
-            },
-            resolve: function resolve(resolution) {
-                if (!many && _resolutions.length > 0) {
-                    return;
-                }
-                var promised = mirukenCore.$isPromise(resolution);
-                if (!_instant || !promised) {
-                    _promised = _promised || promised;
-                    if (promised && many) {
-                        resolution = resolution.catch(mirukenCore.Undefined);
-                    }
-                    _resolutions.push(resolution);
-                    _result = undefined;
-                }
-            }
-        });
-    }
-});
-
-var Composition = mirukenCore.Base.extend({
-    constructor: function constructor(callback) {
-        if (callback) {
-            this.extend({
-                get callback() {
-                    return callback;
-                },
-
-                get callbackResult() {
-                    return callback.callbackResult;
-                },
-                set callbackResult(value) {
-                    callback.callbackResult = value;
-                }
-            });
-        }
-    }
-}, {
-    isComposed: function isComposed(callback, type) {
-        return callback instanceof this && callback.callback instanceof type;
-    }
-});
-
-function RejectedError(callback) {
-    this.callback = callback;
-
-    if (Error.captureStackTrace) {
-        Error.captureStackTrace(this, this.constructor);
-    } else {
-        Error.call(this);
-    }
-}
-RejectedError.prototype = new Error();
-RejectedError.prototype.constructor = RejectedError;
-
-function TimeoutError(callback, message) {
-    this.callback = callback;
-
-    this.message = message || "Timeout occurred";
-
-    if (Error.captureStackTrace) {
-        Error.captureStackTrace(this, this.constructor);
-    } else {
-        Error.call(this);
-    }
-}
-TimeoutError.prototype = new Error();
-TimeoutError.prototype.constructor = TimeoutError;
-
 function addDefinition(name, def, allowGets, filter) {
     if (!def) {
         throw new Error("Definition for @" + name + " is missing");
@@ -703,8 +581,6 @@ var _dec;
 var _dec2;
 var _dec3;
 var _dec4;
-var _dec5;
-var _dec6;
 var _obj;
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
@@ -740,7 +616,7 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
     return desc;
 }
 
-var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(HandleMethod), _dec5 = handle(ResolveMethod), _dec6 = handle(Composition), (_obj = {
+var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec3 = handle(Resolution), _dec4 = handle(Composition), (_obj = {
     constructor: function constructor(delegate) {
         Object.defineProperty(this, "delegate", {
             value: delegate,
@@ -773,25 +649,19 @@ var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Def
             var implied = new Binding(key),
                 delegate = this.delegate;
             if (delegate && implied.match(mirukenCore.$classOf(delegate), mirukenCore.Variance.Contravariant)) {
-                resolution.resolve(delegate, true);
-                resolved = true;
+                resolved = resolution.resolve(delegate, composer);
+                if (resolved === false) {
+                    resolved = $unhandled;
+                }
             }
             if ((resolved === $unhandled || many) && implied.match(mirukenCore.$classOf(this), mirukenCore.Variance.Contravariant)) {
-                resolution.resolve(this);
-                resolved = true;
+                resolved = resolution.resolve(this, composer);
+                if (resolved === false) {
+                    resolved = $unhandled;
+                }
             }
         }
         if (resolved === $unhandled) {
-            return resolved;
-        }
-    },
-    __handleMethod: function __handleMethod(method, composer) {
-        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
-            return $unhandled;
-        }
-    },
-    __resolveMethod: function __resolveMethod(method, composer) {
-        if (!method.invokeResolve(composer)) {
             return $unhandled;
         }
     },
@@ -802,7 +672,7 @@ var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Def
         }
         return $handle.dispatch(this, callback, null, composer);
     }
-}, (_applyDecoratedDescriptor(_obj, "__lookup", [_dec], Object.getOwnPropertyDescriptor(_obj, "__lookup"), _obj), _applyDecoratedDescriptor(_obj, "__defered", [_dec2], Object.getOwnPropertyDescriptor(_obj, "__defered"), _obj), _applyDecoratedDescriptor(_obj, "__resolution", [_dec3], Object.getOwnPropertyDescriptor(_obj, "__resolution"), _obj), _applyDecoratedDescriptor(_obj, "__handleMethod", [_dec4], Object.getOwnPropertyDescriptor(_obj, "__handleMethod"), _obj), _applyDecoratedDescriptor(_obj, "__resolveMethod", [_dec5], Object.getOwnPropertyDescriptor(_obj, "__resolveMethod"), _obj), _applyDecoratedDescriptor(_obj, "__composition", [_dec6], Object.getOwnPropertyDescriptor(_obj, "__composition"), _obj)), _obj)), {
+}, (_applyDecoratedDescriptor(_obj, "__lookup", [_dec], Object.getOwnPropertyDescriptor(_obj, "__lookup"), _obj), _applyDecoratedDescriptor(_obj, "__defered", [_dec2], Object.getOwnPropertyDescriptor(_obj, "__defered"), _obj), _applyDecoratedDescriptor(_obj, "__resolution", [_dec3], Object.getOwnPropertyDescriptor(_obj, "__resolution"), _obj), _applyDecoratedDescriptor(_obj, "__composition", [_dec4], Object.getOwnPropertyDescriptor(_obj, "__composition"), _obj)), _obj)), {
     coerce: function coerce(object) {
         return new this(object);
     }
@@ -935,36 +805,18 @@ Handler.providing = function (provider, constraint) {
     return providing;
 };
 
-Handler.implementing = function (methodName, method) {
-    if (!mirukenCore.$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
-        throw new TypeError("No methodName specified.");
-    } else if (!mirukenCore.$isFunction(method)) {
-        throw new TypeError("Invalid method: " + method + " is not a function.");
-    }
-    return new Handler().extend({
-        handleCallback: function handleCallback(callback, greedy, composer) {
-            if (callback instanceof HandleMethod) {
-                var target = new Object();
-                target[methodName] = method;
-                return callback.invokeOn(target);
-            }
-            return false;
-        }
-    });
-};
-
 Handler.registerPolicy = function (policyType, key) {
     if (Handler.prototype.hasOwnProperty(key)) {
         return false;
     }
     Handler.implement(_defineProperty({}, key, function (policy) {
-        var _dec7, _desc2, _value2, _obj2;
+        var _dec5, _desc2, _value2, _obj2;
 
-        return policy ? this.decorate((_dec7 = handle(policyType), (_obj2 = {
+        return policy ? this.decorate((_dec5 = handle(policyType), (_obj2 = {
             mergePolicy: function mergePolicy(receiver) {
                 policy.mergeInto(receiver);
             }
-        }, (_applyDecoratedDescriptor(_obj2, "mergePolicy", [_dec7], Object.getOwnPropertyDescriptor(_obj2, "mergePolicy"), _obj2)), _obj2))) : this;
+        }, (_applyDecoratedDescriptor(_obj2, "mergePolicy", [_dec5], Object.getOwnPropertyDescriptor(_obj2, "mergePolicy"), _obj2)), _obj2))) : this;
     }));
     return true;
 };
@@ -1323,6 +1175,40 @@ Handler.implement({
     }
 });
 
+var _dec$1;
+var _obj$1;
+
+function _applyDecoratedDescriptor$1(target, property, decorators, descriptor, context) {
+    var desc = {};
+    Object['ke' + 'ys'](descriptor).forEach(function (key) {
+        desc[key] = descriptor[key];
+    });
+    desc.enumerable = !!desc.enumerable;
+    desc.configurable = !!desc.configurable;
+
+    if ('value' in desc || desc.initializer) {
+        desc.writable = true;
+    }
+
+    desc = decorators.slice().reverse().reduce(function (desc, decorator) {
+        return decorator(target, property, desc) || desc;
+    }, desc);
+
+    if (context && desc.initializer !== void 0) {
+        desc.value = desc.initializer ? desc.initializer.call(context) : void 0;
+        desc.initializer = undefined;
+    }
+
+    if (desc.initializer === void 0) {
+        Object['define' + 'Property'](target, property, desc);
+        desc = null;
+    }
+
+    return desc;
+}
+
+exports.$composer = void 0;
+
 var InvocationOptions = mirukenCore.Flags({
     None: 0,
 
@@ -1365,6 +1251,139 @@ var InvocationSemantics = Composition.extend({
     }
 });
 
+var HandleMethod = mirukenCore.Base.extend({
+    constructor: function constructor(methodType, protocol, methodName, args, semantics) {
+        if (protocol && !mirukenCore.$isProtocol(protocol)) {
+            throw new TypeError("Invalid protocol supplied.");
+        }
+        var _returnValue = void 0,
+            _exception = void 0;
+        this.extend({
+            get methodType() {
+                return methodType;
+            },
+
+            get protocol() {
+                return protocol;
+            },
+
+            get methodName() {
+                return methodName;
+            },
+
+            get methodArgs() {
+                return args;
+            },
+            set methodArgs(value) {
+                args = value;
+            },
+
+            get returnValue() {
+                return _returnValue;
+            },
+            set returnValue(value) {
+                _returnValue = value;
+            },
+
+            get exception() {
+                return _exception;
+            },
+            set exception(exception) {
+                _exception = exception;
+            },
+
+            get callbackResult() {
+                return _returnValue;
+            },
+            set callbackResult(value) {
+                _returnValue = value;
+            },
+            invokeOn: function invokeOn(target, composer) {
+                if (!target) {
+                    return false;
+                }
+                if (protocol) {
+                    var strict = semantics.getOption(InvocationOptions.Strict);
+                    if (strict && !protocol.isAdoptedBy(target)) {
+                        return false;
+                    }
+                }
+                var method = void 0,
+                    result = void 0;
+                if (methodType === mirukenCore.MethodType.Invoke) {
+                    method = target[methodName];
+                    if (!mirukenCore.$isFunction(method)) {
+                        return false;
+                    }
+                }
+                var oldComposer = exports.$composer;
+                try {
+                    exports.$composer = composer;
+                    switch (methodType) {
+                        case mirukenCore.MethodType.Get:
+                            result = target[methodName];
+                            break;
+                        case mirukenCore.MethodType.Set:
+                            result = target[methodName] = args;
+                            break;
+                        case mirukenCore.MethodType.Invoke:
+                            result = method.apply(target, args);
+                            break;
+                    }
+                    if (result === $unhandled) {
+                        return false;
+                    }
+                    _returnValue = result;
+                    return true;
+                } catch (exception) {
+                    _exception = exception;
+                    throw exception;
+                } finally {
+                    exports.$composer = oldComposer;
+                }
+            },
+            createNotHandledError: function createNotHandledError() {
+                var qualifier = "";
+                switch (methodType) {
+                    case mirukenCore.MethodType.Get:
+                        qualifier = " (get)";
+                        break;
+                    case mirukenCore.MethodType.Set:
+                        qualifier = " (set)";
+                        break;
+                }
+                return new TypeError("Protocol " + protocol.name + ":" + methodName + qualifier + " could not be handled.");
+            }
+        });
+    }
+});
+
+var ResolveMethod = Resolution.extend({
+    constructor: function constructor(key, many, handleMethod, bestEffort) {
+        var _handled;
+        this.base(key, many);
+        this.extend({
+            get callbackResult() {
+                var result = this.base();
+                if (mirukenCore.$isPromise(result)) {
+                    return result.then(function (r) {
+                        return _handled || bestEffort ? handleMethod.callbackResult : Promise.reject(handleMethod.createNotHandledError());
+                    });
+                }
+                if (_handled || bestEffort) {
+                    return handleMethod.callbackResult;
+                }
+                throw handleMethod.createNotHandledError();
+            },
+            isSatisfied: function isSatisfied(resolution, composer) {
+                var handled = handleMethod.invokeOn(resolution, composer);
+                _handled = _handled || handled;
+                return handled;
+            }
+        });
+    }
+});
+
 var InvocationDelegate = mirukenCore.Delegate.extend({
     constructor: function constructor(handler) {
         this.extend({
@@ -1373,41 +1392,45 @@ var InvocationDelegate = mirukenCore.Delegate.extend({
             }
         });
     },
-    get: function get(protocol, propertyName, strict) {
-        return delegate(this, mirukenCore.MethodType.Get, protocol, propertyName, null, strict);
+    get: function get(protocol, propertyName) {
+        return delegate(this, mirukenCore.MethodType.Get, protocol, propertyName, null);
     },
-    set: function set(protocol, propertyName, propertyValue, strict) {
-        return delegate(this, mirukenCore.MethodType.Set, protocol, propertyName, propertyValue, strict);
+    set: function set(protocol, propertyName, propertyValue) {
+        return delegate(this, mirukenCore.MethodType.Set, protocol, propertyName, propertyValue);
     },
-    invoke: function invoke(protocol, methodName, args, strict) {
-        return delegate(this, mirukenCore.MethodType.Invoke, protocol, methodName, args, strict);
+    invoke: function invoke(protocol, methodName, args) {
+        return delegate(this, mirukenCore.MethodType.Invoke, protocol, methodName, args);
     }
 });
 
-function delegate(delegate, methodType, protocol, methodName, args, strict) {
-    var broadcast = false,
-        bestEffort = false,
-        useResolve = mirukenCore.Resolving.isAdoptedBy(protocol),
-        handler = delegate.handler;
+function delegate(delegate, methodType, protocol, methodName, args) {
+    var handler = delegate.handler,
+        options = InvocationOptions.None,
+        semantics = new InvocationSemantics();
+    handler.handle(semantics, true);
 
-    var semantics = new InvocationSemantics();
-    if (handler.handle(semantics, true)) {
-        strict = !!(strict | semantics.getOption(InvocationOptions.Strict));
-        broadcast = semantics.getOption(InvocationOptions.Broadcast);
-        bestEffort = semantics.getOption(InvocationOptions.BestEffort);
-        useResolve = useResolve || semantics.getOption(InvocationOptions.Resolve);
+    if (!semantics.isSpecified(InvocationOptions.Strict) && mirukenCore.StrictProtocol.isAdoptedBy(protocol)) options |= InvocationOptions.Strict;
+
+    if (!semantics.isSpecified(InvocationOptions.Resolve) && mirukenCore.Resolving.isAdoptedBy(protocol)) options |= InvocationOptions.Resolve;
+
+    if (options != InvocationOptions.None) {
+        semantics.setOption(options, true);
+        handler = handler.$callOptions(options);
     }
 
-    var handleMethod = useResolve ? new ResolveMethod(methodType, protocol, methodName, args, strict, broadcast, !bestEffort) : new HandleMethod(methodType, protocol, methodName, args, strict);
+    var broadcast = semantics.getOption(InvocationOptions.Broadcast),
+        bestEffort = semantics.getOption(InvocationOptions.BestEffort),
+        handleMethod = new HandleMethod(methodType, protocol, methodName, args, semantics),
+        callback = semantics.getOption(InvocationOptions.Resolve) ? new ResolveMethod(protocol, broadcast, handleMethod, bestEffort) : handleMethod;
 
-    if (!handler.handle(handleMethod, broadcast && !useResolve) && !bestEffort) {
-        throw new TypeError("Object " + handler + " has no method '" + methodName + "'");
+    if (!handler.handle(callback, broadcast) && !bestEffort) {
+        throw handleMethod.createNotHandledError();
     }
 
-    return handleMethod.returnValue;
+    return callback.callbackResult;
 }
 
-Handler.implement({
+Handler.implement((_dec$1 = handle(HandleMethod), (_obj$1 = {
     toDelegate: function toDelegate() {
         return new InvocationDelegate(this);
     },
@@ -1438,28 +1461,49 @@ Handler.implement({
                     semantics.mergeInto(callback);
                     handled = true;
                 } else if (!greedy) {
-                    if (semantics.isSpecified(InvocationOptions.Broadcast | InvocationOptions.Resolve)) {
-                        greedy = semantics.getOption(InvocationOptions.Broadcast) && !semantics.getOption(InvocationOptions.Resolve);
+                    if (semantics.isSpecified(InvocationOptions.Broadcast)) {
+                        greedy = semantics.getOption(InvocationOptions.Broadcast);
                     } else {
                         var inv = new InvocationSemantics();
                         if (this.handle(inv, true) && inv.isSpecified(InvocationOptions.Broadcast)) {
-                            greedy = inv.getOption(InvocationOptions.Broadcast) && !inv.getOption(InvocationOptions.Resolve);
+                            greedy = inv.getOption(InvocationOptions.Broadcast);
                         }
                     }
                 }
                 if (greedy || !handled) {
-                    handled = handled | this.base(callback, greedy, composer);
+                    handled = this.base(callback, greedy, composer) || handled;
                 }
                 return !!handled;
             }
         });
+    },
+    __handleMethod: function __handleMethod(method, composer) {
+        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
+            return $unhandled;
+        }
     }
-});
+}, (_applyDecoratedDescriptor$1(_obj$1, "__handleMethod", [_dec$1], Object.getOwnPropertyDescriptor(_obj$1, "__handleMethod"), _obj$1)), _obj$1)));
+
+Handler.implementing = function (methodName, method) {
+    if (!mirukenCore.$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
+        throw new TypeError("No methodName specified.");
+    } else if (!mirukenCore.$isFunction(method)) {
+        throw new TypeError("Invalid method: " + method + " is not a function.");
+    }
+    return new Handler().extend({
+        handleCallback: function handleCallback(callback, greedy, composer) {
+            if (callback instanceof HandleMethod) {
+                var target = new Object();
+                target[methodName] = method;
+                return callback.invokeOn(target);
+            }
+            return false;
+        }
+    });
+};
 
 exports.Batching = Batching;
 exports.Batcher = Batcher;
-exports.HandleMethod = HandleMethod;
-exports.ResolveMethod = ResolveMethod;
 exports.Lookup = Lookup;
 exports.Deferred = Deferred;
 exports.Resolution = Resolution;
@@ -1481,6 +1525,8 @@ exports.CascadeHandler = CascadeHandler;
 exports.CompositeHandler = CompositeHandler;
 exports.InvocationOptions = InvocationOptions;
 exports.InvocationSemantics = InvocationSemantics;
+exports.HandleMethod = HandleMethod;
+exports.ResolveMethod = ResolveMethod;
 exports.InvocationDelegate = InvocationDelegate;
 
 Object.defineProperty(exports, '__esModule', { value: true });

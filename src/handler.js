@@ -6,8 +6,7 @@ import {
 import { handle } from "./define";
 
 import {
-    Lookup, Deferred, Resolution,
-    HandleMethod, ResolveMethod, Composition,
+    Lookup, Deferred, Resolution, Composition,
     RejectedError, TimeoutError
 } from "./callback"; 
          
@@ -82,24 +81,20 @@ export const Handler = Base.extend({
                   delegate = this.delegate;
             if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
                 resolved = resolution.resolve(delegate, composer);
+                if (resolved === false) {
+                    resolved = $unhandled;
+                }
             }
             if ((resolved === $unhandled || many) &&
                 implied.match($classOf(this), Variance.Contravariant)) {
                 resolved = resolution.resolve(this, composer);
+                if (resolved === false) {
+                    resolved = $unhandled;
+                }
             }
         }
-        if (resolved === $unhandled) { return resolved };
-    },
-    @handle(HandleMethod)
-    __handleMethod(method, composer) {
-        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
+        if (resolved === $unhandled) {
             return $unhandled;
-        }
-    },
-    @handle(ResolveMethod)
-    __resolveMethod(method, composer) {
-        if (!method.invokeResolve(composer)) {
-            return $unhandled;            
         }
     },
     @handle(Composition)
@@ -288,34 +283,6 @@ Handler.providing = function (provider, constraint) {
 };
 
 /**
- * Shortcut for handling a 
- * {{#crossLink "HandleMethod"}}{{/crossLink}} callback.
- * @method
- * @static
- * @param  {string}    methodName  -  method name
- * @param  {Function}  method      -  method function
- * @returns {Handler} method handler.
- * @for Handler
- */
-Handler.implementing = function (methodName, method) {
-    if (!$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
-        throw new TypeError("No methodName specified.");
-    } else if (!$isFunction(method)) {
-        throw new TypeError(`Invalid method: ${method} is not a function.`);
-    }
-    return (new Handler()).extend({
-        handleCallback(callback, greedy, composer) {
-            if (callback instanceof HandleMethod) {
-                const target = new Object();
-                target[methodName] = method;
-                return callback.invokeOn(target);
-            }
-            return false;
-        }
-    });
-};
-
-/**                                                                                                                                          
  * Register the policy to be applied by a Handler.
  * @method registerPolicy
  * @static

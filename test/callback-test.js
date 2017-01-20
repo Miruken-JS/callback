@@ -1,6 +1,5 @@
 import {
-    HandleMethod, RejectedError, TimeoutError,
-    $composer
+    RejectedError, TimeoutError
 } from "../src/callback";
 
 import {
@@ -14,7 +13,7 @@ import {
 
 import { handle, provide, lookup } from "../src/define";
 import { Batching } from "../src/batch";
-import "../src/invocation";
+import { HandleMethod, $composer } from "../src/invocation";
 
 import {
     True, False, Undefined, Base, Protocol,
@@ -1492,7 +1491,7 @@ describe("InvocationHandler", () => {
                   casino      = new Casino("Caesars Palace")
                 .addHandlers(texasHoldEm);
             expect(() => Game(casino).open(5)).to.not.throw(Error);
-            expect(() => Game(casino).open(9)).to.throw(Error, /has no method 'open'/);
+            expect(() => Game(casino).open(9)).to.throw(Error, /open could not be handled/);
         });
 
         it("should fail missing methods", () => {
@@ -1503,7 +1502,7 @@ describe("InvocationHandler", () => {
 
             expect(() => {
                 Security(casino).trackActivity(letItRide)
-            }).to.throw(Error, /has no method 'trackActivity'/);
+            }).to.throw(Error, /trackActivity could not be handled/);
         });
 
         it("should ignore missing methods", () => {
@@ -1527,7 +1526,7 @@ describe("InvocationHandler", () => {
                   }));
             expect(() => {
                 Security(gate.$strict()).admit(new Guest("Me"))
-            }).to.throw(Error, /has no method 'admit'/);
+            }).to.throw(Error, /admit could not be handled/);
         });
 
         it("should broadcast invocations", () => {
@@ -1598,7 +1597,7 @@ describe("InvocationHandler", () => {
             const handler = new Handler();
             expect(() => {
                 Game(handler.$resolve()).open(4);
-            }).to.throw(TypeError, /has no method 'open'/);
+            }).to.throw(TypeError, /open could not be handled/);
         });
 
         it("should fail invocation if method not found", () => {
@@ -1606,7 +1605,7 @@ describe("InvocationHandler", () => {
                   handler = new Handler(new Poker());
             expect(() => {
                 Game(handler.$resolve()).open(4);
-            }).to.throw(TypeError, /has no method 'open'/);
+            }).to.throw(TypeError, /open could not be handled/);
         });
 
         it("should fail invocation promise if method not found", done => {
@@ -1617,7 +1616,7 @@ describe("InvocationHandler", () => {
                   }));
             Game(handler.$resolve()).open(5).catch(error => {
                 expect(error).to.be.instanceOf(TypeError);
-                expect(error.message).to.match(/has no method 'open'/)
+                expect(error.message).to.match(/open could not be handled/)
                 done();
             });            
         });
@@ -1694,7 +1693,7 @@ describe("InvocationHandler", () => {
             const handler = new Handler();
             expect(() => {
                 Game(handler.$resolve().$broadcast()).open(4);
-            }).to.throw(Error, /has no method 'open'/);
+            }).to.throw(Error, /open could not be handled/);
         });
 
         it("should apply filters to resolved invocations", () => {
@@ -1709,7 +1708,7 @@ describe("InvocationHandler", () => {
                 .to.equal("poker5");
             expect(() => {
                 Game(handler.$resolve().filter(False)).open(5);
-            }).to.throw(Error, /has no method 'open'/);
+            }).to.throw(Error, /open could not be handled/);
         });
     })
 });
