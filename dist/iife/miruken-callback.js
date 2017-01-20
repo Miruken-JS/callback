@@ -1343,7 +1343,7 @@ var HandleMethod = mirukenCore.Base.extend({
                     exports.$composer = oldComposer;
                 }
             },
-            createNotHandledError: function createNotHandledError() {
+            notHandledError: function notHandledError() {
                 var qualifier = "";
                 switch (methodType) {
                     case mirukenCore.MethodType.Get:
@@ -1361,20 +1361,20 @@ var HandleMethod = mirukenCore.Base.extend({
 
 var ResolveMethod = Resolution.extend({
     constructor: function constructor(key, many, handleMethod, bestEffort) {
-        var _handled;
+        var _handled = void 0;
         this.base(key, many);
         this.extend({
             get callbackResult() {
                 var result = this.base();
                 if (mirukenCore.$isPromise(result)) {
                     return result.then(function (r) {
-                        return _handled || bestEffort ? handleMethod.callbackResult : Promise.reject(handleMethod.createNotHandledError());
+                        return _handled || bestEffort ? handleMethod.callbackResult : Promise.reject(handleMethod.notHandledError());
                     });
                 }
                 if (_handled || bestEffort) {
                     return handleMethod.callbackResult;
                 }
-                throw handleMethod.createNotHandledError();
+                throw handleMethod.notHandledError();
             },
             isSatisfied: function isSatisfied(resolution, composer) {
                 var handled = handleMethod.invokeOn(resolution, composer);
@@ -1425,7 +1425,7 @@ function delegate(delegate, methodType, protocol, methodName, args) {
         callback = semantics.getOption(InvocationOptions.Resolve) ? new ResolveMethod(protocol, broadcast, handleMethod, bestEffort) : handleMethod;
 
     if (!handler.handle(callback, broadcast) && !bestEffort) {
-        throw handleMethod.createNotHandledError();
+        throw handleMethod.notHandledError();
     }
 
     return callback.callbackResult;

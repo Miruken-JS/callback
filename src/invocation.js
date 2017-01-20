@@ -217,7 +217,7 @@ export const HandleMethod = Base.extend({
                     $composer = oldComposer;
                 }
             },
-            createNotHandledError() {
+            notHandledError() {
                 let qualifier = "";
                 switch (methodType) {
                 case MethodType.Get:
@@ -245,20 +245,20 @@ export const HandleMethod = Base.extend({
  */
 export const ResolveMethod = Resolution.extend({
     constructor(key, many, handleMethod, bestEffort) {
-        var _handled;
+        let _handled;
         this.base(key, many);
         this.extend({
             get callbackResult() {
                 const result = this.base();
-                if( $isPromise(result)) {
+                if ($isPromise(result)) {
                     return result.then(r => _handled || bestEffort
                          ? handleMethod.callbackResult
-                         : Promise.reject(handleMethod.createNotHandledError()));
+                         : Promise.reject(handleMethod.notHandledError()));
                 }
                 if (_handled || bestEffort) {
                     return handleMethod.callbackResult;                    
                 }
-                throw handleMethod.createNotHandledError();
+                throw handleMethod.notHandledError();
             },
             isSatisfied(resolution, composer) {
                 const handled = handleMethod.invokeOn(resolution, composer);
@@ -322,7 +322,7 @@ function delegate(delegate, methodType, protocol, methodName, args) {
                        : handleMethod;
         
     if (!handler.handle(callback, broadcast) && !bestEffort) {
-        throw handleMethod.createNotHandledError();
+        throw handleMethod.notHandledError();
     }
     
     return callback.callbackResult;
