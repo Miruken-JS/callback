@@ -1,5 +1,5 @@
 import {
-    StrictProtocol, $isPromise, $flatten
+    Protocol, $isPromise, $flatten
 } from "miruken-core";
 
 import { Composition } from "./callback";
@@ -8,9 +8,9 @@ import { Handler, CompositeHandler } from "./handler";
 /**
  * Protocol to participate in batched operations.
  * @class Batching
- * @extends StrictProtocol
+ * @extends Protocol
  */
-export const Batching = StrictProtocol.extend({
+export const Batching = Protocol.extend({
     /**
      * Completes the batching operation.
      * @method complete

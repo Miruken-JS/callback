@@ -17,9 +17,9 @@ import { HandleMethod, $composer } from "../src/invocation";
 
 import {
     True, False, Undefined, Base, Protocol,
-    StrictProtocol, Variance, MethodType,
-    Resolving, Metadata, assignID, copy,
-    $isPromise, $eq, $instant, $using, $flatten
+    DuckTyping, Variance, MethodType, Resolving,
+    Metadata, assignID, copy, $isPromise, $eq,
+    $instant, $using, $flatten
 } from "miruken-core";
 
 import { expect } from "chai";
@@ -1401,14 +1401,14 @@ describe("Handler", () => {
     });
     
     describe("#implementing", () => {
-        const Calculator = Protocol.extend({
+        const Calculator = DuckTyping.extend({
               add(op1, op2) {},
               divide(dividend, divisor) {},
               clear() {}
         });
         
         it("should call function", () => {
-            const add = Handler.implementing("add", (op1, op2) =>  op1 + op2);
+            const add = Handler.implementing("add", (op1, op2) => op1 + op2);
             expect(Calculator(add).add(5, 10)).to.equal(15);
         });
 
@@ -1517,7 +1517,7 @@ describe("InvocationHandler", () => {
             const gate  = new (Handler.extend(Security, {
                       admit(guest) { return true; }
                   }));
-            expect(Security(gate.$strict()).admit(new Guest("Me"))).to.be.true;
+            expect(Security(gate).admit(new Guest("Me"))).to.be.true;
         });
 
         it("should reject if no protocol conformance", () => {
@@ -1525,7 +1525,7 @@ describe("InvocationHandler", () => {
                       admit(guest) { return true; }
                   }));
             expect(() => {
-                Security(gate.$strict()).admit(new Guest("Me"))
+                Security(gate).admit(new Guest("Me"))
             }).to.throw(Error, /admit could not be handled/);
         });
 
@@ -1714,12 +1714,13 @@ describe("InvocationHandler", () => {
 });
 
 describe("Handler", () => {
-    const Emailing = StrictProtocol.extend({
+    const Emailing = Protocol.extend({
              send(msg) {},
              sendConfirm(msg) {},        
              fail(msg) {},
              failConfirm(msg) {}        
-             }),
+          }),
+          Offline = Emailing.extend(),
           EmailHandler = Handler.extend(Emailing, {
               send(msg) {
                   const batch = this.getBatch();
@@ -1731,6 +1732,9 @@ describe("Handler", () => {
                        : Promise.resolve(msg);
               },            
               fail(msg) {
+                  if (msg === "OFF") {
+                      return Offline($composer).fail(msg);
+                  }
                   throw new Error("Can't send message");
               },
               failConfirm(msg) {
@@ -1746,7 +1750,21 @@ describe("Handler", () => {
                       return batch;
                   }
               }
-          });
+          }),
+          OfflineHandler = Handler.extend(Offline, {
+              send(msg) { return 99; },
+              sendConfirm(msg) {
+                  throw new Error("Can't confirm message offline");
+              },            
+              fail(msg) { return -1; },
+              failConfirm(msg) {}
+          }),
+          DemoHandler = Handler.extend({
+              send(msg) { return msg; },
+              sendConfirm(msg) { return Promise.resolve(msg); },            
+              fail(msg) {},
+              failConfirm(msg) {}
+          });    
         const EmailBatch = Base.extend(Emailing, Batching, {
             constructor() {
                 let _msgs     = [],
@@ -1784,6 +1802,31 @@ describe("Handler", () => {
             }
         });
 
+    it("should require protocol conformance", () => {
+        const handler = new DemoHandler();
+        expect(() => Emailing(handler).send("Hello")).to.throw(Error, /send could not be handled/);
+    });
+
+    it("should require protocol invariance", () => {
+        const handler = new DemoHandler();
+        expect(() => Offline(handler).send("Hello")).to.throw(Error, /send could not be handled/);
+    });
+    
+    it("should handle methods strictly", () => {
+        const handler = new OfflineHandler();
+        expect(() => Emailing(handler.$strict()).send("Hello")).to.throw(Error, /send could not be handled/);
+    });
+
+     it("should chain handle methods strictly", () => {
+         const handler = new OfflineHandler().next(new EmailHandler());
+         expect(Emailing(handler.$strict()).send("Hello")).to.equal("Hello");         
+    });
+
+    it("should handle handle methods loosely", () => {
+        const handler = new DemoHandler();
+        expect(Emailing(handler.$duck()).send("Hello")).to.equal("Hello");         
+    });
+       
     describe("#$promise", () => {
         it("should convert return to promise", done => {
             const handler = new EmailHandler();

@@ -1096,7 +1096,7 @@ function aspectProceed(callback, composer, proceed, after, state) {
     }
 }
 
-var Batching = mirukenCore.StrictProtocol.extend({
+var Batching = mirukenCore.Protocol.extend({
     complete: function complete(composer) {}
 });
 
@@ -1212,15 +1212,17 @@ exports.$composer = void 0;
 var InvocationOptions = mirukenCore.Flags({
     None: 0,
 
-    Broadcast: 1 << 0,
+    Duck: 1 << 0,
 
-    BestEffort: 1 << 1,
+    Strict: 1 << 1,
 
-    Strict: 1 << 2,
+    Resolve: 1 << 2,
 
-    Resolve: 1 << 3,
+    Broadcast: 1 << 3,
 
-    Notify: 1 << 0 | 1 << 1
+    BestEffort: 1 << 4,
+
+    Notify: 1 << 3 | 1 << 4
 });
 
 var InvocationSemantics = Composition.extend({
@@ -1299,15 +1301,10 @@ var HandleMethod = mirukenCore.Base.extend({
                 _returnValue = value;
             },
             invokeOn: function invokeOn(target, composer) {
-                if (!target) {
+                if (!this.isAcceptableTarget(target)) {
                     return false;
                 }
-                if (protocol) {
-                    var strict = semantics.getOption(InvocationOptions.Strict);
-                    if (strict && !protocol.isAdoptedBy(target)) {
-                        return false;
-                    }
-                }
+
                 var method = void 0,
                     result = void 0;
                 if (methodType === mirukenCore.MethodType.Invoke) {
@@ -1341,6 +1338,15 @@ var HandleMethod = mirukenCore.Base.extend({
                 } finally {
                     exports.$composer = oldComposer;
                 }
+            },
+            isAcceptableTarget: function isAcceptableTarget(target) {
+                if (!target) {
+                    return false;
+                }
+                if (!protocol) {
+                    return true;
+                }
+                return semantics.getOption(InvocationOptions.Strict) ? protocol.isToplevel(target) : semantics.getOption(InvocationOptions.Duck) || protocol.isAdoptedBy(target);
             },
             notHandledError: function notHandledError() {
                 var qualifier = "";
@@ -1409,6 +1415,8 @@ function delegate(delegate, methodType, protocol, methodName, args) {
         semantics = new InvocationSemantics();
     handler.handle(semantics, true);
 
+    if (!semantics.isSpecified(InvocationOptions.Duck) && mirukenCore.DuckTyping.isAdoptedBy(protocol)) options |= InvocationOptions.Duck;
+
     if (!semantics.isSpecified(InvocationOptions.Strict) && mirukenCore.StrictProtocol.isAdoptedBy(protocol)) options |= InvocationOptions.Strict;
 
     if (!semantics.isSpecified(InvocationOptions.Resolve) && mirukenCore.Resolving.isAdoptedBy(protocol)) options |= InvocationOptions.Resolve;
@@ -1434,8 +1442,14 @@ Handler.implement((_dec$1 = handle(HandleMethod), (_obj$1 = {
     toDelegate: function toDelegate() {
         return new InvocationDelegate(this);
     },
+    $duck: function $duck() {
+        return this.$callOptions(InvocationOptions.Duck);
+    },
     $strict: function $strict() {
         return this.$callOptions(InvocationOptions.Strict);
+    },
+    $resolve: function $resolve() {
+        return this.$callOptions(InvocationOptions.Resolve);
     },
     $broadcast: function $broadcast() {
         return this.$callOptions(InvocationOptions.Broadcast);
@@ -1445,9 +1459,6 @@ Handler.implement((_dec$1 = handle(HandleMethod), (_obj$1 = {
     },
     $notify: function $notify() {
         return this.$callOptions(InvocationOptions.Notify);
-    },
-    $resolve: function $resolve() {
-        return this.$callOptions(InvocationOptions.Resolve);
     },
     $callOptions: function $callOptions(options) {
         var semantics = new InvocationSemantics(options);

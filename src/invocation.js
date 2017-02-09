@@ -1,7 +1,8 @@
 import {
     Base, Flags, MethodType,Delegate,
-    StrictProtocol, Resolving, $isString,
-    $isFunction, $isProtocol, $isPromise
+    StrictProtocol, DuckTyping, Resolving,
+    $isString, $isFunction, $isProtocol,
+    $isPromise
 } from "miruken-core";
 
 import { Composition, Resolution} from "./callback";
@@ -22,30 +23,35 @@ export const InvocationOptions = Flags({
      */
     None: 0,
     /**
-     * Delivers invocation to all handlers.  At least one must recognize it.
-     * @property {number} Broadcast
-     */
-    Broadcast: 1 << 0,
+     * Requires no protocol conformance.
+     * @property {number} Duck
+     */                
+    Duck: 1 << 0,
     /**
-     * Marks invocation as optional.
-     * @property {number} BestEffort
-     */        
-    BestEffort: 1 << 1,
-    /**
-     * Requires invocation to match conforming protocol.
+     * Requires invocation to match exact protocol.
      * @property {number} Strict
      */                
-    Strict: 1 << 2,
+    Strict: 1 << 1,
     /**
      * Uses Resolve to determine instances to invoke.
      * @property {number} Resolve
      */
-    Resolve: 1 << 3,
+    Resolve: 1 << 2,
+    /**
+     * Delivers invocation to all handlers.  At least one must recognize it.
+     * @property {number} Broadcast
+     */
+    Broadcast: 1 << 3,
+    /**
+     * Marks invocation as optional.
+     * @property {number} BestEffort
+     */        
+    BestEffort: 1 << 4,
     /**
      * Publishes invocation to all handlers.
      * @property {number} Notify
      */                
-    Notify: (1 << 0) | (1 << 1)
+    Notify: (1 << 3) | (1 << 4)
 });
 
 /**
@@ -179,13 +185,8 @@ export const HandleMethod = Base.extend({
              * @returns {boolean} true if the method was accepted.
              */
             invokeOn(target, composer) {
-                if (!target) { return false };
-                if (protocol) {
-                    const strict = semantics.getOption(InvocationOptions.Strict);
-                    if (strict && !protocol.isAdoptedBy(target)) {
-                        return false;
-                    }
-                }
+                if (!this.isAcceptableTarget(target)) { return false; }
+                
                 let method, result;
                 if (methodType === MethodType.Invoke) {
                     method = target[methodName];
@@ -216,6 +217,14 @@ export const HandleMethod = Base.extend({
                 } finally {
                     $composer = oldComposer;
                 }
+            },
+            isAcceptableTarget(target) {
+                if (!target) { return false; }
+                if (!protocol) { return true; }
+                return semantics.getOption(InvocationOptions.Strict)
+                     ? protocol.isToplevel(target)
+                     : semantics.getOption(InvocationOptions.Duck)
+                    || protocol.isAdoptedBy(target);
             },
             notHandledError() {
                 let qualifier = "";
@@ -300,6 +309,10 @@ function delegate(delegate, methodType, protocol, methodName, args) {
         semantics = new InvocationSemantics();
     handler.handle(semantics, true);
 
+    if (!semantics.isSpecified(InvocationOptions.Duck)
+        && DuckTyping.isAdoptedBy(protocol))
+        options |= InvocationOptions.Duck;
+    
     if (!semantics.isSpecified(InvocationOptions.Strict)
         && StrictProtocol.isAdoptedBy(protocol))
         options |= InvocationOptions.Strict;
@@ -336,12 +349,26 @@ Handler.implement({
      */            
     toDelegate() { return new InvocationDelegate(this); },
     /**
+     * Establishes duck invocation semantics.
+     * @method $duck
+     * @returns {Handler} duck semantics.
+     * @for Handler
+     */
+    $duck() { return this.$callOptions(InvocationOptions.Duck); },
+    /**
      * Establishes strict invocation semantics.
      * @method $strict
      * @returns {Handler} strict semantics.
      * @for Handler
      */
     $strict() { return this.$callOptions(InvocationOptions.Strict); },
+    /**
+     * Establishes resolve invocation semantics.
+     * @method $resolve
+     * @returns {Handler} resolved semantics.
+     * @for Handler
+     */
+    $resolve() { return this.$callOptions(InvocationOptions.Resolve); },    
     /**
      * Establishes broadcast invocation semantics.
      * @method $broadcast
@@ -363,13 +390,6 @@ Handler.implement({
      * @for Handler
      */
     $notify() { return this.$callOptions(InvocationOptions.Notify); },
-    /**
-     * Establishes resolve invocation semantics.
-     * @method $resolve
-     * @returns {Handler} resolved semantics.
-     * @for Handler
-     */
-    $resolve() { return this.$callOptions(InvocationOptions.Resolve); },        
     /**
      * Establishes custom invocation semantics.
      * @method $callOptions
