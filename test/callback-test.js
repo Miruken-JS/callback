@@ -1811,13 +1811,23 @@ describe("Handler", () => {
         const handler = new DemoHandler();
         expect(() => Offline(handler).send("Hello")).to.throw(Error, /send could not be handled/);
     });
+
+    it("should handle methods covariantly", () => {
+        const handler = new OfflineHandler();
+        expect(Emailing(handler).fail("Hello")).to.equal(-1);         
+    });
+
+    it("should handle methods polymorphically", () => {
+        const handler = new EmailHandler().next(new OfflineHandler());
+        expect(Emailing(handler).fail("OFF")).to.equal(-1);         
+    });
     
     it("should handle methods strictly", () => {
         const handler = new OfflineHandler();
         expect(() => Emailing(handler.$strict()).send("Hello")).to.throw(Error, /send could not be handled/);
     });
 
-     it("should chain handle methods strictly", () => {
+    it("should chain handle methods strictly", () => {
          const handler = new OfflineHandler().next(new EmailHandler());
          expect(Emailing(handler.$strict()).send("Hello")).to.equal("Hello");         
     });
