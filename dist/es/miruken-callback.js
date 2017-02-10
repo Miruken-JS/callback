@@ -1,4 +1,4 @@
-import { $classOf, $decorate, $decorator, $eq, $flatten, $instant, $isClass, $isFunction, $isNothing, $isObject, $isPromise, $isProtocol, $isString, $lift, $use, Base, Delegate, DuckTyping, False, Flags, IndexedList, Metadata, MethodType, Modifier, Protocol, Resolving, StrictProtocol, Undefined, Variance, assignID, decorate as decorate$1, isDescriptor } from 'miruken-core';
+import { $classOf, $decorate, $decorator, $eq, $flatten, $instant, $isClass, $isFunction, $isNothing, $isObject, $isPromise, $isProtocol, $isString, $lift, $use, Base, Delegate, DuckTyping, False, Flags, IndexedList, Metadata, MethodType, Modifier, Protocol, Resolving, StrictProtocol, Undefined, Variance, assignID, decorate, isDescriptor } from 'miruken-core';
 
 var Lookup = Base.extend({
     constructor: function constructor(key, many) {
@@ -231,7 +231,7 @@ var definitions = {};
 
 var $handle = $define(Variance.Contravariant);
 
-var $provide$1 = $define(Variance.Covariant);
+var $provide = $define(Variance.Covariant);
 
 var $lookup = $define(Variance.Invariant);
 
@@ -556,7 +556,7 @@ function handle() {
         args[_key] = arguments[_key];
     }
 
-    return decorate$1(addDefinition("handle", $handle), args);
+    return decorate(addDefinition("handle", $handle), args);
 }
 
 function provide() {
@@ -564,7 +564,7 @@ function provide() {
         args[_key2] = arguments[_key2];
     }
 
-    return decorate$1(addDefinition("provide", $provide$1, true), args);
+    return decorate(addDefinition("provide", $provide, true), args);
 }
 
 function lookup() {
@@ -572,7 +572,7 @@ function lookup() {
         args[_key3] = arguments[_key3];
     }
 
-    return decorate$1(addDefinition("lookup", $lookup, true), args);
+    return decorate(addDefinition("lookup", $lookup, true), args);
 }
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
@@ -623,7 +623,7 @@ var Handler = Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec
             writable: false
         });
     },
-    handle: function handle(callback, greedy, composer) {
+    handle: function handle$$1(callback, greedy, composer) {
         if ($isNothing(callback)) {
             return false;
         }
@@ -644,7 +644,7 @@ var Handler = Base.extend((_dec = handle(Lookup), _dec2 = handle(Deferred), _dec
     __resolution: function __resolution(resolution, composer) {
         var key = resolution.key,
             many = resolution.isMany;
-        var resolved = $provide$1.dispatch(this, resolution, key, composer, many, resolution.resolve);
+        var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (resolved === $unhandled) {
             var implied = new Binding(key),
                 delegate = this.delegate;
@@ -801,7 +801,7 @@ Handler.accepting = function (handler, constraint) {
 
 Handler.providing = function (provider, constraint) {
     var providing = new Handler();
-    $provide$1(providing, constraint, provider);
+    $provide(providing, constraint, provider);
     return providing;
 };
 
@@ -852,7 +852,7 @@ Handler.implement({
         var lookup$$1 = key instanceof Lookup ? key : new Lookup(key, true);
         return this.handle(lookup$$1, true) ? lookup$$1.callbackResult : [];
     },
-    decorate: function decorate(decorations) {
+    decorate: function decorate$$1(decorations) {
         return $decorate(this, decorations);
     },
     filter: function filter(_filter, reentrant) {
@@ -903,7 +903,7 @@ Handler.implement({
             return aspectProceed(callback, composer, proceed, after);
         }, reentrant);
     },
-    $provide: function $provide() {
+    $provide: function $provide$$1() {
         var _this2 = this;
 
         for (var _len5 = arguments.length, values = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
@@ -915,7 +915,7 @@ Handler.implement({
             var _ret2 = function () {
                 var provider = _this2.decorate();
                 values.forEach(function (value) {
-                    return $provide$1(provider, value);
+                    return $provide(provider, value);
                 });
                 return {
                     v: provider
@@ -1513,4 +1513,4 @@ Handler.implementing = function (methodName, method) {
     });
 };
 
-export { Batching, Batcher, Lookup, Deferred, Resolution, Composition, RejectedError, TimeoutError, addDefinition, handle, provide, lookup, $handle, $provide$1 as $provide, $lookup, $unhandled, $define, Binding, Handler, CascadeHandler, CompositeHandler, $composer, InvocationOptions, InvocationSemantics, HandleMethod, ResolveMethod, InvocationDelegate };
+export { Batching, Batcher, Lookup, Deferred, Resolution, Composition, RejectedError, TimeoutError, addDefinition, handle, provide, lookup, $handle, $provide, $lookup, $unhandled, $define, Binding, Handler, CascadeHandler, CompositeHandler, $composer, InvocationOptions, InvocationSemantics, HandleMethod, ResolveMethod, InvocationDelegate };

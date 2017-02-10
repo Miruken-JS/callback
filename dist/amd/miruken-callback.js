@@ -231,7 +231,7 @@ var definitions = {};
 
 var $handle = $define(mirukenCore.Variance.Contravariant);
 
-var $provide$1 = $define(mirukenCore.Variance.Covariant);
+var $provide = $define(mirukenCore.Variance.Covariant);
 
 var $lookup = $define(mirukenCore.Variance.Invariant);
 
@@ -564,7 +564,7 @@ function provide() {
         args[_key2] = arguments[_key2];
     }
 
-    return mirukenCore.decorate(addDefinition("provide", $provide$1, true), args);
+    return mirukenCore.decorate(addDefinition("provide", $provide, true), args);
 }
 
 function lookup() {
@@ -623,7 +623,7 @@ var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Def
             writable: false
         });
     },
-    handle: function handle(callback, greedy, composer) {
+    handle: function handle$$1(callback, greedy, composer) {
         if (mirukenCore.$isNothing(callback)) {
             return false;
         }
@@ -644,7 +644,7 @@ var Handler = mirukenCore.Base.extend((_dec = handle(Lookup), _dec2 = handle(Def
     __resolution: function __resolution(resolution, composer) {
         var key = resolution.key,
             many = resolution.isMany;
-        var resolved = $provide$1.dispatch(this, resolution, key, composer, many, resolution.resolve);
+        var resolved = $provide.dispatch(this, resolution, key, composer, many, resolution.resolve);
         if (resolved === $unhandled) {
             var implied = new Binding(key),
                 delegate = this.delegate;
@@ -801,7 +801,7 @@ Handler.accepting = function (handler, constraint) {
 
 Handler.providing = function (provider, constraint) {
     var providing = new Handler();
-    $provide$1(providing, constraint, provider);
+    $provide(providing, constraint, provider);
     return providing;
 };
 
@@ -852,7 +852,7 @@ Handler.implement({
         var lookup$$1 = key instanceof Lookup ? key : new Lookup(key, true);
         return this.handle(lookup$$1, true) ? lookup$$1.callbackResult : [];
     },
-    decorate: function decorate(decorations) {
+    decorate: function decorate$$1(decorations) {
         return mirukenCore.$decorate(this, decorations);
     },
     filter: function filter(_filter, reentrant) {
@@ -903,7 +903,7 @@ Handler.implement({
             return aspectProceed(callback, composer, proceed, after);
         }, reentrant);
     },
-    $provide: function $provide() {
+    $provide: function $provide$$1() {
         var _this2 = this;
 
         for (var _len5 = arguments.length, values = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
@@ -915,7 +915,7 @@ Handler.implement({
             var _ret2 = function () {
                 var provider = _this2.decorate();
                 values.forEach(function (value) {
-                    return $provide$1(provider, value);
+                    return $provide(provider, value);
                 });
                 return {
                     v: provider
@@ -1526,7 +1526,7 @@ exports.handle = handle;
 exports.provide = provide;
 exports.lookup = lookup;
 exports.$handle = $handle;
-exports.$provide = $provide$1;
+exports.$provide = $provide;
 exports.$lookup = $lookup;
 exports.$unhandled = $unhandled;
 exports.$define = $define;
