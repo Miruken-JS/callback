@@ -20,7 +20,7 @@ gulp.task("rollup", function(done) {
         ]
     })
     .then(function(bundle) {
-        var moduleTypes = ["amd", "cjs", "es", "iife"];
+        var moduleTypes = ["amd", "cjs", "es", "iife", "system", "umd"];
         moduleTypes.forEach(function(moduleType){
             bundle.write({
                 file:       paths.output + moduleType + '/' + jsName,
