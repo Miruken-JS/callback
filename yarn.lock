@@ -4551,12 +4551,6 @@ minimist@~0.0.1:
   version "0.0.10"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-0.0.10.tgz#de3f98543dbf96082be48ad1a0c7cda836301dcf"
 
-miruken-core@0.0:
-  version "0.0.3"
-  resolved "https://registry.yarnpkg.com/miruken-core/-/miruken-core-0.0.3.tgz#9770797b52cdc355a027b822396359543f67ae9a"
-  dependencies:
-    reflect-metadata "^0.1.8"
-
 miruken-tools@0.0.4:
   version "0.0.4"
   resolved "https://registry.yarnpkg.com/miruken-tools/-/miruken-tools-0.0.4.tgz#906e06473a20c1347047817957fc728cc4938cf1"
@@ -5453,10 +5447,6 @@ redis@^2.7.1:
     double-ended-queue "^2.1.0-0"
     redis-commands "^1.2.0"
     redis-parser "^2.6.0"
-
-reflect-metadata@^0.1.8:
-  version "0.1.12"
-  resolved "https://registry.yarnpkg.com/reflect-metadata/-/reflect-metadata-0.1.12.tgz#311bf0c6b63cd782f228a81abe146a2bfa9c56f2"
 
 regenerate@^1.2.1:
   version "1.3.3"

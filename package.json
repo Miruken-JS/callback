@@ -22,14 +22,11 @@
       "dist": "dist/amd"
     },
     "dependencies": {
-      "miruken-core": "0.0"
+      "miruken-core": "^0.0.3"
     },
     "devDependencies": {
       "chai": "^3.5.0"
     }
-  },
-  "dependencies": {
-    "miruken-core": "0.0"
   },
   "devDependencies": {
     "babel-cli": "^6.16.0",
