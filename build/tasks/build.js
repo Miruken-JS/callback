@@ -12,6 +12,7 @@ var jsName = paths.packageName + '.js';
 gulp.task("rollup", function(done) {
     rollup({
         input:   paths.source,
+        external: "miruken-core",
         plugins: [
             rollupMultiEntry(),
             rollupBabel(),
@@ -24,7 +25,12 @@ gulp.task("rollup", function(done) {
             bundle.write({
                 file:       paths.output + moduleType + '/' + jsName,
                 format:     moduleType,
-                name: camelCase(paths.packageName)
+                name: camelCase(paths.packageName),
+                output: {
+                    globals: {
+                        "miruken-core": "mirukenCore"
+                    }
+                }
             });
         }); 
         console.log('Build complete');
