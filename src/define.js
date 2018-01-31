@@ -60,27 +60,27 @@ export function addDefinition(name, def, allowGets, filter) {
 
 /**
  * Contravariant (in) handlers.
- * @method handle
+ * @method handles
  * @param {Array} ...constraints  -  constraints to handle
  */
-export function handle(...args) {
+export function handles(...args) {
     return decorate(addDefinition("handle", $handle), args);
 }
 
 /**
  * Covariant (out) handlers.
- * @method provide
+ * @method provides
  * @param {Array} ...constraints  -  constraints to provide
  */
-export function provide(...args) {
+export function provides(...args) {
     return decorate(addDefinition("provide", $provide, true), args);
 }
 
 /**
  * Invariant (eq) handlers.
- * @method lookup
+ * @method looksup
  * @param {Array} ...constraints  -  constraints to lookup
  */
-export function lookup(...args) {
+export function looksup(...args) {
     return decorate(addDefinition("lookup", $lookup, true), args);    
 }

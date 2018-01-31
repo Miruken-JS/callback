@@ -11,7 +11,7 @@ import {
     $unhandled
 } from "../src/definition"
 
-import { handle, provide, lookup } from "../src/define";
+import { handles, provides, looksup } from "../src/define";
 import { Batching } from "../src/batch";
 import { HandleMethod, $composer } from "../src/invocation";
 
@@ -107,14 +107,14 @@ const Accountable = Base.extend({
             }
         });
     },
-    @handle(CountMoney)
+    @handles(CountMoney)
     countMoney(countMoney, composer) {
         countMoney.record(this.balance);        
     }
 });
 
 const Cashier = Accountable.extend({
-    @handle(WireMoney)
+    @handles(WireMoney)
     wireMoney(wireMoney) {
         wireMoney.received = wireMoney.requested;
         return Promise.resolve(wireMoney);        
@@ -147,9 +147,9 @@ const Casino = CompositeHandler.extend({
         this.base();
         this.name = name;
     },
-    @provide(PitBoss)
+    @provides(PitBoss)
     pitBoss() { return new PitBoss("Freddy"); },
-    @provide(DrinkServer)
+    @provides(DrinkServer)
     drinkServer() {
         return Promise.delay(100).then(() => new DrinkServer());
     },
@@ -443,7 +443,7 @@ describe("Handler", () => {
         it("should handle callbacks per instance with extend", () => {
             const cashier    = new Cashier(1000000.00),
                   handler    = (new Handler()).extend({
-                      @handle(Cashier)
+                      @handles(Cashier)
                       account(cashier) {
                           this.cashier = cashier;                          
                       }
@@ -455,7 +455,7 @@ describe("Handler", () => {
         it("should handle callbacks with extension", () => {
             const cashier    = new Cashier(1000000.00),
                   handler    = new (Handler.extend().implement({
-                      @handle(Cashier)
+                      @handles(Cashier)
                       account(cashier) {
                           this.cashier = cashier;                          
                       }                      
@@ -467,7 +467,7 @@ describe("Handler", () => {
         it("should handle callback hierarchy", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (Handler.extend({
-                      @handle(Accountable)
+                      @handles(Accountable)
                       account(accountable) {
                           this.accountable = accountable;                          
                       }
@@ -479,7 +479,7 @@ describe("Handler", () => {
         it("should ignore callback if $unhandled", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (Handler.extend({
-                      @handle(Cashier)
+                      @handles(Cashier)
                       ignore(cashier) { return $unhandled; }
                   }));
             expect(inventory.handle(cashier)).to.be.false;
@@ -489,7 +489,7 @@ describe("Handler", () => {
             const cashier     = new Cashier(1000000.00),
                   accountable = new Accountable(1.00),
                   inventory   = new (Handler.extend({
-                      @handle($eq(Accountable))
+                      @handles($eq(Accountable))
                       account(accountable) {
                           this.accountable = accountable;                          
                       }
@@ -508,9 +508,9 @@ describe("Handler", () => {
             const cashier     = new Cashier(1000000.00),
                   accountable = new Accountable(1.00),
                   inventory   = new (Handler.extend({
-                      @handle(Accountable)
+                      @handles(Accountable)
                       ignore(accountable) {},
-                      @handle
+                      @handles
                       everything(callback) {}
                   }));
             expect(inventory.handle($eq(accountable))).to.be.true;
@@ -520,7 +520,7 @@ describe("Handler", () => {
         it("should handle callback protocol conformance", () => {
             const blackjack  = new CardTable("Blackjack"),
                   inventory  = new (Handler.extend({
-                      @handle(Game)
+                      @handles(Game)
                       play(game) {
                           this.game = game;
                       }
@@ -532,11 +532,11 @@ describe("Handler", () => {
         it("should prefer callback hierarchy over protocol conformance", () => {
             const blackjack  = new CardTable("Blackjack"),
                   inventory  = new (Handler.extend({
-                      @handle(Activity)
+                      @handles(Activity)
                       activity(activity) {
                           this.activity = activity;
                       },
-                      @handle(Game)
+                      @handles(Game)
                       play(game) {
                           this.game = game;
                       }                      
@@ -549,12 +549,12 @@ describe("Handler", () => {
         it("should prefer callback hierarchy and continue with protocol conformance", () => {
             const blackjack  = new CardTable("Blackjack"),
                   inventory  = new (Handler.extend({
-                      @handle(Activity)
+                      @handles(Activity)
                       activity(activity) {
                           this.activity = activity;
                           return $unhandled;
                       },
-                      @handle(Game)
+                      @handles(Game)
                       play(game) {
                           this.game = game;
                       }                      
@@ -567,7 +567,7 @@ describe("Handler", () => {
         it("should handle unknown callback", () => {
             const blackjack = new CardTable("Blackjack"),
                   inventory = new (Handler.extend({
-                      @handle
+                      @handles
                       everything(callback) {
                           callback.check = true;
                       }
@@ -579,7 +579,7 @@ describe("Handler", () => {
         it("should handle unknown callback via delegate", () => {
             const blackjack = new CardTable("Blackjack"),
                   inventory = new (Base.extend({
-                      @handle
+                      @handles
                       everything(callback) {
                           callback.check = true;
                       }
@@ -592,7 +592,7 @@ describe("Handler", () => {
         it("should allow handlers to chain to base", () => {
             const blackjack = new CardTable("Blackjack"),
                   Tagger    = Handler.extend({
-                      @handle(Activity)
+                      @handles(Activity)
                       activity(activity) {
                           activity.tagged++;
                       }
@@ -612,19 +612,19 @@ describe("Handler", () => {
             let matched   = -1,
                 Checkers  = Base.extend(Game),
                 inventory = new (Handler.extend({
-                    @handle(c => c === PitBoss)
+                    @handles(c => c === PitBoss)
                     pitBoss() { matched = 0; },
-                    @handle
+                    @handles
                     anything() { matched = 1; },
-                    @handle(Game)
+                    @handles(Game)
                     game() { matched = 2; },
-                    @handle(Security)
+                    @handles(Security)
                     security() { matched = 3; },
-                    @handle(Activity)
+                    @handles(Activity)
                     activity() { matched = 5; },
-                    @handle(Accountable)
+                    @handles(Accountable)
                     accountable() { matched = 4; },
-                    @handle(CardTable)
+                    @handles(CardTable)
                     cardTable() { matched = 6; }
                 }));
             inventory.handle(new CardTable("3 Card Poker"));
@@ -671,7 +671,7 @@ describe("Handler", () => {
                   blackjack = new Activity("Blackjack"),
                   bank      = new (Accountable.extend()),
                   inventory = new (Handler.extend({
-                      @handle(Cashier, Activity)
+                      @handles(Cashier, Activity)
                       account(accountable) {
                           this.accountable = accountable;                          
                       }
@@ -716,7 +716,7 @@ describe("Handler", () => {
 
         it("should handle objects eventually with promise", done => {
             const bank = (new (Handler.extend({
-                        @handle(WireMoney)
+                        @handles(WireMoney)
                         wireMoney(wireMoney) {
                             wireMoney.received = 50000;
                             return Promise.delay(100).then(() => wireMoney);
@@ -747,7 +747,7 @@ describe("Handler", () => {
         it("should resolve explicit objects", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (Handler.extend({
-                      @provide(Cashier)
+                      @provides(Cashier)
                       cashier() { return cashier; }
                   }));
             expect(inventory.resolve(Cashier)).to.equal(cashier);
@@ -772,12 +772,12 @@ describe("Handler", () => {
                   circle = new Circle(2),
                   shapes = new (Handler.extend({
                       @copy
-                      @provide(Circle)                      
+                      @provides(Circle)                      
                       circle() { return circle; }
                   })),
                   shapesG = new (Handler.extend({
                       @copy
-                      @provide(Circle)                      
+                      @provides(Circle)                      
                       get circle() { return circle; }
                   }));                  
            const shape  = shapes.resolve(Circle),
@@ -817,7 +817,7 @@ describe("Handler", () => {
         it("should resolve objects by class invariantly", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (Handler.extend({
-                      @provide($eq(Cashier))
+                      @provides($eq(Cashier))
                       cashier() { return cashier; }
                   }));
             expect(inventory.resolve(Accountable)).to.be.undefined;
@@ -829,7 +829,7 @@ describe("Handler", () => {
         it("should resolve objects by protocol invariantly", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide($eq(Game))
+                      @provides($eq(Game))
                       game() { return blackjack; }
                   }));
             expect(cardGames.resolve(CardTable)).to.be.undefined;
@@ -840,9 +840,9 @@ describe("Handler", () => {
             const cashier   = new Cashier(1000000.00),
                   blackjack = new CardTable("BlackJack", 1, 5),
                   inventory = new (Handler.extend({
-                      @provide(Cashier)
+                      @provides(Cashier)
                       cashier() { return cashier; },
-                      @provide(CardTable)
+                      @provides(CardTable)
                       blackjack() { return Promise.resolve(blackjack); }                      
                   }));
             expect(inventory.resolve($instant(Cashier))).to.equal(cashier);
@@ -853,7 +853,7 @@ describe("Handler", () => {
         it("should resolve objects by protocol instantly", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide(Game)
+                      @provides(Game)
                       game() { return Promise.resolve(blackjack); }
                   }));
             expect($isPromise(cardGames.resolve(Game))).to.be.true;
@@ -863,7 +863,7 @@ describe("Handler", () => {
         it("should resolve by string literal", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide("BlackJack")
+                      @provides("BlackJack")
                       blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve("BlackJack")).to.equal(blackjack);
@@ -872,7 +872,7 @@ describe("Handler", () => {
         it("should resolve by string literal case-insensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide("BlackJack")
+                      @provides("BlackJack")
                       blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve("BLACKJACK")).to.equal(blackjack);
@@ -881,7 +881,7 @@ describe("Handler", () => {
         it("should resolve by string literal case-sensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide("BlackJack")
+                      @provides("BlackJack")
                       blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve($eq("BLACKJACK"))).to.be.undefined;
@@ -890,7 +890,7 @@ describe("Handler", () => {
         it("should resolve by string instance", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide("BlackJack")
+                      @provides("BlackJack")
                       blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve(new String("BlackJack"))).to.equal(blackjack);
@@ -899,7 +899,7 @@ describe("Handler", () => {
         it("should resolve by string instance case-insensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide("BlackJack")
+                      @provides("BlackJack")
                       blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve(new String("blackjack"))).to.equal(blackjack);
@@ -908,7 +908,7 @@ describe("Handler", () => {
         it("should resolve by string instance case-sensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide("BlackJack")
+                      @provides("BlackJack")
                       blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve($eq(new String("blackjack")))).to.be.undefined;
@@ -917,7 +917,7 @@ describe("Handler", () => {
         it("should resolve string by regular expression", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide(/black/i)
+                      @provides(/black/i)
                       blackjack() { return blackjack; }
                   }));
             expect(cardGames.resolve("BlackJack")).to.equal(blackjack);
@@ -932,7 +932,7 @@ describe("Handler", () => {
                       }
                   }), 
                   settings = new (Handler.extend({
-                      @provide(Config)
+                      @provides(Config)
                       config(resolution) {
                           const config = resolution.key,
                                 key    = config.key;
@@ -951,7 +951,7 @@ describe("Handler", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cashier   = new Cashier(1000000.00),
                   cardGames = new (Handler.extend({
-                      @provide(CardTable, Cashier)
+                      @provides(CardTable, Cashier)
                       stuff(resolution) {
                           const key = resolution.key;
                           if (Game.isAdoptedBy(key)) {
@@ -990,7 +990,7 @@ describe("Handler", () => {
 
         it("should not resolve objects if $unhandled", () => {
             const inventory = new (Handler.extend({
-                @provide(Cashier)
+                @provides(Cashier)
                 notHandled() { return $unhandled; }
             }));
             expect(inventory.resolve(Cashier)).to.be.undefined;
@@ -999,7 +999,7 @@ describe("Handler", () => {
         it("should resolve unknown objects", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @provide(True)
+                      @provides(True)
                       unknown(resolution) {
                           if (resolution.key === CardTable) {
                               return blackjack;
@@ -1026,19 +1026,19 @@ describe("Handler", () => {
         it("should resolve with precedence rules", () => {
             const Checkers  = Base.extend(Game),
                   inventory = new (Handler.extend({
-                      @provide(constraint => constraint === PitBoss)
+                      @provides(constraint => constraint === PitBoss)
                       predicate() { return 0; },
-                      @provide
+                      @provides
                       anything() { return 1; },
-                      @provide(Checkers)
+                      @provides(Checkers)
                       anonymousType() { return 2; },
-                      @provide(Level1Security)
+                      @provides(Level1Security)
                       type() { return 3; },
-                      @provide(Activity)
+                      @provides(Activity)
                       derivedType() { return 5; },
-                      @provide(Accountable)
+                      @provides(Accountable)
                       baseType() { return 4; },
-                      @provide(CardTable)
+                      @provides(CardTable)
                       deepType() { return 6; }
                   }));
             expect(inventory.resolve(CardTable)).to.equal(6);
@@ -1068,21 +1068,21 @@ describe("Handler", () => {
                   stop2 = [ new PitBoss("Brenda"), new PitBoss("Lauren"), new PitBoss("Kaitlyn") ],
                   stop3 = [ new PitBoss("Phil") ],
                   bus1  = new (Handler.extend({
-                      @provide(PitBoss)
+                      @provides(PitBoss)
                       pitBoss(resolution) {
                           expect(resolution.isMany).to.be.true;
                           return Promise.delay(75).then(() => stop1);
                       }
                   })),
            bus2  = new (Handler.extend({
-                      @provide(PitBoss)
+                      @provides(PitBoss)
                       pitBoss(resolution) {               
                           expect(resolution.isMany).to.be.true;
                           return Promise.delay(100).then(() => stop2);
                       }
                   })),
                   bus3  = new (Handler.extend({
-                      @provide(PitBoss)
+                      @provides(PitBoss)
                       pitBoss(resolution) {               
                           expect(resolution.isMany).to.be.true;
                           return Promise.delay(50).then(() => stop3);
@@ -1100,11 +1100,11 @@ describe("Handler", () => {
                   venetian = new Casino("Venetian"),
                   paris    = new Casino("Paris"),
                   strip    = new (Handler.extend({
-                      @provide(Casino)
+                      @provides(Casino)
                       venetion() { return venetian; },
-                      @provide(Casino)
+                      @provides(Casino)
                       belagio() { return Promise.resolve(belagio); },
-                      @provide(Casino)
+                      @provides(Casino)
                       paris() { return paris; }
                   }));
             const casinos = strip.resolveAll($instant(Casino));
@@ -1121,7 +1121,7 @@ describe("Handler", () => {
         it("should return empty array instantly if none resolved", () => {
             const belagio = new Casino("Belagio"),
                   strip   = new (Handler.extend({
-                      @provide(Casino)
+                      @provides(Casino)
                       casino() { return Promise.resolve(belagio); }
                   }));
             const casinos = strip.resolveAll($instant(Casino));
@@ -1133,9 +1133,9 @@ describe("Handler", () => {
         it("should lookup by class", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @lookup(CardTable)
+                      @looksup(CardTable)
                       cardTable() { return blackjack; },
-                      @lookup
+                      @looksup
                       everything() { return blackjack; }
                   }));
             expect(cardGames.lookup(CardTable)).to.equal(blackjack);
@@ -1145,9 +1145,9 @@ describe("Handler", () => {
         it("should lookup by protocol", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @lookup(Game)
+                      @looksup(Game)
                       game() { return blackjack; },
-                      @lookup
+                      @looksup
                       everything() { return blackjack; }
                   }));
             expect(cardGames.lookup(Game)).to.equal(blackjack);
@@ -1157,9 +1157,9 @@ describe("Handler", () => {
         it("should lookup by string", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
-                      @lookup("blackjack")
+                      @looksup("blackjack")
                       blackjack() { return blackjack; },
-                      @lookup(/game/)
+                      @looksup(/game/)
                       blackjack() { return blackjack; },
                   }));
             expect(cardGames.lookup("blackjack")).to.equal(blackjack);
@@ -1350,7 +1350,7 @@ describe("Handler", () => {
         it("should restrict handlers using short syntax", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = (new (Handler.extend({
-                      @handle(True)
+                      @handles(True)
                       close(cardTable) {
                           cardTable.closed = true;
                       }
@@ -1368,7 +1368,7 @@ describe("Handler", () => {
                   }),
                   blackjack  = new Blackjack(),
                   cardGames  = (new (Handler.extend({
-                      @handle(True)
+                      @handles(True)
                       close(cardTable) {
                           cardTable.closed = true;
                       }
@@ -1381,7 +1381,7 @@ describe("Handler", () => {
         it("should restrict providers using short syntax", () => {
             const blackjack  = new CardTable("BlackJack", 1, 5),
                   cardGames  = (new (Handler.extend({
-                      @provide(True)
+                      @provides(True)
                       blackjack() { return blackjack; }
                   }))).when(CardTable);
             expect(cardGames.resolve(CardTable)).to.equal(blackjack);
@@ -1391,7 +1391,7 @@ describe("Handler", () => {
         it("should restrict providers invariantly using short syntax", () => {
             const blackjack  = new CardTable("BlackJack", 1, 5),
                   cardGames  = (new (Handler.extend({
-                      @provide(True)
+                      @provides(True)
                       blackjack() { return blackjack; }
                   }))).when($eq(Activity));
             expect(cardGames.resolve(Activity)).to.equal(blackjack);
@@ -1572,7 +1572,7 @@ describe("InvocationHandler", () => {
                       }
                   }),
                   handler = new (Handler.extend({
-                      @provide(Game)
+                      @provides(Game)
                       game() { return Promise.delay(10).then(() => new Poker()); }
                   }));
             Game(handler.$resolve()).open(5).then(id => {
@@ -1611,7 +1611,7 @@ describe("InvocationHandler", () => {
         it("should fail invocation promise if method not found", done => {
             const Poker   = Base.extend(Game),
                   handler = new (Handler.extend({
-                      @provide(Game)
+                      @provides(Game)
                       game() { return Promise.delay(10).then(() => new Poker()); }
                   }));
             Game(handler.$resolve()).open(5).catch(error => {
@@ -1629,7 +1629,7 @@ describe("InvocationHandler", () => {
 
         it("should ignore invocation if unable to resolve promise", done => {
             const handler = new (Handler.extend({
-                @provide(Game)
+                @provides(Game)
                 game() { return Promise.delay(10).then(() => $unhandled); }
               }));
             Game(handler.$resolve().$bestEffort()).open(5).then(id => {
@@ -1674,11 +1674,11 @@ describe("InvocationHandler", () => {
                   }),                
                   handler = new CascadeHandler(
                       new (Handler.extend({
-                          @provide(Game)
+                          @provides(Game)
                           game() { return Promise.delay(10).then(() => new Poker()); }
                       })),
                       new (Handler.extend({
-                          @provide(Game)
+                          @provides(Game)
                           game() { return Promise.delay(5).then(() => new Slots()); }
                       }))
                 );
@@ -1881,7 +1881,7 @@ describe("Handler", () => {
     describe("#$timeout", () => {
         it("should reject promise if timed out", done => {
             const bank = (new (Handler.extend({
-                      @handle(WireMoney)
+                      @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(100).then(() => wireMoney);
@@ -1897,7 +1897,7 @@ describe("Handler", () => {
 
         it("should ignore time out if promise resolved", done => {
             const bank = (new (Handler.extend({
-                      @handle(WireMoney)
+                      @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(50).then(() => wireMoney);
@@ -1914,7 +1914,7 @@ describe("Handler", () => {
         
         it("should reject promise with error instance", done => {
             const bank = (new (Handler.extend({
-                      @handle(WireMoney)
+                      @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(100).then(() => wireMoney);
@@ -1937,7 +1937,7 @@ describe("Handler", () => {
             BankError.prototype             = new Error();
             BankError.prototype.constructor = BankError;
             const bank = (new (Handler.extend({
-                      @handle(WireMoney)
+                      @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(100).then(() => wireMoney);
@@ -1955,7 +1955,7 @@ describe("Handler", () => {
 
         it("should propogate errors", done => {
             const bank = (new (Handler.extend({
-                      @handle(WireMoney)
+                      @handles(WireMoney)
                       wireMoney(wireMoney) {
                           return Promise.reject(new Error("No money"))                    
                       }                

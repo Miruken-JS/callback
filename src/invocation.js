@@ -7,7 +7,7 @@ import {
 
 import { Composition, Resolution} from "./callback";
 import { Handler } from "./handler";
-import { handle } from "./define";
+import { handles } from "./define";
 import { $unhandled } from "./definition";
 
 export let $composer;
@@ -426,7 +426,7 @@ Handler.implement({
             }
         });
     },
-    @handle(HandleMethod)
+    @handles(HandleMethod)
     __handleMethod(method, composer) {
         if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
             return $unhandled;

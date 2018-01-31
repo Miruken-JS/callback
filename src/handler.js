@@ -3,7 +3,7 @@ import {
     $unhandled
 } from "./definition";
 
-import { handle } from "./define";
+import { handles } from "./define";
 
 import {
     Lookup, Deferred, Resolution, Composition,
@@ -63,15 +63,15 @@ export const Handler = Base.extend({
     handleCallback(callback, greedy, composer) {
         return $handle.dispatch(this, callback, null, composer, greedy) !== $unhandled;
     },
-    @handle(Lookup)
+    @handles(Lookup)
     __lookup(lookup, composer) {
         return $lookup.dispatch(this, lookup,lookup.key, composer, lookup.isMany, lookup.addResult);        
     },
-    @handle(Deferred)
+    @handles(Deferred)
     __defered(deferred, composer) {
         return $handle.dispatch(this, deferred.callback, null, composer, deferred.isMany, deferred.track);        
     },
-    @handle(Resolution)
+    @handles(Resolution)
     __resolution(resolution, composer) {
         const key      = resolution.key,
               many     = resolution.isMany;
@@ -97,7 +97,7 @@ export const Handler = Base.extend({
             return $unhandled;
         }
     },
-    @handle(Composition)
+    @handles(Composition)
     __composition(composable, composer) {
         const callback = composable.callback;
         if ($isNothing(callback)) { return $unhandled; }
@@ -298,7 +298,7 @@ Handler.registerPolicy = function (policyType, key) {
     Handler.implement({
         [key](policy) {
             return policy ? this.decorate({
-                @handle(policyType)
+                @handles(policyType)
                 mergePolicy(receiver) {
                     policy.mergeInto(receiver)                
                 }
