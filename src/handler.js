@@ -99,9 +99,9 @@ export const Handler = Base.extend({
     },
     @handles(Composition)
     __composition(composable, composer) {
-        const callback = composable.callback;
+        const {callback, greedy} = composable;
         if ($isNothing(callback)) { return $unhandled; }
-        return $handle.dispatch(this, callback, null, composer);
+        return $handle.dispatch(this, callback, null, composer, greedy);
     }
 }, {
     coerce(object) { return new this(object); }
@@ -114,7 +114,7 @@ Base.implement({
 const compositionScope = $decorator({
     handleCallback(callback, greedy, composer) {
         if (callback.constructor !== Composition) {
-            callback = new Composition(callback);
+            callback = new Composition(callback, greedy);
         }
         return this.base(callback, greedy, composer);
     }

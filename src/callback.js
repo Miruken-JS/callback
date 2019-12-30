@@ -247,11 +247,12 @@ export const Resolution = Base.extend({
  * Marks a callback as composed.
  * @class Composition
  * @constructor
- * @param   {Object}  callback  -  callback to compose
+ * @param   {Object}   callback  -  callback to compose
+ * @param   {Boolean}  greedy    -  true if handle greedily
  * @extends Base
  */
 export const Composition = Base.extend({
-    constructor(callback) {
+    constructor(callback, greedy) {
         if (callback) {
             this.extend({
                 /**
@@ -260,6 +261,12 @@ export const Composition = Base.extend({
                  * @readOnly
                  */
                 get callback() { return callback; },
+                /**
+                 * Gets the greedy flag.
+                 * @property {Boolean} greedy
+                 * @readOnly
+                 */
+                get greedy() { return greedy; },
                 /**
                  * Gets/sets the effective callback result.
                  * @property {Any} callback result
