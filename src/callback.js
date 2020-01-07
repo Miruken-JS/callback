@@ -218,12 +218,12 @@ export const Resolution = Base.extend({
                     if (_instant) { return false; }
                     _promised = true;
                     resolution = resolution.then(r => {
-                        if (this.isSatisfied(r)) { return r; }
+                        if (this.isSatisfied(r, composer)) { return r; }
                     });
                     if (many) {
                         resolution = resolution.catch(Undefined);
                     }
-                } else if (!this.isSatisfied(resolution)) {
+                } else if (!this.isSatisfied(resolution, composer)) {
                     return false;
                 }
                 _resolutions.push(resolution);
