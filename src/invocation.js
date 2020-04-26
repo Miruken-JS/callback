@@ -33,25 +33,20 @@ export const InvocationOptions = Flags({
      */                
     Strict: 1 << 1,
     /**
-     * Uses Resolve to determine instances to invoke.
-     * @property {number} Resolve
-     */
-    Resolve: 1 << 2,
-    /**
      * Delivers invocation to all handlers.  At least one must recognize it.
      * @property {number} Broadcast
      */
-    Broadcast: 1 << 3,
+    Broadcast: 1 << 2,
     /**
      * Marks invocation as optional.
      * @property {number} BestEffort
      */        
-    BestEffort: 1 << 4,
+    BestEffort: 1 << 3,
     /**
      * Publishes invocation to all handlers.
      * @property {number} Notify
      */                
-    Notify: (1 << 3) | (1 << 4)
+    Notify: (1 << 2) | (1 << 3)
 });
 
 /**
@@ -317,10 +312,6 @@ function delegate(delegate, methodType, protocol, methodName, args) {
         && StrictProtocol.isAdoptedBy(protocol))
         options |= InvocationOptions.Strict;
 
-    if (!semantics.isSpecified(InvocationOptions.Resolve)
-        && Resolving.isAdoptedBy(protocol))
-        options |= InvocationOptions.Resolve;
-
     if (options != InvocationOptions.None)
     {
         semantics.setOption(options, true);
@@ -329,16 +320,18 @@ function delegate(delegate, methodType, protocol, methodName, args) {
 
     const broadcast    = semantics.getOption(InvocationOptions.Broadcast),
           bestEffort   = semantics.getOption(InvocationOptions.BestEffort),
-          handleMethod = new HandleMethod(methodType, protocol, methodName, args, semantics),
-          callback     = semantics.getOption(InvocationOptions.Resolve)
-                       ? new ResolveMethod(protocol, broadcast, handleMethod, bestEffort)
-                       : handleMethod;
-        
-    if (!handler.handle(callback, broadcast) && !bestEffort) {
+          handleMethod = new HandleMethod(methodType, protocol, methodName, args, semantics);
+
+    if (handler.handle(handleMethod, broadcast)) {
+        return handleMethod.callbackResult;
+    }
+
+    const resolveMethod = new ResolveMethod(protocol, broadcast, handleMethod, bestEffort);
+    if (!handler.handle(resolveMethod, broadcast) && !bestEffort) {
         throw handleMethod.notHandledError();
     }
     
-    return callback.callbackResult;
+    return resolveMethod.callbackResult;
 }
 
 Handler.implement({
@@ -361,14 +354,7 @@ Handler.implement({
      * @returns {Handler} strict semantics.
      * @for Handler
      */
-    $strict() { return this.$callOptions(InvocationOptions.Strict); },
-    /**
-     * Establishes resolve invocation semantics.
-     * @method $resolve
-     * @returns {Handler} resolved semantics.
-     * @for Handler
-     */
-    $resolve() { return this.$callOptions(InvocationOptions.Resolve); },    
+    $strict() { return this.$callOptions(InvocationOptions.Strict); },  
     /**
      * Establishes broadcast invocation semantics.
      * @method $broadcast
@@ -453,9 +439,9 @@ Handler.implementing = function (methodName, method) {
     return (new Handler()).extend({
         handleCallback(callback, greedy, composer) {
             if (callback instanceof HandleMethod) {
-                const target = new Object();
-                target[methodName] = method;
-                return callback.invokeOn(target);
+                return callback.invokeOn({
+                    [methodName]: method
+                }, composer);
             }
             return false;
         }

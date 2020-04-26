@@ -1452,6 +1452,16 @@ describe("Handler", () => {
                 Handler.implementing("   ", () => {});
             }).to.throw(Error, /No methodName specified/);
         });
+
+        it("should implement method with function", () => {
+            const Chat = Protocol.extend({
+                    send(msg) {}      
+                  }),
+                  handler = Handler.implementing("send", message => {
+                    return `Sending ${message}`;
+                  });
+            expect(Chat(handler.$duck()).send("Hello")).to.equal("Sending Hello");
+        });
     });
 });
 
@@ -1561,7 +1571,7 @@ describe("InvocationHandler", () => {
                       }
                   }),
                   handler = new Handler(new Poker()),
-                  id      = Game(handler.$resolve()).open(5);
+                  id      = Game(handler).open(5);
             expect(id).to.equal("poker5");
         });
 
@@ -1575,7 +1585,7 @@ describe("InvocationHandler", () => {
                       @provides(Game)
                       game() { return Promise.delay(10).then(() => new Poker()); }
                   }));
-            Game(handler.$resolve()).open(5).then(id => {
+            Game(handler).open(5).then(id => {
                 expect(id).to.equal("poker5");
                 done();
             });
@@ -1596,7 +1606,7 @@ describe("InvocationHandler", () => {
         it("should fail invocation if unable to resolve", () => {
             const handler = new Handler();
             expect(() => {
-                Game(handler.$resolve()).open(4);
+                Game(handler).open(4);
             }).to.throw(TypeError, /open could not be handled/);
         });
 
@@ -1604,7 +1614,7 @@ describe("InvocationHandler", () => {
             const Poker   = Base.extend(Game),
                   handler = new Handler(new Poker());
             expect(() => {
-                Game(handler.$resolve()).open(4);
+                Game(handler).open(4);
             }).to.throw(TypeError, /open could not be handled/);
         });
 
@@ -1614,7 +1624,7 @@ describe("InvocationHandler", () => {
                       @provides(Game)
                       game() { return Promise.delay(10).then(() => new Poker()); }
                   }));
-            Game(handler.$resolve()).open(5).catch(error => {
+            Game(handler).open(5).catch(error => {
                 expect(error).to.be.instanceOf(TypeError);
                 expect(error.message).to.match(/open could not be handled/)
                 done();
@@ -1623,7 +1633,7 @@ describe("InvocationHandler", () => {
 
         it("should ignore invocation if unable to resolve", () => {
             const handler = new Handler(),
-                  id      = Game(handler.$resolve().$bestEffort()).open(4);
+                  id      = Game(handler.$bestEffort()).open(4);
             expect(id).to.be.undefined;
         });
 
@@ -1632,7 +1642,7 @@ describe("InvocationHandler", () => {
                 @provides(Game)
                 game() { return Promise.delay(10).then(() => $unhandled); }
               }));
-            Game(handler.$resolve().$bestEffort()).open(5).then(id => {
+            Game(handler.$bestEffort()).open(5).then(id => {
                 expect(id).to.be.undefiend;
                 done();
             });            
@@ -1653,7 +1663,7 @@ describe("InvocationHandler", () => {
                       }
                   }),                
                   handler = new CascadeHandler(new Poker(), new Slots()),
-                id      = Game(handler.$resolve().$broadcast()).open(5);
+                id      = Game(handler.$broadcast()).open(5);
             expect(id).to.equal("poker5");
             expect(count).to.equal(2);
         });
@@ -1682,7 +1692,7 @@ describe("InvocationHandler", () => {
                           game() { return Promise.delay(5).then(() => new Slots()); }
                       }))
                 );
-            Game(handler.$resolve().$broadcast()).open(5).then(id => {
+            Game(handler.$broadcast()).open(5).then(id => {
                 expect(id).to.equal("poker5");
                 expect(count).to.equal(2);                
                 done();
@@ -1692,7 +1702,7 @@ describe("InvocationHandler", () => {
         it("should fail invocation if unable to resolve all", () => {
             const handler = new Handler();
             expect(() => {
-                Game(handler.$resolve().$broadcast()).open(4);
+                Game(handler.$broadcast()).open(4);
             }).to.throw(Error, /open could not be handled/);
         });
 
@@ -1703,11 +1713,11 @@ describe("InvocationHandler", () => {
                       }
                   }),
                   handler = new Handler(new Poker());
-            expect(Game(handler.$resolve().filter(
+            expect(Game(handler.filter(
                 (cb, cm, proceed) => proceed())).open(5))
                 .to.equal("poker5");
             expect(() => {
-                Game(handler.$resolve().filter(False)).open(5);
+                Game(handler.filter(False)).open(5);
             }).to.throw(Error, /open could not be handled/);
         });
     })

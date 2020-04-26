@@ -66,5 +66,8 @@
     "run-sequence": "^2.2.1",
     "vinyl-paths": "^2.1.0",
     "yargs": "^11.0.0"
+  },
+  "resolutions": {
+    "graceful-fs": "4.2.3"
   }
 }
