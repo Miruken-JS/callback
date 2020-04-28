@@ -5,10 +5,10 @@ import {
     $isPromise
 } from "miruken-core";
 
-import { Composition, Resolution} from "./callback";
-import { Handler } from "./handler";
-import { handles } from "./define";
-import { $unhandled } from "./definition";
+import Resolution from "./resolution";
+import { Composition, Handler } from "./handler";
+import { handles } from "./policy";
+import { $unhandled } from "./callback";
 
 export let $composer;
 

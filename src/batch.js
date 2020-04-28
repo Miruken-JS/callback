@@ -2,8 +2,8 @@ import {
     Protocol, $isPromise, $flatten
 } from "miruken-core";
 
-import { Composition } from "./callback";
-import { Handler, CompositeHandler } from "./handler";
+import { Composition, Handler } from "./handler";
+import CompositeHandler from "./composite-handler";
 
 /**
  * Protocol to participate in batched operations.

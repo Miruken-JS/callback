@@ -1,26 +1,27 @@
 import {
-    RejectedError, TimeoutError
-} from "../src/callback";
-
-import {
-    Handler, CascadeHandler, CompositeHandler
-} from "../src/handler";
-
-import {
-    $define, $handle, $provide, $lookup,
-    $unhandled
-} from "../src/definition"
-
-import { handles, provides, looksup } from "../src/define";
-import { Batching } from "../src/batch";
-import { HandleMethod, $composer } from "../src/invocation";
-
-import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType, Resolving,
     Metadata, assignID, copy, $isPromise, $eq,
     $instant, $using, $flatten
 } from "miruken-core";
+
+import Handler from "../src/handler";
+import CascadeHandler from "../src/cascade-handler";
+import CompositeHandler from "../src/composite-handler";
+
+import {
+    $policy, $handle, $provide, $lookup,
+    handles, provides, looksup
+} from "../src/policy"
+
+import { Batching } from "../src/batch";
+import { HandleMethod, $composer } from "../src/invocation";
+import { $unhandled } from "../src/callback";
+import "../src/handler-helper";
+
+import {
+    RejectedError, TimeoutError
+} from "../src/errors";
 
 import { expect } from "chai";
 
@@ -226,17 +227,27 @@ describe("HandleMethod", () => {
     });
 });
 
-describe("Definitions", () => {
-    describe("$define", () => {
+describe("Policies", () => {
+    describe("$policy", () => {
         it("Should accept variance option", () => {
-            const baz = $define(Variance.Contravariant);
+            const baz = $policy(Variance.Contravariant);
         expect(baz).to.be.ok;
         });
 
         it("Should reject invalid variance option", () => {
             expect(() => {
-        $define({ variance: 1000 });
-            }).to.throw(TypeError, "$define expects a Variance parameter");
+        $policy({ variance: 1000 });
+            }).to.throw(TypeError, "$policy expects a Variance parameter");
+        });
+  
+        it("should define callbacks on class", () => {
+            const Cashier = Base.extend(null, {
+                    @handles(CountMoney)
+                    countMoney(countMoney, composer) {
+                        countMoney.record(10);
+                    }
+                });
+            expect(Metadata.getOwn($handle.key, Cashier).head.constraint).to.equal(CountMoney);
         });
     });
 
@@ -299,8 +310,8 @@ describe("Definitions", () => {
         });
 
         it("should index first registered handler with head and tail", () => {
-            const handler  = new Handler,
-                unregister = $handle(handler, True, Undefined);
+            const handler    = new Handler,
+                  unregister = $handle(handler, True, Undefined);
             expect(unregister).to.be.a("function");
             expect(Metadata.getOwn($handle.key, handler).head.handler).to.equal(Undefined);
             expect(Metadata.getOwn($handle.key, handler).tail.handler).to.equal(Undefined);
@@ -371,7 +382,7 @@ describe("Definitions", () => {
             const handler   = new Handler,
                   index     = assignID(Activity);
             $handle(handler, Accountable, Undefined);
-            const unregister  = $handle(handler, Activity, Undefined);
+            const unregister = $handle(handler, Activity, Undefined);
             unregister();
             expect(Metadata.getOwn($handle.key, handler).getFirst(index)).to.be.undefined;
         });
@@ -702,12 +713,12 @@ describe("Handler", () => {
         });
     })
 
-    describe("#defer", () => {
+    describe("#command", () => {
         it("should handle objects eventually", done => {
             const cashier   = new Cashier(750000.00),
                   casino    = new Casino("Venetian").addHandlers(cashier),
                   wireMoney = new WireMoney(250000);
-            Promise.resolve(casino.defer(wireMoney)).then(result => {
+            Promise.resolve(casino.command(wireMoney)).then(result => {
                 expect(result).to.equal(wireMoney);
                 expect(wireMoney.received).to.equal(250000);
                 done();
@@ -724,7 +735,7 @@ describe("Handler", () => {
                   }))),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
-            Promise.resolve(casino.defer(wireMoney)).then(result => {
+            Promise.resolve(casino.command(wireMoney)).then(result => {
                 expect(result).to.equal(wireMoney);
                 expect(wireMoney.received).to.equal(50000);
                 done();
@@ -735,7 +746,7 @@ describe("Handler", () => {
             const handler = Handler.accepting(
                     countMoney => countMoney.record(50), CountMoney),
                   countMoney = new CountMoney();
-            Promise.resolve(handler.defer(countMoney)).then(handled => {
+            Promise.resolve(handler.command(countMoney)).then(handled => {
                 expect(handled).to.be.true;
                 expect(countMoney.total).to.equal(50);
                 done();
@@ -1234,12 +1245,12 @@ describe("Handler", () => {
             expect(count).to.equal(1);
         });
 
-        it("should ignore deferrerd callback", done => {
+        it("should ignore command callback", done => {
             const cashier   = new Cashier(750000.00),
                   casino    = new Casino("Venetian").addHandlers(cashier),
                   wireMoney = new WireMoney(250000);
             Promise.resolve(casino.aspect(() => Promise.resolve(false))
-                .defer(wireMoney)).then(handled => {
+                .command(wireMoney)).then(handled => {
                 throw new Error("Should not get here");
             }, error => {
                 expect(error).to.be.instanceOf(RejectedError);
@@ -1259,12 +1270,12 @@ describe("Handler", () => {
             });
         });
 
-        it("should handle deferred callback with side-effect", done => {
+        it("should handle commands with side-effect", done => {
             const cashier   = new Cashier(750000.00),
                   casino    = new Casino("Venetian").addHandlers(cashier),
                   wireMoney = new WireMoney(250000);
             Promise.resolve(casino.aspect(True, wire => done())
-                .defer(wireMoney)).then(result => {
+                .command(wireMoney)).then(result => {
                     expect(result).to.equal(result);
                     expect(wireMoney.received).to.equal(250000);
                 });
@@ -1294,7 +1305,7 @@ describe("Handler", () => {
             casino.aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
-            }).defer(countMoney).catch(error => {
+            }).command(countMoney).catch(error => {
                 expect(error).to.be.instanceOf(Error);
                 expect(error.message).to.equal("Something bad");
             });
@@ -1899,7 +1910,7 @@ describe("Handler", () => {
                   }))),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
-            Promise.resolve(casino.$timeout(50).defer(wireMoney)).catch(err => {
+            Promise.resolve(casino.$timeout(50).command(wireMoney)).catch(err => {
                 expect(err).to.be.instanceOf(TimeoutError);
                 done();
             });
@@ -1915,7 +1926,7 @@ describe("Handler", () => {
                   }))),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
-            Promise.resolve(casino.$timeout(100).defer(wireMoney)).then(result => {
+            Promise.resolve(casino.$timeout(100).command(wireMoney)).then(result => {
                 expect(result).to.equal(wireMoney);
                 expect(wireMoney.received).to.equal(50000);
                 done();
@@ -1933,7 +1944,7 @@ describe("Handler", () => {
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, new Error("Oh No!"))
-                            .defer(wireMoney)).catch(err => {
+                            .command(wireMoney)).catch(err => {
                 expect(err.message).to.equal("Oh No!");
                 done();
             });
@@ -1956,7 +1967,7 @@ describe("Handler", () => {
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, BankError)
-                            .defer(wireMoney)).catch(err => {
+                            .command(wireMoney)).catch(err => {
                 expect(err).to.be.instanceOf(BankError);
                 expect(err.callback.callback).to.equal(wireMoney);
                 done();
@@ -1973,7 +1984,7 @@ describe("Handler", () => {
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, new Error("Oh No!"))
-                            .defer(wireMoney)).catch(err => {
+                            .command(wireMoney)).catch(err => {
                 expect(err.message).to.equal("No money");
                 done();
             });
