@@ -1,8 +1,8 @@
 import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType, Resolving,
-    Metadata, assignID, copy, $isPromise, $eq,
-    $instant, $using, $flatten
+    Options, Metadata, assignID, copy, $isPromise,
+    $eq, $instant, $using, $flatten
 } from "miruken-core";
 
 import { Handler, HandlerAdapter } from "../src/handler";
@@ -18,6 +18,7 @@ import { Batching } from "../src/batch";
 import { HandleMethod, $composer } from "../src/invocation";
 import { $unhandled } from "../src/callback";
 import "../src/handler-helper";
+import "../src/options-helper"
 
 import {
     RejectedError, TimeoutError
@@ -1472,6 +1473,43 @@ describe("Handler", () => {
                     return `Sending ${message}`;
                   });
             expect(Chat(handler.$duck()).send("Hello")).to.equal("Sending Hello");
+        });
+    });
+    describe("Options", () => {
+        const ServerOptions = Options.extend({
+            url:     undefined,
+            timeout: undefined
+        });
+
+        Handler.registerOptions(ServerOptions, "serverOptions");
+
+        it("should register options", () => {
+            const handler = new Handler(),
+                  options = handler.getOptions(ServerOptions);
+            expect(options).to.be.null;
+        });
+
+        it("should retrieve options", () => {
+            const handler = new Handler().serverOptions({
+                               url:     "http://localhost:3001/api",
+                               timeout: 3000
+                            }),
+                  options = handler.getOptions(ServerOptions);
+            expect(options).to.be.an.instanceof(ServerOptions);
+            expect(options.url).to.equal("http://localhost:3001/api");
+            expect(options.timeout).to.equal(3000);
+        });
+
+        it("should reject register if not an Options type", () => {
+          expect(() => {
+                Handler.registerOptions(11, "foo");
+            }).to.throw(TypeError, "Options type '11' does not extend Options.");
+        });
+
+        it("should reject get if not an Options type", () => {
+          expect(() => {
+                (new Handler).getOptions("abc");
+            }).to.throw(TypeError, "Options type 'abc' does not extend Options.");
         });
     });
 });

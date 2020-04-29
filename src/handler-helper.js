@@ -47,32 +47,6 @@ Handler.providing = function (provider, constraint) {
     return providing;
 };
 
-/**
- * Register the policy to be applied by a Handler.
- * @method registerPolicy
- * @static
- * @param   {Function}        policyType  -  type of policy
- * @param   {string|symbol}   key         -  policy key  
- * @returns {boolean} true if successful, false otherwise.
- * @for Handler
- */ 
-Handler.registerPolicy = function (policyType, key) {
-    if (Handler.prototype.hasOwnProperty(key)) {
-        return false;
-    }
-    Handler.implement({
-        [key](policy) {
-            return policy ? this.decorate({
-                @handles(policyType)
-                mergePolicy(receiver) {
-                    policy.mergeInto(receiver)                
-                }
-            }) : this;
-        }
-    });
-    return true;
-}
-
 Handler.implement({
    /**
      * Asynchronusly handles the callback.
