@@ -230,20 +230,14 @@ export function $policy(variance) {
             }
         }
 
-        let dispatched = dispatch(handler);
+        let dispatched = false;
 
-        function dispatch(target) {
-            let dispatched = false;
-            if (target) {
-                Metadata.collect(key, target, list => {
-                    dispatched = _dispatch(target, callback, constraint, v,
-                                           list, composer, all, results)
-                              || dispatched;
-                    return dispatched && !all;
-                });
-            }
-            return dispatched;
-        }
+        Metadata.collect(key, handler, list => {
+            dispatched = _dispatch(handler, callback, constraint, v,
+                                   list, composer, all, results)
+                      || dispatched;
+            return dispatched && !all;
+        });
 
         if (!dispatched) { return $unhandled; }
     };

@@ -1,5 +1,5 @@
 import { $flatten } from "miruken-core";
-import Handler from "./handler";
+import { Handler, HandlerAdapter } from "./handler";
 
 /**
  * Encapsulates zero or more
@@ -28,7 +28,9 @@ export const CompositeHandler = Handler.extend({
              * @chainable
              */
             addHandlers(...handlers) {
-                handlers = $flatten(handlers, true).map(h => h.toHandler());
+                handlers = $flatten(handlers, true)
+                    .filter(h => this.findHandler(h) == null)
+                    .map(h => h.toHandler());
                 _handlers.push(...handlers);
                 return this;
             },
@@ -41,7 +43,9 @@ export const CompositeHandler = Handler.extend({
              * @chainable
              */
             insertHandlers(atIndex, ...handlers) {
-                handlers = $flatten(handlers, true).map(h => h.toHandler());
+                handlers = $flatten(handlers, true)
+                    .filter(h => this.findHandler(h) == null)
+                    .map(h => h.toHandler());
                 _handlers.splice(atIndex, 0, ...handlers);                
                 return this;                    
             },                
@@ -53,20 +57,27 @@ export const CompositeHandler = Handler.extend({
              * @chainable
              */
             removeHandlers(...handlers) {
-                $flatten(handlers).forEach(handler => {
-                    if (!handler) {
-                        return;
-                    }
+                $flatten(handlers, true).forEach(handler => {
                     const count = _handlers.length;
                     for (let idx = 0; idx < count; ++idx) {
                         const testHandler = _handlers[idx];
-                        if (testHandler == handler || testHandler.handler == handler) {
+                        if (testHandler === handler || 
+                            (testHandler instanceof HandlerAdapter &&
+                             testHandler.handler === handler)) {
                             _handlers.splice(idx, 1);
                             return;
                         }
                     }
                 });
                 return this;
+            },
+            findHandler(handler) {
+                for (const h of _handlers) {
+                    if (h === handler) return h;
+                    if (h instanceof HandlerAdapter && h.handler === handler) {
+                        return h;
+                    }
+                }
             },
             handleCallback(callback, greedy, composer) {
                 let handled = this.base(callback, greedy, composer);
