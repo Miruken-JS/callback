@@ -116,15 +116,9 @@ export const Resolution = Base.extend(DispatchingCallback, {
                 let   resolved = $provide.dispatch(
                     handler, this, key, composer, many, this.resolve);
                 if (resolved === $unhandled) {
-                    // check if delegate or handler implicitly satisfy key
-                    const implied  = new Binding(key),
-                          delegate = handler.delegate;
-                    if (delegate && implied.match($classOf(delegate), Variance.Contravariant)) {
-                        resolved = this.resolve(delegate, composer);
-                        if (resolved) return true;
-                    }
-                    if ((resolved === $unhandled || many) &&
-                        implied.match($classOf(handler), Variance.Contravariant)) {
+                    // check if handler implicitly satisfies key
+                    const implied  = new Binding(key);
+                    if (implied.match($classOf(handler), Variance.Contravariant)) {
                         resolved = this.resolve(handler, composer);
                         if (resolved ) return true;
                     }

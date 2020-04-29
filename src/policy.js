@@ -217,8 +217,7 @@ export function $policy(variance) {
         Metadata.remove(key, owner);
     };
     policy.dispatch = function (handler, callback, constraint, composer, all, results) {
-        let   v        = variance;
-        const delegate = handler.delegate;
+        let v = variance;
         constraint = constraint || callback;
         
         if (constraint) {
@@ -231,11 +230,8 @@ export function $policy(variance) {
             }
         }
 
-        let dispatched = dispatch(delegate);
-        if (!dispatched || all) {
-            dispatched = dispatch(handler) || dispatched;
-        }
-             
+        let dispatched = dispatch(handler);
+
         function dispatch(target) {
             let dispatched = false;
             if (target) {

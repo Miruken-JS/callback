@@ -5,7 +5,7 @@ import {
     $instant, $using, $flatten
 } from "miruken-core";
 
-import Handler from "../src/handler";
+import { Handler, HandlerAdapter } from "../src/handler";
 import CascadeHandler from "../src/cascade-handler";
 import CompositeHandler from "../src/composite-handler";
 
@@ -427,7 +427,7 @@ describe("Handler", () => {
         });
 
         it("should handle callbacks", () => {
-            const cashier    = new Handler(new Cashier(1000000.00)),
+            const cashier    = new HandlerAdapter(new Cashier(1000000.00)),
                   countMoney = new CountMoney();
             expect(cashier.handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000000.00);
@@ -1221,7 +1221,7 @@ describe("Handler", () => {
 
         it("should ignore invocation", () => {
             const guest = new Guest(21),
-                  level = Handler(new Level1Security);
+                  level = HandlerAdapter(new Level1Security);
             expect(() => {
                 Security(level.aspect(False)).admit(guest);
             }).to.throw(RejectedError);
@@ -1239,7 +1239,7 @@ describe("Handler", () => {
         it("should invoke with side-effect", () => {
             let count = 0,
                 guest = new Guest(21),
-                level = Handler(new Level1Security);
+                level = HandlerAdapter(new Level1Security);
             expect(Security(level.aspect(True, () => { ++count; }))
                             .admit(guest)).to.be.true;
             expect(count).to.equal(1);
@@ -1259,7 +1259,7 @@ describe("Handler", () => {
         });
 
         it("should ignore async invocation", done => {
-            const level2 = Handler(new Level2Security);
+            const level2 = HandlerAdapter(new Level2Security);
             Security(level2.aspect(() => {
                 return Promise.resolve(false);
             })).scan().then(scanned => {
@@ -1282,7 +1282,7 @@ describe("Handler", () => {
         });
 
         it("should invoke async with side-effect", done => {
-            const level2 = Handler(new Level2Security);
+            const level2 = HandlerAdapter(new Level2Security);
             Security(level2.aspect(True, () => done())).scan().then(scanned => {
                 expect(scanned).to.be.true;
             });
@@ -1312,7 +1312,7 @@ describe("Handler", () => {
         });
 
         it("should fail async invoke on rejection in before", done => {
-            const level2 = Handler(new Level2Security);
+            const level2 = HandlerAdapter(new Level2Security);
             Security(level2.aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
@@ -1329,7 +1329,7 @@ describe("Handler", () => {
                   baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  security = Handler(level1).next(level2);
+                  security = HandlerAdapter(level1).next(level2);
             expect(Security(security).admit(guest)).to.be.false;
             Security(security).trackActivity(baccarat);
         });
@@ -1495,13 +1495,13 @@ describe("InvocationHandler", () => {
         it("should handle invocations", () => {
             const guest1 = new Guest(17),
                   guest2 = new Guest(21),
-                  level1 = Handler(new Level1Security());
+                  level1 = HandlerAdapter(new Level1Security());
             expect(Security(level1).admit(guest1)).to.be.false;
             expect(Security(level1).admit(guest2)).to.be.true;
         });
         
         it("should handle async invocations", done => {
-            const level2 = Handler(new Level2Security());
+            const level2 = HandlerAdapter(new Level2Security());
             Security(level2).scan().then(() => {
                 done();
             });
@@ -1581,7 +1581,7 @@ describe("InvocationHandler", () => {
                           return "poker" + numPlayers;
                       }
                   }),
-                  handler = new Handler(new Poker()),
+                  handler = new HandlerAdapter(new Poker()),
                   id      = Game(handler).open(5);
             expect(id).to.equal("poker5");
         });
@@ -1623,7 +1623,7 @@ describe("InvocationHandler", () => {
 
         it("should fail invocation if method not found", () => {
             const Poker   = Base.extend(Game),
-                  handler = new Handler(new Poker());
+                  handler = new HandlerAdapter(new Poker());
             expect(() => {
                 Game(handler).open(4);
             }).to.throw(TypeError, /open could not be handled/);
@@ -1723,7 +1723,7 @@ describe("InvocationHandler", () => {
                           return "poker" + numPlayers;
                       }
                   }),
-                  handler = new Handler(new Poker());
+                  handler = new HandlerAdapter(new Poker());
             expect(Game(handler.filter(
                 (cb, cm, proceed) => proceed())).open(5))
                 .to.equal("poker5");

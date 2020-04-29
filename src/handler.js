@@ -67,17 +67,6 @@ export const Composition = Base.extend(DispatchingCallback, {
  * @extends Base
  */
 export const Handler = Base.extend({
-    constructor(delegate) {
-        /**
-         * Gets the delegate.
-         * @property {Object} delegate
-         * @readOnly
-         */            
-        Object.defineProperty(this, "delegate", {
-            value:    delegate,
-            writable: false
-        });
-    },
     /**
      * Handles the callback.
      * @method handle

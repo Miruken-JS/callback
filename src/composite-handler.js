@@ -60,7 +60,7 @@ export const CompositeHandler = Handler.extend({
                     const count = _handlers.length;
                     for (let idx = 0; idx < count; ++idx) {
                         const testHandler = _handlers[idx];
-                        if (testHandler == handler || testHandler.delegate == handler) {
+                        if (testHandler == handler || testHandler.handler == handler) {
                             _handlers.splice(idx, 1);
                             return;
                         }

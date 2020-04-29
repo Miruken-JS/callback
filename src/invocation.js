@@ -234,7 +234,7 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
                 return new TypeError(`Protocol ${protocol.name}:${methodName}${qualifier} could not be handled.`);
             },
             dispatch(handler, greedy, composer) {
-                return this.invokeOn(handler.delegate, composer) || this.invokeOn(handler, composer);
+                return this.invokeOn(handler, composer);
             }
         });
     }
