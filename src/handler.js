@@ -116,9 +116,24 @@ export const Handler = Base.extend({
     coerce(object) { return new this(object); }
 });
 
+export const HandlerAdapter = Handler.extend({
+    constructor(handler) {
+        if ($isNothing(handler)) {
+            throw new TypeError("No handler specified.");
+        }
+        Object.defineProperty(this, "handler", {
+            configurable: false,
+            value:        handler
+        });
+    },
+    handleCallback(callback, greedy, composer) {
+        return Handler.dispatch(this.handler, callback, greedy, composer);
+    }
+});
+
 Base.implement({
     toHandler() {
-         return this instanceof Handler ? this : Handler(this);
+         return this instanceof Handler ? this : new HandlerAdapter(this);
     }
 });
 

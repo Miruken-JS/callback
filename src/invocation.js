@@ -8,7 +8,7 @@ import {
 import Resolution from "./resolution";
 import { Composition, Handler } from "./handler";
 import { handles } from "./policy";
-import { $unhandled } from "./callback";
+import { DispatchingCallback, $unhandled } from "./callback";
 
 export let $composer;
 
@@ -120,7 +120,7 @@ export const InvocationSemantics = Composition.extend({
  * @param  {InvocationSemanics}  semantics   -  invocation semantics
  * @extends Base
  */
-export const HandleMethod = Base.extend({
+export const HandleMethod = Base.extend(DispatchingCallback, {
     constructor(methodType, protocol, methodName, args, semantics) {
         if (protocol && !$isProtocol(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
@@ -232,6 +232,9 @@ export const HandleMethod = Base.extend({
                     break;                    
                 }
                 return new TypeError(`Protocol ${protocol.name}:${methodName}${qualifier} could not be handled.`);
+            },
+            dispatch(handler, greedy, composer) {
+                return this.invokeOn(handler.delegate, composer) || this.invokeOn(handler, composer);            
             }
         });
     }
@@ -411,13 +414,7 @@ Handler.implement({
                 return !!handled;
             }
         });
-    },
-    @handles(HandleMethod)
-    __handleMethod(method, composer) {
-        if (!(method.invokeOn(this.delegate, composer) || method.invokeOn(this, composer))) {
-            return $unhandled;
-        }
-    }    
+    }  
 });
 
 /**
