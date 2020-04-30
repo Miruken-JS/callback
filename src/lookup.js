@@ -65,57 +65,49 @@ export const Lookup = Base.extend(DispatchingCallback, {
                 }
                 return _result;
             },
-            set callbackResult(value) { _result = value; },
-            /**
-             * Adds a lookup result.
-             * @param  {Any}      reault    -  lookup result
-             * @param  {Handler}  composer  -  composition handler
-             * @returns {boolean} true if accepted, false otherwise.
-             */
-            addResult(result, composer) {
-                let found;
-                if (result == null) return false;
-                if (Array.isArray(result)) {
-                    found = $flatten(result, true).reduce(
-                        (s, r) => this.include(r, composer) || s, false);  
-                } else {
-                    found = this.include(result, composer);
-                }
-                if (found) {
-                    _result = undefined;
-                }
-                return found;
-            },
-            include(result, composer) {
-                if (result == null) return false;
-                if ($isPromise(result)) {
-                    if (_instant) return false;
-                    _promises.push(result.then(res => {
-                        if (Array.isArray(res)) {
-                            _results.push(...res.filter(r => r != null));
-                        } else if (res != null) {
-                            _results.push(res);
-                        }
-                    }).catch(Undefined));
-                } else {
-                    _results.push(result);
-                }
-                return true;                             
-            },           
+            set callbackResult(value) { _result = value; },       
             dispatch(handler, greedy, composer) {
                 const count = _results.length + _promises.length,
                       found = $lookup.dispatch(handler, this, this.key,
-                        composer, this.isMany, this.addResult) !== $unhandled;
+                        composer, this.isMany, addResult) !== $unhandled;
                 return found || (_results.length + _promises.length > count);
             }           
         });
-    },
-    /**
-     * Gets the policy.
-     * @property {Function} policy
-     * @readOnly
-     */         
-    get policy() { return $lookup; }      
+        function addResult(result, composer) {
+            let found;
+            if (result == null) return false;
+            if (Array.isArray(result)) {
+                found = $flatten(result, true).reduce(
+                    (s, r) => include(r, composer) || s, false);  
+            } else {
+                found = include(result, composer);
+            }
+            if (found) {
+                _result = undefined;
+            }
+            return found;
+        }
+        function include(result, composer) {
+            if (result == null) return false;
+            if ($isPromise(result)) {
+                if (_instant) return false;
+                _promises.push(result.then(res => {
+                    if (Array.isArray(res)) {
+                        _results.push(...res.filter(r => r != null));
+                    } else if (res != null) {
+                        _results.push(res);
+                    }
+                }).catch(Undefined));
+            } else {
+                _results.push(result);
+            }
+            return true;                             
+        }          
+    },       
+    get policy() { return $lookup; },
+    toString() {
+        return `Lookup ${this.isMany ? "many ": ""}| ${this.key}`;
+    }            
 });
 
 export default Lookup;

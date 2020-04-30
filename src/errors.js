@@ -3,14 +3,17 @@
  * @class NotHandledError
  * @constructor
  * @param {Object}  callback  -  unhandled callback
+ * @param {string}  message   -  message
  * @extends Error
  */
-export function NotHandledError(callback) {
+export function NotHandledError(callback, message) {
     /**
      * Gets the unhandled callback.
      * @property {Object} callback
      */         
     this.callback = callback;
+
+    this.message = message || `${callback} not handledcd`;
 
     if (Error.captureStackTrace) {
         Error.captureStackTrace(this, this.constructor);

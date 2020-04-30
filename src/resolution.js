@@ -68,77 +68,65 @@ export const Resolution = Base.extend(DispatchingCallback, {
             },
             set callbackResult(value) { _result = value; },
             /**
-             * Adds a resolution.
-             * @param  {Any}      resolution  -  resolution
-             * @param  {Handler}  composer    -  composition handler
-             * @returns {boolean} true if accepted, false otherwise.
-             */
-            resolve(resolution, composer) {
-                let resolved;
-                if (resolution == null) return false;
-                if (Array.isArray(resolution)) {
-                    resolved = $flatten(resolution, true).reduce(
-                        (s, r) => this.include(r, composer) || s, false);  
-                } else {
-                    resolved = this.include(resolution, composer);
-                }
-                if (resolved) {
-                    _result = undefined;
-                }
-                return resolved;
-            },
-            include(resolution, composer) {
-                if (resolution == null) return false;
-                if ($isPromise(resolution)) {
-                    if (_instant) return false;
-                    _promises.push(resolution.then(res => {
-                        if (Array.isArray(res)) {
-                            const satisfied = res
-                                .filter(r => r && this.isSatisfied(r, composer));
-                            _resolutions.push(...satisfied);
-                        } else if (res && this.isSatisfied(res, composer)) {
-                            _resolutions.push(res);
-                        }
-                    }).catch(Undefined));
-                } else if (!this.isSatisfied(resolution, composer)) {
-                    return false;
-                } else {
-                    _resolutions.push(resolution);
-                }
-                return true;                             
-            },
-            /**
              * Determines if `resolution` is acceptable.
              * @param  {Any}      resolution  -  resolution
              * @param  {Handler}  composer    -  composition handler
              * @returns {boolean} true if accepted, false otherwise.
              */            
-            isSatisfied(resolution, composer) {
-                return true;
-            },
+            isSatisfied(resolution, composer) { return true; },
             dispatch(handler, greedy, composer) {
-                const key      = this.key,
-                      many     = this.isMany;
                 // check if handler implicitly satisfies key
-                const implied  = new Binding(key);
+                const implied  = new Binding(this.key);
                 if (implied.match($classOf(handler), Variance.Contravariant)) {
-                    resolved = this.resolve(handler, composer);
+                    resolved = resolve.call(this, handler, composer);
                     if (resolved && !greedy) return true;
                 }
                 const count    = _resolutions.length + _promises.length;
-                let   resolved = $provide.dispatch(
-                    handler, this, key, composer, many, this.resolve) !== $unhandled 
+                let   resolved = $provide.dispatch(handler, this, this.key,
+                    composer, this.isMany, resolve.bind(this)) !== $unhandled 
                     || resolved;
                 return resolved || (_resolutions.length + _promises.length > count);
             }
         });
-    },
-    /**
-     * Gets the policy.
-     * @property {Function} policy
-     * @readOnly
-     */         
-    get policy() { return $provide; }    
+        function resolve(resolution, composer) {
+            let resolved;
+            if (resolution == null) return false;
+            if (Array.isArray(resolution)) {
+                resolved = $flatten(resolution, true).reduce(
+                    (s, r) => include.call(this, r, composer) || s, false);  
+            } else {
+                resolved = include.call(this, resolution, composer);
+            }
+            if (resolved) {
+                _result = undefined;
+            }
+            return resolved;
+        }
+        function include(resolution, composer) {
+            if (resolution == null) return false;
+            if ($isPromise(resolution)) {
+                if (_instant) return false;
+                _promises.push(resolution.then(res => {
+                    if (Array.isArray(res)) {
+                        const satisfied = res
+                            .filter(r => r && this.isSatisfied(r, composer));
+                        _resolutions.push(...satisfied);
+                    } else if (res && this.isSatisfied(res, composer)) {
+                        _resolutions.push(res);
+                    }
+                }).catch(Undefined));
+            } else if (!this.isSatisfied(resolution, composer)) {
+                return false;
+            } else {
+                _resolutions.push(resolution);
+            }
+            return true;                             
+        }        
+    },      
+    get policy() { return $provide; },
+    toString() {
+        return `Resolution ${this.isMany ? "many ": ""}| ${this.key}`;
+    }          
 });
 
 export default Resolution;

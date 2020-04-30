@@ -58,37 +58,31 @@ export const Command = Base.extend(DispatchingCallback, {
                 return _result;
             },
             set callbackResult(value) { _result = value; },
-            /**
-             * Tracks responses.
-             * @param {Promise}  response - handle promise
-             */
-            respond(response) {
-                if (response == null) return;
-                if ($isPromise(response)) {
-                    _promises.push(response.then(res => {
-                        if (res != null) {
-                            _results.push(res);
-                        }
-                    }));
-                } else {
-                    _results.push(response);
-                }
-                _result = undefined;
-            },
             dispatch(handler, greedy, composer) {
                 var count = _results.length;
                 return $handle.dispatch(handler, this.callback, null,
-                    composer, this.isMany, this.respond) !== $unhandled || 
+                    composer, this.isMany, respond) !== $unhandled || 
                     _results.length > count;     
-            }         
+            }     
         });
-    },
-    /**
-     * Gets the policy.
-     * @property {Function} policy
-     * @readOnly
-     */         
-    get policy() { return $handle; } 
+        function respond(response) {
+            if (response == null) return;
+            if ($isPromise(response)) {
+                _promises.push(response.then(res => {
+                    if (res != null) {
+                        _results.push(res);
+                    }
+                }));
+            } else {
+                _results.push(response);
+            }
+            _result = undefined;
+        }
+    },    
+    get policy() { return $handle; },
+    toString() {
+        return `Command ${this.isMany ? "many ": ""}| ${this.callback}`;
+    }  
 });
 
 export default Command;
