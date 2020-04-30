@@ -1,4 +1,27 @@
 /**
+ * Identifies a callback that could not be handled.
+ * @class NotHandledError
+ * @constructor
+ * @param {Object}  callback  -  unhandled callback
+ * @extends Error
+ */
+export function NotHandledError(callback) {
+    /**
+     * Gets the unhandled callback.
+     * @property {Object} callback
+     */         
+    this.callback = callback;
+
+    if (Error.captureStackTrace) {
+        Error.captureStackTrace(this, this.constructor);
+    } else {
+        Error.call(this);
+    }
+}
+NotHandledError.prototype             = new Error();
+NotHandledError.prototype.constructor = NotHandledError;
+
+/**
  * Identifies a rejected callback.  This usually occurs from aspect processing.
  * @class RejectedError
  * @constructor

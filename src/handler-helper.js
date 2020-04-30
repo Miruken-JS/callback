@@ -15,7 +15,9 @@ import { Composition, Handler } from "./handler";
 import CascadeHandler from "./cascade-handler";
 import CompositeHandler from "./composite-handler";
 
-import { RejectedError, TimeoutError } from "./errors";
+import { 
+    NotHandledError, RejectedError, TimeoutError
+} from "./errors";
 
 /**
  * Shortcut for handling a callback.
@@ -58,7 +60,9 @@ Handler.implement({
      */                        
     command(callback) {
         const command = new Command(callback);
-        this.handle(command, false);
+        if (!this.handle(command, false)) {
+            throw new NotHandledError(callback);
+        }
         return command.callbackResult;            
     },
     /**
@@ -71,7 +75,9 @@ Handler.implement({
      */                                
     commandAll(callback) {
         const command = new Command(callback, true);
-        this.handle(command, true);
+        if (!this.handle(command, true)) {
+            throw new NotHandledError(callback);
+        }
         return command.callbackResult;
     },    
     /**

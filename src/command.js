@@ -40,13 +40,7 @@ export const Command = Base.extend(DispatchingCallback, {
              * @property {Array} pending
              * @readOnly
              */
-            get results() { return _results; },
-            /**
-             * Gets the policy.
-             * @property {Function} policy
-             * @readOnly
-             */         
-            get policy() { return $handle; },              
+            get results() { return _results; },            
             /**
              * Gets/sets the effective callback result.
              * @property {Any} callback result
@@ -88,7 +82,13 @@ export const Command = Base.extend(DispatchingCallback, {
                     _results.length > count;     
             }         
         });
-    }
+    },
+    /**
+     * Gets the policy.
+     * @property {Function} policy
+     * @readOnly
+     */         
+    get policy() { return $handle; } 
 });
 
 export default Command;

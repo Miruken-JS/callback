@@ -1325,15 +1325,6 @@ describe("Handler", () => {
             });
         });
     });
-    
-    describe("#$run", () => {
-        it("should make handler the block receiver", () => {
-            const handler = new Handler();
-            handler.$run(function () {
-                expect(this).to.equal(handler);
-            });
-        });
-    });
 
     describe("#$compose", () => {
         it("should make handler the ambient $composer", () => {

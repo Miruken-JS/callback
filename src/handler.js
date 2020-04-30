@@ -139,19 +139,6 @@ const compositionScope = $decorator({
 
 Handler.implement({
     /**
-     * Runs `block` with this Handler as the receiver.
-     * @method use
-     * @param  {Function}  block   -  block
-     * @returns {Any} the return value of the block.
-     * @for Handler
-     */    
-    $run(block) {
-        if (!$isFunction(block)) {
-            throw new TypeError(`Invalid block: ${block} is not a function.`);
-        }
-        return block.call(this);
-    },
-    /**
      * Runs `block` with this Handler as the abmient **$composer**.
      * @method compose
      * @param  {Function}  block       -  block

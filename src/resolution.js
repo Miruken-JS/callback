@@ -49,13 +49,7 @@ export const Resolution = Base.extend(DispatchingCallback, {
              * @property {Array} resolutions
              * @readOnly
              */                
-            get resolutions() { return _resolutions; },
-            /**
-             * Gets the policy.
-             * @property {Function} policy
-             * @readOnly
-             */         
-            get policy() { return $provide; },            
+            get resolutions() { return _resolutions; },          
             /**
              * Gets/sets the effective callback result.
              * @property {Any} callback result
@@ -138,7 +132,13 @@ export const Resolution = Base.extend(DispatchingCallback, {
                 return resolved || (_resolutions.length + _promises.length > count);
             }
         });
-    }
+    },
+    /**
+     * Gets the policy.
+     * @property {Function} policy
+     * @readOnly
+     */         
+    get policy() { return $provide; }    
 });
 
 export default Resolution;

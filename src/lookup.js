@@ -48,13 +48,7 @@ export const Lookup = Base.extend(DispatchingCallback, {
              * @property {Array} results
              * @readOnly
              */
-            get results() { return _results; },
-             /**
-             * Gets the policy.
-             * @property {Function} policy
-             * @readOnly
-             */         
-            get policy() { return $lookup; },           
+            get results() { return _results; },        
             /**
              * Gets/sets the effective callback result.
              * @property {Any} callback result
@@ -115,7 +109,13 @@ export const Lookup = Base.extend(DispatchingCallback, {
                 return found || (_results.length + _promises.length > count);
             }           
         });
-    }
+    },
+    /**
+     * Gets the policy.
+     * @property {Function} policy
+     * @readOnly
+     */         
+    get policy() { return $lookup; }      
 });
 
 export default Lookup;
