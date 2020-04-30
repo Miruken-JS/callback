@@ -170,40 +170,6 @@ export function $policy(variance) {
             }
         };
     };
-    policy.satisfies = function (constraint, collector) {
-        if (!$isFunction(collector)) {
-            throw new TypeError("collector must be a function");
-        }
-
-        let v = variance;
-        if (constraint) {
-            if ($eq.test(constraint)) {
-                v = Variance.Invariant;
-            }
-            constraint = Modifier.unwrap(constraint);
-            if ($isObject(constraint)) {
-                constraint = $classOf(constraint);
-            }
-        }
-
-        const invariant = (v === Variance.Invariant),
-              index     = createIndex(constraint);
-
-        if (!invariant || index) {
-            const list = this.entries;
-            let binding = list.getFirst(index) || list.head;
-            while (binding) {
-                if (binding.match(constraint, v)) {
-                    if (collector(binding.handler)) {
-                        break;
-                    }
-                } else if (invariant) {
-                    break;  // stop matching if invariant not satisifed
-                }
-                binding = binding.next;
-            }
-        }     
-    };
     policy.removeAll = function (owner) {
         const list = Metadata.getOwn(key, owner);
         if (!list) { return };

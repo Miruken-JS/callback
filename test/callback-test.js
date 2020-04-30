@@ -747,8 +747,7 @@ describe("Handler", () => {
             const handler = Handler.accepting(
                     countMoney => countMoney.record(50), CountMoney),
                   countMoney = new CountMoney();
-            Promise.resolve(handler.command(countMoney)).then(handled => {
-                expect(handled).to.be.true;
+            Promise.resolve(handler.command(countMoney)).then(() => {
                 expect(countMoney.total).to.equal(50);
                 done();
             });
@@ -1086,7 +1085,7 @@ describe("Handler", () => {
                           return Promise.delay(75).then(() => stop1);
                       }
                   })),
-           bus2  = new (Handler.extend({
+                  bus2  = new (Handler.extend({
                       @provides(PitBoss)
                       pitBoss(resolution) {               
                           expect(resolution.isMany).to.be.true;
@@ -1102,7 +1101,7 @@ describe("Handler", () => {
                   })),
                   company = bus1.next(bus2, bus3);
             Promise.resolve(company.resolveAll(PitBoss)).then(pitBosses => {
-                expect(pitBosses).to.eql($flatten([stop1, stop2, stop3]));
+                expect(pitBosses).to.have.members($flatten([stop1, stop2, stop3]));
                 done();
             });
         });
@@ -1120,7 +1119,7 @@ describe("Handler", () => {
                       paris() { return paris; }
                   }));
             const casinos = strip.resolveAll($instant(Casino));
-            expect(casinos).to.eql([venetian, paris]);
+            expect(casinos).to.have.members([venetian, paris]);
         });
 
         it("should return empty array if none resolved", done => {

@@ -19,8 +19,9 @@ export const Command = Base.extend(DispatchingCallback, {
             throw new TypeError("The callback is required.");
         }
         many = !!many;
-        let _pending = [],
-            _tracked, _result;
+        let _results  = [],
+            _promises = [],
+            _result;
         this.extend({
             /**
              * true if handle all, false otherwise.
@@ -35,11 +36,11 @@ export const Command = Base.extend(DispatchingCallback, {
              */
             get callback() { return callback; },
             /**
-             * Gets the pending promises.
+             * Gets the results.
              * @property {Array} pending
              * @readOnly
              */
-            get pending() { return _pending; },
+            get results() { return _results; },
             /**
              * Gets the policy.
              * @property {Function} policy
@@ -52,34 +53,38 @@ export const Command = Base.extend(DispatchingCallback, {
              */               
             get callbackResult() {
                 if (_result === undefined) {
-                    if (_pending.length === 1) {
-                        _result = Promise.resolve(_pending[0]);
-                    } else if (_pending.length > 1) {
-                        _result = Promise.all(_pending);
+                    if (_promises.length == 0) {
+                        _result = many ? _results : _results[0];
                     } else {
-                        _result = Promise.resolve(_tracked);
+                        _result = many 
+                                ? Promise.all(_promises).then(() => _results)
+                                : Promise.all(_promises).then(() => _results[0]);
                     }
                 }
                 return _result;
             },
             set callbackResult(value) { _result = value; },
             /**
-             * Tracks a pending promise.
-             * @param {Promise}  promise - handle promise
+             * Tracks responses.
+             * @param {Promise}  response - handle promise
              */
-            track(promise) {
-                if ((many || _pending.length === 0) && $isPromise(promise)) {
-                    _pending.push(promise);
-                    _result = undefined;
-                }
-                if (!_tracked) {
-                    _tracked = true;
-                    _result  = undefined;                        
+            respond(response) {
+                if (response == null) return;
+                if ($isPromise(response)) {
+                    _promises.push(response.then(res => {
+                        if (res != null) {
+                            _results.push(res);
+                        }
+                    }));
+                } else {
+                    _results.push(response);
                 }
             },
             dispatch(handler, greedy, composer) {
+                var count = _results.length;
                 return $handle.dispatch(handler, this.callback, null,
-                    composer, this.isMany, this.track) !== $unhandled;     
+                    composer, this.isMany, this.respond) !== $unhandled || 
+                    _results.length > count;     
             }         
         });
     }

@@ -22,8 +22,9 @@ export const Resolution = Base.extend(DispatchingCallback, {
         }
         many = !!many;
         let _resolutions = [],
-            _promised    = false, _result,
-            _instant     = $instant.test(key);
+            _promises    = [],
+            _instant     = $instant.test(key),
+            _result;
         this.extend({
             /**
              * Gets the key.
@@ -42,7 +43,7 @@ export const Resolution = Base.extend(DispatchingCallback, {
              * @property {boolean} instant
              * @readOnly
              */
-            get instant() { return !_promised; },
+            get instant() { return _promises.length == 0; },
             /**
              * Gets the resolutions.
              * @property {Array} resolutions
@@ -61,15 +62,12 @@ export const Resolution = Base.extend(DispatchingCallback, {
              */
             get callbackResult() {
                 if (_result === undefined) {
-                    if (!many) {
-                        const resolutions = $flatten(_resolutions, true);
-                        if (resolutions.length > 0) {
-                            _result = resolutions[0];
-                        }
+                    if (this.instant) {
+                        _result = many ? _resolutions : _resolutions[0];
                     } else {
-                        _result = !_promised
-                            ? $flatten(_resolutions, true)
-                            : Promise.all(_resolutions).then(res => $flatten(res, true));
+                        _result = many 
+                                ? Promise.all(_promises).then(() => _resolutions)
+                                : Promise.all(_promises).then(() => _resolutions[0]);
                     }
                 }
                 return _result;
@@ -82,24 +80,38 @@ export const Resolution = Base.extend(DispatchingCallback, {
              * @returns {boolean} true if accepted, false otherwise.
              */
             resolve(resolution, composer) {
-                if (!many && _resolutions.length > 0) {
-                    return false;
+                let resolved;
+                if (resolution == null) return false;
+                if (Array.isArray(resolution)) {
+                    resolved = $flatten(resolution, true).reduce(
+                        (s, r) => this.include(r, composer) || s, false);  
+                } else {
+                    resolved = this.include(resolution, composer);
                 }
+                if (resolved) {
+                    _result = undefined;
+                }
+                return resolved;
+            },
+            include(resolution, composer) {
+                if (resolution == null) return false;
                 if ($isPromise(resolution)) {
-                    if (_instant) { return false; }
-                    _promised = true;
-                    resolution = resolution.then(r => {
-                        if (this.isSatisfied(r, composer)) { return r; }
-                    });
-                    if (many) {
-                        resolution = resolution.catch(Undefined);
-                    }
+                    if (_instant) return false;
+                    _promises.push(resolution.then(res => {
+                        if (Array.isArray(res)) {
+                            const satisfied = res
+                                .filter(r => r && this.isSatisfied(r, composer));
+                            _resolutions.push(...satisfied);
+                        } else if (res && this.isSatisfied(res, composer)) {
+                            _resolutions.push(res);
+                        }
+                    }).catch(Undefined));
                 } else if (!this.isSatisfied(resolution, composer)) {
                     return false;
+                } else {
+                    _resolutions.push(resolution);
                 }
-                _resolutions.push(resolution);
-                _result = undefined;
-                return true;
+                return true;                             
             },
             /**
              * Determines if `resolution` is acceptable.
@@ -113,17 +125,17 @@ export const Resolution = Base.extend(DispatchingCallback, {
             dispatch(handler, greedy, composer) {
                 const key      = this.key,
                       many     = this.isMany;
-                let   resolved = $provide.dispatch(
-                    handler, this, key, composer, many, this.resolve);
-                if (resolved === $unhandled) {
-                    // check if handler implicitly satisfies key
-                    const implied  = new Binding(key);
-                    if (implied.match($classOf(handler), Variance.Contravariant)) {
-                        resolved = this.resolve(handler, composer);
-                        if (resolved ) return true;
-                    }
+                // check if handler implicitly satisfies key
+                const implied  = new Binding(key);
+                if (implied.match($classOf(handler), Variance.Contravariant)) {
+                    resolved = this.resolve(handler, composer);
+                    if (resolved && !greedy) return true;
                 }
-                return resolved !== $unhandled;
+                const count    = _resolutions.length + _promises.length;
+                let   resolved = $provide.dispatch(
+                    handler, this, key, composer, many, this.resolve) !== $unhandled 
+                    || resolved;
+                return resolved || (_resolutions.length + _promises.length > count);
             }
         });
     }
