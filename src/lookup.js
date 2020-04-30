@@ -20,8 +20,10 @@ export const Lookup = Base.extend(DispatchingCallback, {
             throw new TypeError("The key is required.");
         }
         many = !!many;
-        let _results = [], _result,
-            _instant = $instant.test(key);
+        let _results = [],
+            _promises    = [],
+            _instant     = $instant.test(key),
+            _result;
         this.extend({
             /**
              * Gets the lookup key.
@@ -35,6 +37,12 @@ export const Lookup = Base.extend(DispatchingCallback, {
              * @readOnly
              */
             get isMany() { return many; },
+            /**
+             * true if resolve all is instant.  Otherwise a promise.
+             * @property {boolean} instant
+             * @readOnly
+             */
+            get instant() { return _promises.length == 0; },            
             /**
              * Gets the matching results.
              * @property {Array} results
@@ -53,14 +61,12 @@ export const Lookup = Base.extend(DispatchingCallback, {
              */                
             get callbackResult() {
                 if (_result === undefined) {
-                    if (!many) {
-                        if (_results.length > 0) {
-                            _result = _results[0];
-                        }
-                    } else if (_instant) {
-                        _result = $flatten(_results);
+                    if (this.instant) {
+                        _result = many ? _results : _results[0];
                     } else {
-                        _result = Promise.all(_results).then($flatten);
+                        _result = many 
+                                ? Promise.all(_promises).then(() => _results)
+                                : Promise.all(_promises).then(() => _results[0]);
                     }
                 }
                 return _result;
@@ -68,18 +74,45 @@ export const Lookup = Base.extend(DispatchingCallback, {
             set callbackResult(value) { _result = value; },
             /**
              * Adds a lookup result.
-             * @param  {Any}  reault - lookup result
+             * @param  {Any}      reault    -  lookup result
+             * @param  {Handler}  composer  -  composition handler
+             * @returns {boolean} true if accepted, false otherwise.
              */
-            addResult(result) {
-                if ((many || _results.length === 0) &&
-                    !(_instant && $isPromise(result))) {
-                    _results.push(result);
+            addResult(result, composer) {
+                let found;
+                if (result == null) return false;
+                if (Array.isArray(result)) {
+                    found = $flatten(result, true).reduce(
+                        (s, r) => this.include(r, composer) || s, false);  
+                } else {
+                    found = this.include(result, composer);
+                }
+                if (found) {
                     _result = undefined;
                 }
+                return found;
             },
+            include(result, composer) {
+                if (result == null) return false;
+                if ($isPromise(result)) {
+                    if (_instant) return false;
+                    _promises.push(result.then(res => {
+                        if (Array.isArray(res)) {
+                            _results.push(...res.filter(r => r != null));
+                        } else if (res != null) {
+                            _results.push(res);
+                        }
+                    }).catch(Undefined));
+                } else {
+                    _results.push(result);
+                }
+                return true;                             
+            },           
             dispatch(handler, greedy, composer) {
-                return $lookup.dispatch(handler, this, this.key,
-                    composer, this.isMany, this.addResult) !== $unhandled; 
+                const count = _results.length + _promises.length,
+                      found = $lookup.dispatch(handler, this, this.key,
+                        composer, this.isMany, this.addResult) !== $unhandled;
+                return found || (_results.length + _promises.length > count);
             }           
         });
     }

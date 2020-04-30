@@ -79,6 +79,7 @@ export const Command = Base.extend(DispatchingCallback, {
                 } else {
                     _results.push(response);
                 }
+                _result = undefined;
             },
             dispatch(handler, greedy, composer) {
                 var count = _results.length;
