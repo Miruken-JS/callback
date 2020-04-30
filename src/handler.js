@@ -7,6 +7,8 @@ import { $handle, } from "./policy";
 import { DispatchingCallback, $unhandled } from "./callback";
 import { RejectedError, TimeoutError } from "./errors"; 
 
+export let $composer;
+
 /**
  * Marks a callback as composed.
  * @class Composition
@@ -132,6 +134,42 @@ const compositionScope = $decorator({
             callback = new Composition(callback, greedy);
         }
         return this.base(callback, greedy, composer);
+    }
+});
+
+Handler.implement({
+    /**
+     * Runs `block` with this Handler as the receiver.
+     * @method use
+     * @param  {Function}  block   -  block
+     * @returns {Any} the return value of the block.
+     * @for Handler
+     */    
+    $run(block) {
+        if (!$isFunction(block)) {
+            throw new TypeError(`Invalid block: ${block} is not a function.`);
+        }
+        return block.call(this);
+    },
+    /**
+     * Runs `block` with this Handler as the abmient **$composer**.
+     * @method compose
+     * @param  {Function}  block       -  block
+     * @param  {Object}    [receiver]  -  reciever
+     * @returns {Any} the return value of the block.
+     * @for Handler
+     */    
+    $compose(block, receiver) {
+        if (!$isFunction(block)) {
+            throw new TypeError(`Invalid block: ${block} is not a function.`);
+        }
+        const oldComposer = $composer;                    
+        try {
+            $composer = this;
+            return block.call(receiver);
+        } finally {
+            $composer = oldComposer;
+        }
     }
 });
 

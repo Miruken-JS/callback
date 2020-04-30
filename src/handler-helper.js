@@ -47,8 +47,8 @@ Handler.providing = function (provider, constraint) {
     return providing;
 };
 
-Handler.implement({
-   /**
+Handler.implement({   
+    /**
      * Asynchronusly handles the callback.
      * @method command
      * @param   {Object}  callback  -  callback

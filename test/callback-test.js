@@ -5,7 +5,10 @@ import {
     $eq, $instant, $using, $flatten
 } from "miruken-core";
 
-import { Handler, HandlerAdapter } from "../src/handler";
+import {
+     Handler, HandlerAdapter, $composer
+ } from "../src/handler";
+
 import CascadeHandler from "../src/cascade-handler";
 import CompositeHandler from "../src/composite-handler";
 
@@ -15,7 +18,7 @@ import {
 } from "../src/policy"
 
 import { Batching } from "../src/batch";
-import { HandleMethod, $composer } from "../src/invocation";
+import { HandleMethod } from "../src/invocation";
 import { $unhandled } from "../src/callback";
 import "../src/handler-helper";
 import "../src/options-helper"
@@ -1323,6 +1326,32 @@ describe("Handler", () => {
         });
     });
     
+    describe("#$run", () => {
+        it("should make handler the block receiver", () => {
+            const handler = new Handler();
+            handler.$run(function () {
+                expect(this).to.equal(handler);
+            });
+        });
+    });
+
+    describe("#$compose", () => {
+        it("should make handler the ambient $composer", () => {
+            const handler = new Handler();
+            handler.$compose(function () {
+                expect($composer).to.equal(handler);
+            });
+        });
+
+        it("should make handler the ambient $composer with receiver", () => {
+            const handler = new Handler();
+            handler.$compose(function () {
+                expect($composer).to.equal(handler);
+                expect(this).to.equal(handler);
+            }, handler);
+        });        
+    });
+
     describe("#next", () => {
         it("should cascade handlers using short syntax", () => {
             const guest    = new Guest(17),
@@ -1474,6 +1503,7 @@ describe("Handler", () => {
             expect(Chat(handler.$duck()).send("Hello")).to.equal("Sending Hello");
         });
     });
+
     describe("Options", () => {
         const ServerOptions = Options.extend({
             url:     undefined,

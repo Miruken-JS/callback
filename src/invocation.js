@@ -6,11 +6,9 @@ import {
 } from "miruken-core";
 
 import Resolution from "./resolution";
-import { Composition, Handler } from "./handler";
-import { handles } from "./policy";
+import { Composition, Handler, $composer } from "./handler";
 import { DispatchingCallback, $unhandled } from "./callback";
-
-export let $composer;
+import { handles } from "./policy";
 
 /**
  * InvocationOptions flags enum
@@ -116,7 +114,7 @@ export const InvocationSemantics = Composition.extend({
  * @param  {number}              methodType  -  get, set or invoke
  * @param  {Protocol}            protocol    -  initiating protocol
  * @param  {string}              methodName  -  method name
- * @param  {Array}               [...args]   -  method arguments
+ * @param  {Any}                 args        -  method or property arguments
  * @param  {InvocationSemanics}  semantics   -  invocation semantics
  * @extends Base
  */
@@ -172,7 +170,7 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
             set callbackResult(value) { _returnValue = value; },
             /**
              * Attempts to invoke the method on the target.<br/>
-             * During invocation, the receiver will have access to a global **$composer** property
+             * During invocation, the receiver will have access to the ambient **$composer** property
              * representing the initiating {{#crossLink "Handler"}}{{/crossLink}}.
              * @method invokeOn
              * @param   {Object}   target    -  method receiver
@@ -187,18 +185,24 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
                     method = target[methodName];
                     if (!$isFunction(method)) { return false; }
                 }
-                const oldComposer = $composer;                    
+                                  
                 try {
-                    $composer = composer;
                     switch (methodType) {
                     case MethodType.Get:
-                        result = target[methodName];
+                        result = composer != null
+                               ? composer.$compose(() => target[methodName])
+                               : target[methodName];
+                        ;
                         break;
                     case MethodType.Set:
-                        result = target[methodName] = args;
+                        result = composer != null
+                               ? composer.$compose(() => target[methodName] = args)
+                               : target[methodName] = args;
                         break;
                     case MethodType.Invoke:
-                        result = method.apply(target, args);
+                        result = composer != null
+                               ? composer.$compose(() => method.apply(target, args))
+                               : method.apply(target, args);
                         break;
                     }
                     if (result === $unhandled) {
@@ -209,8 +213,6 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
                 } catch (exception) {
                     _exception = exception;
                     throw exception;
-                } finally {
-                    $composer = oldComposer;
                 }
             },
             isAcceptableTarget(target) {
