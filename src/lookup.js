@@ -17,7 +17,7 @@ import { DispatchingCallback, $unhandled } from "./callback";
 export const Lookup = Base.extend(DispatchingCallback, {
     constructor(key, many) {
         if ($isNothing(key)) {
-            throw new TypeError("The key is required.");
+            throw new Error("The key is required.");
         }
         many = !!many;
         let _results = [],
