@@ -1,9 +1,9 @@
 import {
     False, Undefined, Base, Variance,
     Metadata, Modifier, IndexedList, assignID,
-    decorate, isDescriptor, $isNothing, $isString,
-    $isFunction, $isObject, $isClass, $isProtocol,
-    $classOf, $eq, $use, $lift
+    decorate, isDescriptor, designWithReturn,
+    $isNothing, $isString, $isFunction, $isObject,
+    $isClass, $isProtocol, $classOf, $eq, $use, $lift
 } from "miruken-core";
 
 import { $unhandled } from "./callback";
@@ -14,7 +14,7 @@ const policies = {};
  * Policy for handling callbacks contravariantly.
  * @property {Function} $handle
  */
-export const $handle = $policy(Variance.Contravariant);
+export const $handle = $policy(Variance.Contravariant, "handle");
 
 export function handles(...args) {
     return decorate(addPolicy("handle", $handle), args);
@@ -24,7 +24,7 @@ export function handles(...args) {
  * Policy for providing callbacks covariantly.
  * @property {Function} $provide  
  */        
-export const $provide = $policy(Variance.Covariant);
+export const $provide = $policy(Variance.Covariant, "provide");
 
 export function provides(...args) {
     return decorate(addPolicy("provide", $provide, true), args);
@@ -34,7 +34,7 @@ export function provides(...args) {
  * Policy for matching callbacks invariantly.
  * @property {Function} $lookup  
  */                
-export const $lookup = $policy(Variance.Invariant);
+export const $lookup = $policy(Variance.Invariant, "lookup");
 
 export function looksup(...args) {
     return decorate(addPolicy("lookup", $lookup, true), args);    
@@ -43,17 +43,14 @@ export function looksup(...args) {
 /**
  * Marks methods and properties as handlers.
  * @method addPolicy
- * @param  {Object}    name         - policy name
- * @param  {Object}    def          - policy provider
+ * @param  {String}    name         - policy name
+ * @param  {Object}    provider     - policy provider
  * @param  {Object}    [allowGets]  - true to allow property handlers
  * @param  {Function}  [filter]     - optional callback filter
  */
-export function addPolicy(name, def, allowGets, filter) {
-    if (!def) {
-        throw new Error(`Policy for @${name} is missing`);
-    }
-    if (!def.key) {
-        throw new Error(`Invalid policy @${name}: key is missing`);
+export function addPolicy(name, provider, allowGets, filter) {
+    if (!provider) {
+        throw new Error(`Provider for @${name} is required`);
     }
     return (target, key, descriptor, constraints) => {
         if (!isDescriptor(descriptor)) {
@@ -72,8 +69,14 @@ export function addPolicy(name, def, allowGets, filter) {
                 throw new SyntaxError(`@${name} can only be applied to methods`);
             }
         }
-        if (constraints.length === 0) {
-            constraints = null;
+        if (constraints.length == 0) {
+            if (provider.variance === Variance.Covariant ||
+                provider.variance === Variance.Invariant) {
+                const signature = designWithReturn.get(target, key);
+                constraints = signature ? signature[0] : null;
+            } else {
+                constraints = null;
+            }
         }
         function lateBinding() {
             const result = this[key];
@@ -88,7 +91,7 @@ export function addPolicy(name, def, allowGets, filter) {
                  : lateBinding.apply(this, arguments);
             } : lateBinding;
         handler.key = key;
-        def(target, constraints, handler);
+        provider(target, constraints, handler);
     };
 }
 
@@ -96,16 +99,21 @@ export function addPolicy(name, def, allowGets, filter) {
  * Defines a new callback policy.
  * This is the main extensibility point for handling callbacks.
  * @method $policy
- * @param   {Variance}  [variance=Variance.Contravariant]  -  policy variance
+ * @param   {Variance}  [variance=Variance.Contravariant]  -  policy variance 
+ * @param   {Object}    description                        -  policy description
  * @return  {Function}  function to register with policy
  */
-export function $policy(variance) {
+export function $policy(variance, description) {
+    if (description == null) {
+        throw new Error("$policy requires a description");
+    }
+
     variance = variance || Variance.Contravariant;
     if (!(variance instanceof Variance)) {
         throw new TypeError("$policy expects a Variance parameter");
     }
 
-    const key = Symbol();
+    const key = Symbol(description);
     let handled, comparer;
     
     switch (variance) {
@@ -230,8 +238,9 @@ export function $policy(variance) {
         }
         return dispatched;
     }
-    policy.key      = key;
-    policy.variance = variance;
+    policy.key         = key;
+    policy.description = description;
+    policy.variance    = variance;
     Object.freeze(policy);
     return policies[key] = policy;
 }

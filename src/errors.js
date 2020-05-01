@@ -13,7 +13,7 @@ export function NotHandledError(callback, message) {
      */         
     this.callback = callback;
 
-    this.message = message || `${callback} not handledcd`;
+    this.message = message || `${callback} not handled`;
 
     if (Error.captureStackTrace) {
         Error.captureStackTrace(this, this.constructor);

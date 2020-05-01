@@ -87,7 +87,7 @@ export const Resolution = Base.extend(DispatchingCallback, {
                     _result = undefined;
                 }
                 return resolved;
-            },     
+            },
             dispatch(handler, greedy, composer) {
                 // check if handler implicitly satisfies key
                 const implied  = new Binding(this.key);
@@ -106,7 +106,7 @@ export const Resolution = Base.extend(DispatchingCallback, {
             if (resolution == null) return false;
             if ($isPromise(resolution)) {
                 if (_instant) return false;
-                _promises.push(resolution.then(res => {
+                const promise = this.acceptPromise(resolution.then(res => {
                     if (Array.isArray(res)) {
                         const satisfied = res
                             .filter(r => r && this.isSatisfied(r, composer));
@@ -114,7 +114,10 @@ export const Resolution = Base.extend(DispatchingCallback, {
                     } else if (res && this.isSatisfied(res, composer)) {
                         _resolutions.push(res);
                     }
-                }).catch(Undefined));
+                }));
+                if (promise != null) {
+                    _promises.push(promise);
+                }
             } else if (!this.isSatisfied(resolution, composer)) {
                 return false;
             } else {
@@ -124,6 +127,9 @@ export const Resolution = Base.extend(DispatchingCallback, {
         }        
     },      
     get policy() { return $provide; },
+    acceptPromise(promise) {
+        return promise.catch(Undefined);
+    },
     toString() {
         return `Resolution ${this.isMany ? "many ": ""}| ${this.key}`;
     }          

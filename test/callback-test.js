@@ -1,8 +1,8 @@
 import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType, Resolving,
-    Options, Metadata, assignID, copy, $isPromise,
-    $eq, $instant, $using, $flatten
+    Options, Metadata, assignID, designWithReturn,
+    copy, $isPromise, $eq, $instant, $using, $flatten
 } from "miruken-core";
 
 import {
@@ -234,13 +234,13 @@ describe("HandleMethod", () => {
 describe("Policies", () => {
     describe("$policy", () => {
         it("Should accept variance option", () => {
-            const baz = $policy(Variance.Contravariant);
+            const baz = $policy(Variance.Contravariant, "baz");
         expect(baz).to.be.ok;
         });
 
         it("Should reject invalid variance option", () => {
             expect(() => {
-        $policy({ variance: 1000 });
+                $policy({ variance: 1000 }, "policy #2");
             }).to.throw(TypeError, "$policy expects a Variance parameter");
         });
   
@@ -767,6 +767,16 @@ describe("Handler", () => {
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
 
+        it("should check design return type if empty @provides", () => {
+            const cashier   = new Cashier(1000000.00),
+                  inventory = new (Handler.extend({
+                      @provides
+                      @designWithReturn(Cashier)
+                      cashier() { return cashier; }
+                  }));
+            expect(inventory.resolve(Cashier)).to.equal(cashier);
+        });
+        
         it("should infer constraint from explicit objects", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new Handler();
