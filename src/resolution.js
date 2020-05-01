@@ -74,34 +74,34 @@ export const Resolution = Base.extend(DispatchingCallback, {
              * @returns {boolean} true if accepted, false otherwise.
              */            
             isSatisfied(resolution, composer) { return true; },
+            resolve(resolution, composer) {
+                let resolved;
+                if (resolution == null) return false;
+                if (Array.isArray(resolution)) {
+                    resolved = $flatten(resolution, true).reduce(
+                        (s, r) => include.call(this, r, composer) || s, false);  
+                } else {
+                    resolved = include.call(this, resolution, composer);
+                }
+                if (resolved) {
+                    _result = undefined;
+                }
+                return resolved;
+            },     
             dispatch(handler, greedy, composer) {
                 // check if handler implicitly satisfies key
                 const implied  = new Binding(this.key);
                 if (implied.match($classOf(handler), Variance.Contravariant)) {
-                    resolved = resolve.call(this, handler, composer);
+                    resolved = this.resolve(handler, composer);
                     if (resolved && !greedy) return true;
                 }
                 const count    = _resolutions.length + _promises.length;
                 let   resolved = $provide.dispatch(handler, this, this.key,
-                    composer, this.isMany, resolve.bind(this)) !== $unhandled 
+                    composer, this.isMany, this.resolve) !== $unhandled 
                     || resolved;
                 return resolved || (_resolutions.length + _promises.length > count);
             }
         });
-        function resolve(resolution, composer) {
-            let resolved;
-            if (resolution == null) return false;
-            if (Array.isArray(resolution)) {
-                resolved = $flatten(resolution, true).reduce(
-                    (s, r) => include.call(this, r, composer) || s, false);  
-            } else {
-                resolved = include.call(this, resolution, composer);
-            }
-            if (resolved) {
-                _result = undefined;
-            }
-            return resolved;
-        }
         function include(resolution, composer) {
             if (resolution == null) return false;
             if ($isPromise(resolution)) {

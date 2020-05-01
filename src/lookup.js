@@ -65,28 +65,28 @@ export const Lookup = Base.extend(DispatchingCallback, {
                 }
                 return _result;
             },
-            set callbackResult(value) { _result = value; },       
+            set callbackResult(value) { _result = value; },
+            addResult(result, composer) {
+                let found;
+                if (result == null) return false;
+                if (Array.isArray(result)) {
+                    found = $flatten(result, true).reduce(
+                        (s, r) => include.call(this, r, composer) || s, false);  
+                } else {
+                    found = include.call(this, result, composer);
+                }
+                if (found) {
+                    _result = undefined;
+                }
+                return found;
+            },               
             dispatch(handler, greedy, composer) {
                 const count = _results.length + _promises.length,
                       found = $lookup.dispatch(handler, this, this.key,
-                        composer, this.isMany, addResult) !== $unhandled;
+                        composer, this.isMany, this.addResult) !== $unhandled;
                 return found || (_results.length + _promises.length > count);
             }           
         });
-        function addResult(result, composer) {
-            let found;
-            if (result == null) return false;
-            if (Array.isArray(result)) {
-                found = $flatten(result, true).reduce(
-                    (s, r) => include(r, composer) || s, false);  
-            } else {
-                found = include(result, composer);
-            }
-            if (found) {
-                _result = undefined;
-            }
-            return found;
-        }
         function include(result, composer) {
             if (result == null) return false;
             if ($isPromise(result)) {
@@ -102,7 +102,7 @@ export const Lookup = Base.extend(DispatchingCallback, {
                 _results.push(result);
             }
             return true;                             
-        }          
+        }
     },       
     get policy() { return $lookup; },
     toString() {

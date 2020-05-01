@@ -58,26 +58,26 @@ export const Command = Base.extend(DispatchingCallback, {
                 return _result;
             },
             set callbackResult(value) { _result = value; },
+            respond(response) {
+                if (response == null) return;
+                if ($isPromise(response)) {
+                    _promises.push(response.then(res => {
+                        if (res != null) {
+                            _results.push(res);
+                        }
+                    }));
+                } else {
+                    _results.push(response);
+                }
+                _result = undefined;
+            },            
             dispatch(handler, greedy, composer) {
                 var count = _results.length;
                 return $handle.dispatch(handler, this.callback, null,
-                    composer, this.isMany, respond) !== $unhandled || 
+                    composer, this.isMany, this.respond) !== $unhandled || 
                     _results.length > count;     
             }     
         });
-        function respond(response) {
-            if (response == null) return;
-            if ($isPromise(response)) {
-                _promises.push(response.then(res => {
-                    if (res != null) {
-                        _results.push(res);
-                    }
-                }));
-            } else {
-                _results.push(response);
-            }
-            _result = undefined;
-        }
     },    
     get policy() { return $handle; },
     toString() {
