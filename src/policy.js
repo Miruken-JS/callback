@@ -6,9 +6,14 @@ import {
     $isClass, $isProtocol, $classOf, $eq, $use, $lift
 } from "miruken-core";
 
-import { $unhandled } from "./callback";
-
 const policies = {};
+
+/**
+ * Sentinel indicating callback not handled.
+ */                
+export function $unhandled(result) {
+    return result === $unhandled;
+}
 
 /**
  * Policy for handling callbacks contravariantly.
@@ -213,7 +218,7 @@ export function $policy(variance, description) {
             return dispatched && !all;
         });
 
-        if (!dispatched) { return $unhandled; }
+        return dispatched;
     };
     function _dispatch(target, callback, constraint, v, list, composer, all, results) {
         let   dispatched = false;
@@ -244,6 +249,13 @@ export function $policy(variance, description) {
     Object.freeze(policy);
     return policies[key] = policy;
 }
+
+$policy.dispatch = function (handler, callback, greedy, composer) {
+    if ($isFunction(callback.dispatch)) {
+        return callback.dispatch(handler, greedy, composer);
+    }
+    return $handle.dispatch(handler, callback, null, composer, greedy);       
+};
 
 export function Binding(constraint, handler, removed) {
     const invariant = $eq.test(constraint);

@@ -5,7 +5,7 @@ import {
 
 import HandleMethod from "./handle-method";
 import ResolveMethod from "./resolve-method";
-import { Handler } from "./handler";
+import Handler from "./handler";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 
 /**

@@ -1,5 +1,6 @@
 import { Flags } from "miruken-core";
-import { Composition, Handler } from "./handler";
+import Handler from "./handler";
+import Composition from "./composition";
 import { RejectedError } from "./errors";
 
 /**

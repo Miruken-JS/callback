@@ -1,9 +1,9 @@
 import {
-    Base, Undefined, $isPromise, $isNothing
+    Base, $isPromise, $isNothing
 } from "miruken-core";
 
 import { $handle } from "./policy";
-import { DispatchingCallback, $unhandled } from "./callback";
+import { DispatchingCallback } from "./callback";
 
 /**
  * Callback representing a command with results.
@@ -24,10 +24,10 @@ export const Command = Base.extend(DispatchingCallback, {
         this._promises = [];
     },
     
-    get isMany()  { return this._many; },
+    get isMany()   { return this._many; },
     get callback() { return this._callback; },
-    get results() { return this._results; },    
-    get policy() { return $handle; },              
+    get results()  { return this._results; },    
+    get policy()   { return $handle; },              
     get callbackResult() {
         if (this._result === undefined) {
             const results  = this._results,
@@ -60,7 +60,7 @@ export const Command = Base.extend(DispatchingCallback, {
     dispatch(handler, greedy, composer) {
         var count = this._results.length;
         return $handle.dispatch(handler, this.callback, null,
-            composer, this.isMany, this.respond.bind(this)) !== $unhandled || 
+            composer, this.isMany, this.respond.bind(this)) || 
             this._results.length > count;     
     },        
     toString() {

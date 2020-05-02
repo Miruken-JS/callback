@@ -5,7 +5,7 @@ import {
 } from "miruken-core";
 
 import { Binding, $provide } from "./policy";
-import { DispatchingCallback, $unhandled } from "./callback";
+import { DispatchingCallback } from "./callback";
 
 /**
  * Callback representing the covariant resolution of a key.
@@ -75,7 +75,7 @@ export const Resolution = Base.extend(DispatchingCallback, {
               count       = resolutions.length + promises.length;
 
         let   resolved = $provide.dispatch(handler, this, this.key,
-            composer, this.isMany, this.resolve.bind(this)) !== $unhandled 
+            composer, this.isMany, this.resolve.bind(this))
             || resolved;
 
         return resolved || (resolutions.length + promises.length > count);

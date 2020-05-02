@@ -1,13 +1,5 @@
 import { Protocol } from "miruken-core";
 
-/**
- * Sentinel indicating a callback was not handled.
- * @property {Function} $unhandled
- */                
-export function $unhandled(result) {
-    return result === $unhandled;
-}
-
 export const DispatchingCallback = Protocol.extend({
     /**
      * Gets the policy.

@@ -1,65 +1,11 @@
 import {
-    Base, Variance, $isNothing, $isFunction,
-    $isPromise, $flatten, $decorator
+    Base, $isNothing, $isFunction, $decorator
 } from "miruken-core";
 
-import { $handle, } from "./policy";
-import { DispatchingCallback, $unhandled } from "./callback";
-import { RejectedError, TimeoutError } from "./errors"; 
+import { $policy } from "./policy";
+import Composition from "./composition";
 
 export let $composer;
-
-/**
- * Marks a callback as composed.
- * @class Composition
- * @constructor
- * @param   {Object}   callback  -  callback to compose
- * @param   {Boolean}  greedy    -  true if handle greedily
- * @extends Base
- */
-export const Composition = Base.extend(DispatchingCallback, {
-    constructor(callback, greedy) {
-        if (callback) {
-            this.extend({
-                /**
-                 * Gets the callback.
-                 * @property {Object} callback
-                 * @readOnly
-                 */
-                get callback() { return callback; },
-                /**
-                 * Gets the greedy flag.
-                 * @property {Boolean} greedy
-                 * @readOnly
-                 */
-                get greedy() { return greedy; },
-                /**
-                 * Gets the policy.
-                 * @property {Function} policy
-                 * @readOnly
-                 */         
-                get policy() { return callback.policy; },             
-                /**
-                 * Gets/sets the effective callback result.
-                 * @property {Any} callback result
-                 */                
-                get callbackResult() {
-                    return callback.callbackResult;
-                },
-                set callbackResult(value) {
-                    callback.callbackResult = value;
-                },
-                dispatch(handler, greedy, composer) {
-                    return Handler.dispatch(handler, callback, this.greedy, composer);
-                }
-            });
-        }
-    }
-}, {
-    isComposed(callback, type) {
-        return callback instanceof this && callback.callback instanceof type;
-    }
-});
 
 /**
  * Base class for handling arbitrary callbacks.
@@ -95,15 +41,9 @@ export const Handler = Base.extend({
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handleCallback(callback, greedy, composer) {
-        return Handler.dispatch(this, callback, greedy, composer);
+        return $policy.dispatch(this, callback, greedy, composer);
     }
 }, {
-    dispatch(handler, callback, greedy, composer) {
-        if ($isFunction(callback.dispatch)) {
-            return callback.dispatch(handler, greedy, composer);
-        }
-        return $handle.dispatch(handler, callback, null, composer, greedy) !== $unhandled;       
-    },
     coerce(object) { return new this(object); }
 });
 
@@ -118,7 +58,7 @@ export const HandlerAdapter = Handler.extend({
         });
     },
     handleCallback(callback, greedy, composer) {
-        return Handler.dispatch(this.handler, callback, greedy, composer);
+        return $policy.dispatch(this.handler, callback, greedy, composer);
     }
 });
 
@@ -131,7 +71,7 @@ Base.implement({
 const compositionScope = $decorator({
     handleCallback(callback, greedy, composer) {
         if (callback.constructor !== Composition) {
-            callback = new Composition(callback, greedy);
+            callback = new Composition(callback);
         }
         return this.base(callback, greedy, composer);
     }

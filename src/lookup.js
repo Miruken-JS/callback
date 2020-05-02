@@ -4,7 +4,7 @@ import {
 } from "miruken-core";
 
 import { $lookup } from "./policy";
-import { DispatchingCallback, $unhandled } from "./callback";
+import { DispatchingCallback } from "./callback";
 
 /**
  * Callback representing the invariant lookup of a key.
@@ -65,7 +65,7 @@ export const Lookup = Base.extend(DispatchingCallback, {
               promises = this._promises,
               count    = results.length + promises.length,
               found    = $lookup.dispatch(handler, this, this.key,
-                composer, this.isMany, this.addResult.bind(this)) !== $unhandled;
+                composer, this.isMany, this.addResult.bind(this));
         return found || (results.length + promises.length > count);
     },
     toString() {

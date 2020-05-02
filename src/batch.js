@@ -2,7 +2,8 @@ import {
     Protocol, $isPromise, $flatten
 } from "miruken-core";
 
-import { Composition, Handler } from "./handler";
+import Handler from "./handler";
+import Composition from "./composition";
 import CompositeHandler from "./composite-handler";
 
 /**

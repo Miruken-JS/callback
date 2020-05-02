@@ -19,7 +19,7 @@ import {
 
 import { Batching } from "../src/batch";
 import { HandleMethod } from "../src/handle-method";
-import { $unhandled } from "../src/callback";
+import { $unhandled } from "../src/policy";
 
 import {
     RejectedError, TimeoutError

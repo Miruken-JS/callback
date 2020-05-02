@@ -2,9 +2,9 @@ import {
     Base, MethodType, $isFunction, $isProtocol
 } from "miruken-core";
 
-import { DispatchingCallback, $unhandled } from "./callback";
+import { DispatchingCallback } from "./callback";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
-import "./handler";
+import { $unhandled } from "./policy";
 
 /**
  * Invokes a method on a target.

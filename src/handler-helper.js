@@ -11,7 +11,8 @@ import {
     Binding, $handle, $provide, $lookup
 } from "./policy";
 
-import { Composition, Handler } from "./handler";
+import Handler from "./handler";
+import Composition  from "./composition";
 import CascadeHandler from "./cascade-handler";
 import CompositeHandler from "./composite-handler";
 
