@@ -18,14 +18,16 @@ import {
 } from "../src/policy"
 
 import { Batching } from "../src/batch";
-import { HandleMethod } from "../src/invocation";
+import { HandleMethod } from "../src/handle-method";
 import { $unhandled } from "../src/callback";
-import "../src/handler-helper";
-import "../src/options-helper"
 
 import {
     RejectedError, TimeoutError
 } from "../src/errors";
+
+import "../src/handler-helper";
+import "../src/handler-options"
+import "../src/handler-protocol"
 
 import { expect } from "chai";
 

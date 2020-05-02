@@ -50,23 +50,23 @@ export function looksup(...args) {
  */
 export function addPolicy(name, provider, allowGets, filter) {
     if (!provider) {
-        throw new Error(`Provider for @${name} is required`);
+        throw new Error(`Provider for @${name} is required.`);
     }
     return (target, key, descriptor, constraints) => {
         if (!isDescriptor(descriptor)) {
-            throw new SyntaxError(`@${name} cannot be applied to classes`);
+            throw new SyntaxError(`@${name} cannot be applied to classes.`);
         }
         if (key === "constructor") {
-            throw new SyntaxError(`@${name} cannot be applied to constructors`);
+            throw new SyntaxError(`@${name} cannot be applied to constructors.`);
         }
         const { get, value } = descriptor;
         if (!$isFunction(value)) {
             if (allowGets) {
                 if (!$isFunction(get)) {
-                    throw new SyntaxError(`@${name} can only be applied to methods and getters`);
+                    throw new SyntaxError(`@${name} can only be applied to methods and getters.`);
                 }
             } else {
-                throw new SyntaxError(`@${name} can only be applied to methods`);
+                throw new SyntaxError(`@${name} can only be applied to methods.`);
             }
         }
         if (constraints.length == 0) {
@@ -105,12 +105,12 @@ export function addPolicy(name, provider, allowGets, filter) {
  */
 export function $policy(variance, description) {
     if (description == null) {
-        throw new Error("$policy requires a description");
+        throw new Error("$policy requires a description.");
     }
 
     variance = variance || Variance.Contravariant;
     if (!(variance instanceof Variance)) {
-        throw new TypeError("$policy expects a Variance parameter");
+        throw new TypeError("$policy expects a Variance parameter.");
     }
 
     const key = Symbol(description);
