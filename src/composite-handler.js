@@ -33,13 +33,14 @@ export const CompositeHandler = Handler.extend({
     },                
     removeHandlers(...handlers) {
         $flatten(handlers, true).forEach(handler => {
-            const count = this._handlers.length;
+            const handlers = this._handlers,
+                  count    = handlers.length;
             for (let idx = 0; idx < count; ++idx) {
-                const testHandler = _handlers[idx];
+                const testHandler = handlers[idx];
                 if (testHandler === handler || 
                     (testHandler instanceof HandlerAdapter &&
                         testHandler.handler === handler)) {
-                    this._handlers.splice(idx, 1);
+                    handlers.splice(idx, 1);
                     return;
                 }
             }
