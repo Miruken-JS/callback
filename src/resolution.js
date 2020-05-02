@@ -20,119 +20,93 @@ export const Resolution = Base.extend(DispatchingCallback, {
         if ($isNothing(key)) {
             throw new Error("The key is required.");
         }
-        many = !!many;
-        let _resolutions = [],
-            _promises    = [],
-            _instant     = $instant.test(key),
-            _result;
-        this.extend({
-            /**
-             * Gets the key.
-             * @property {Any} key
-             * @readOnly
-             */                
-            get key() { return key; },
-            /**
-             * true if resolve all, false otherwise.
-             * @property {boolean} isMany
-             * @readOnly
-             */                
-            get isMany() { return many; },
-            /**
-             * true if resolve all is instant.  Otherwise a promise.
-             * @property {boolean} instant
-             * @readOnly
-             */
-            get instant() { return _promises.length == 0; },
-            /**
-             * Gets the resolutions.
-             * @property {Array} resolutions
-             * @readOnly
-             */                
-            get resolutions() { return _resolutions; },          
-            /**
-             * Gets/sets the effective callback result.
-             * @property {Any} callback result
-             */
-            get callbackResult() {
-                if (_result === undefined) {
-                    if (this.instant) {
-                        _result = many ? _resolutions : _resolutions[0];
-                    } else {
-                        _result = many 
-                                ? Promise.all(_promises).then(() => _resolutions)
-                                : Promise.all(_promises).then(() => _resolutions[0]);
-                    }
-                }
-                return _result;
-            },
-            set callbackResult(value) { _result = value; },
-            /**
-             * Determines if `resolution` is acceptable.
-             * @param  {Any}      resolution  -  resolution
-             * @param  {Handler}  composer    -  composition handler
-             * @returns {boolean} true if accepted, false otherwise.
-             */            
-            isSatisfied(resolution, composer) { return true; },
-            resolve(resolution, composer) {
-                let resolved;
-                if (resolution == null) return false;
-                if (Array.isArray(resolution)) {
-                    resolved = $flatten(resolution, true).reduce(
-                        (s, r) => include.call(this, r, composer) || s, false);  
-                } else {
-                    resolved = include.call(this, resolution, composer);
-                }
-                if (resolved) {
-                    _result = undefined;
-                }
-                return resolved;
-            },
-            dispatch(handler, greedy, composer) {
-                // check if handler implicitly satisfies key
-                const implied  = new Binding(this.key);
-                if (implied.match($classOf(handler), Variance.Contravariant)) {
-                    resolved = this.resolve(handler, composer);
-                    if (resolved && !greedy) return true;
-                }
-                const count    = _resolutions.length + _promises.length;
-                let   resolved = $provide.dispatch(handler, this, this.key,
-                    composer, this.isMany, this.resolve) !== $unhandled 
-                    || resolved;
-                return resolved || (_resolutions.length + _promises.length > count);
-            }
-        });
-        function include(resolution, composer) {
-            if (resolution == null) return false;
-            if ($isPromise(resolution)) {
-                if (_instant) return false;
-                const promise = this.acceptPromise(resolution.then(res => {
-                    if (Array.isArray(res)) {
-                        const satisfied = res
-                            .filter(r => r && this.isSatisfied(r, composer));
-                        _resolutions.push(...satisfied);
-                    } else if (res && this.isSatisfied(res, composer)) {
-                        _resolutions.push(res);
-                    }
-                }));
-                if (promise != null) {
-                    _promises.push(promise);
-                }
-            } else if (!this.isSatisfied(resolution, composer)) {
-                return false;
+        this._key         = key;
+        this._many        = !!many;
+        this._resolutions = [];
+        this._promises    = [];
+        this._instant     = $instant.test(key);
+    },
+
+    get key() { return this._key; },            
+    get isMany() { return this._many; },
+    get instant() { return this._promises.length == 0; },             
+    get resolutions() { return this._resolutions; },
+    get policy() { return $provide; },       
+    get callbackResult() {
+        if (this._result === undefined) {
+            const resolutions = this._resolutions;
+            if (this.instant) {
+                this._result = this.isMany ? resolutions : resolutions[0];
             } else {
-                _resolutions.push(resolution);
+                this._result = this.isMany 
+                    ? Promise.all(this._promises).then(() => resolutions)
+                    : Promise.all(this._promises).then(() => resolutions[0]);
             }
-            return true;                             
-        }        
-    },      
-    get policy() { return $provide; },
-    acceptPromise(promise) {
-        return promise.catch(Undefined);
+        }
+        return this._result;
+    },
+    set callbackResult(value) { this._result = value; },
+
+    isSatisfied(resolution, composer) { return true; },
+    resolve(resolution, composer) {
+        let resolved;
+        if (resolution == null) return false;
+        if (Array.isArray(resolution)) {
+            resolved = $flatten(resolution, true).reduce(
+                (s, r) => include.call(this, r, composer) || s, false);  
+        } else {
+            resolved = include.call(this, resolution, composer);
+        }
+        if (resolved) {
+            this._result = undefined;
+        }
+        return resolved;
+    },
+    acceptPromise(promise) { return promise.catch(Undefined); },   
+    dispatch(handler, greedy, composer) {
+        // check if handler implicitly satisfies key
+        const implied  = new Binding(this.key);
+        if (implied.match($classOf(handler), Variance.Contravariant)) {
+            resolved = this.resolve(handler, composer);
+            if (resolved && !greedy) return true;
+        }
+        const resolutions = this._resolutions,
+              promises    = this._promises,
+              count       = resolutions.length + promises.length;
+
+        let   resolved = $provide.dispatch(handler, this, this.key,
+            composer, this.isMany, this.resolve.bind(this)) !== $unhandled 
+            || resolved;
+
+        return resolved || (resolutions.length + promises.length > count);
     },
     toString() {
         return `Resolution ${this.isMany ? "many ": ""}| ${this.key}`;
     }          
 });
+
+function include(resolution, composer) {
+    if (resolution == null) return false;
+    if ($isPromise(resolution)) {
+        if (this._instant) return false;
+        const promise = this.acceptPromise(resolution.then(res => {
+            if (Array.isArray(res)) {
+                const satisfied = res
+                    .filter(r => r && this.isSatisfied(r, composer));
+                this._resolutions.push(...satisfied);
+            } else if (res && this.isSatisfied(res, composer)) {
+                this._resolutions.push(res);
+            }
+        }));
+        if (promise != null) {
+            this._promises.push(promise);
+        }
+    } else if (!this.isSatisfied(resolution, composer)) {
+        return false;
+    } else {
+        this._resolutions.push(resolution);
+    }
+    return true;                             
+}
 
 export default Resolution;

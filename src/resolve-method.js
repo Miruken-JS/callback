@@ -13,28 +13,29 @@ import Resolution from "./resolution";
  */
 export const ResolveMethod = Resolution.extend({
     constructor(key, many, handleMethod, bestEffort) {
-        let _handled;
         this.base(key, many);
-        this.extend({
-            get callbackResult() {
-                const result = this.base();
-                if ($isPromise(result)) {
-                    return result.then(r => _handled || bestEffort
-                         ? handleMethod.callbackResult
-                         : Promise.reject(handleMethod.notHandledError()));
-                }
-                if (_handled || bestEffort) {
-                    return handleMethod.callbackResult;                    
-                }
-                throw handleMethod.notHandledError();
-            },
-            isSatisfied(resolution, composer) {
-                const handled = handleMethod.invokeOn(resolution, composer);
-                _handled = _handled || handled;
-                return handled;
-            }            
-        });
-    }
+        this._handleMethod = handleMethod;
+        this._bestEffort   = bestEffort;
+    },
+
+    get callbackResult() {
+        const result       = this.base(),
+              handleMethod = this._handleMethod;
+        if ($isPromise(result)) {
+            return result.then(r => this._handled || this._bestEffort
+                 ? handleMethod.callbackResult
+                 : Promise.reject(handleMethod.notHandledError()));
+        }
+        if (this._handled || this._bestEffort) {
+            return handleMethod.callbackResult;                    
+        }
+        throw notHandledError();
+    },
+    isSatisfied(resolution, composer) {
+        const handled = this._handleMethod.invokeOn(resolution, composer);
+        this._handled = this._handled || handled;
+        return handled;
+    }    
 });
 
 export default ResolveMethod;

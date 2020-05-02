@@ -18,20 +18,10 @@ export const CascadeHandler = Handler.extend({
             throw new TypeError("No cascadeToHandler specified.");
         }
         Object.defineProperties(this, {
-            /**
-             * Gets the primary handler.
-             * @property {Handler} handler
-             * @readOnly
-             */
             handler:  {
                 value:    handler.toHandler(),
                 writable: false
-            },
-            /**
-             * Gets the secondary handler.
-             * @property {Handler} cascadeToHandler
-             * @readOnly
-             */            
+            },         
             cascadeToHandler: {
                 value:    cascadeToHandler.toHandler(),
                 writable: false

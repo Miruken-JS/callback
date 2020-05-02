@@ -48,46 +48,22 @@ export const CallbackOptions = Flags({
  */
 export const CallbackSemantics = Composition.extend({
     constructor(options) {
-        let _options   = CallbackOptions.None.addFlag(options),
-            _specified = _options;
-        this.extend({
-            /**
-             * Tests the callback options.
-             * @method hasOption
-             * @param   {CallbackOptions} options  -  options to test
-             * @returns {boolean} true if callback options enabled, false otherwise.
-             */
-            hasOption(options) {
-                return _options.hasFlag(options);
-            },
-            /**
-             * Sets the callback options.
-             * @method setOption
-             * @param   {CallbackOptions} options  -  options to set
-             * @param   {boolean}  enabled  -  true if enable options, false to clear.
-             */                
-            setOption(options, enabled) {
-                _options = enabled
-                         ? _options.addFlag(options)
-                         : _options.removeFlag(options);
-                _specified = _specified.addFlag(options);
-            },
-            /**
-             * Determines if the callback options were specified.
-             * @method isSpecified
-             * @param   {CallbackOptions} options  -  options to test
-             * @returns {boolean} true if callback option specified, false otherwise.
-             */                
-            isSpecified(options) {
-                return _specified.hasFlag(options);
-            }
-        });
+        this._options   = CallbackOptions.None.addFlag(options);
+        this._specified = this._options;
     },
-    /**
-     * Merges callback options into the supplied constraints. 
-     * @method mergeInto
-     * @param   {CallbackSemantics}  semantics  -  receives callback semantics
-     */                
+
+    hasOption(options) {
+        return this._options.hasFlag(options);
+    },              
+    setOption(options, enabled) {
+        this._options = enabled
+                    ? this._options.addFlag(options)
+                    : this._options.removeFlag(options);
+        this._specified = this._specified.addFlag(options);
+    },              
+    isSpecified(options) {
+        return this._specified.hasFlag(options);
+    },                  
     mergeInto(semantics) {
         const items = CallbackOptions.items;
         for (let i = 0; i < items.length; ++i) {

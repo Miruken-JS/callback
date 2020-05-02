@@ -18,68 +18,51 @@ export const Command = Base.extend(DispatchingCallback, {
         if ($isNothing(callback)) {
             throw new TypeError("The callback is required.");
         }
-        many = !!many;
-        let _results  = [],
-            _promises = [],
-            _result;
-        this.extend({
-            /**
-             * true if handle all, false otherwise.
-             * @property {boolean} many
-             * @readOnly
-             */
-            get isMany() { return many; },
-            /**
-             * Gets the callback.
-             * @property {Object} callback
-             * @readOnly
-             */
-            get callback() { return callback; },
-            /**
-             * Gets the results.
-             * @property {Array} pending
-             * @readOnly
-             */
-            get results() { return _results; },            
-            /**
-             * Gets/sets the effective callback result.
-             * @property {Any} callback result
-             */               
-            get callbackResult() {
-                if (_result === undefined) {
-                    if (_promises.length == 0) {
-                        _result = many ? _results : _results[0];
-                    } else {
-                        _result = many 
-                                ? Promise.all(_promises).then(() => _results)
-                                : Promise.all(_promises).then(() => _results[0]);
-                    }
+        this._callback = callback;
+        this._many     = !!many;
+        this._results  = [];
+        this._promises = [];
+    },
+    
+    get isMany()  { return this._many; },
+    get callback() { return this._callback; },
+    get results() { return this._results; },    
+    get policy() { return $handle; },              
+    get callbackResult() {
+        if (this._result === undefined) {
+            const results  = this._results,
+                  promises = this._promises;
+            if (promises.length == 0) {
+                this._result = this.isMany ? results : results[0];
+            } else {
+                this._result = this.isMany
+                        ? Promise.all(promises).then(() => results)
+                        : Promise.all(promises).then(() => results[0]);
+            }
+        }
+        return this._result;
+    },
+    set callbackResult(value) { this._result = value; },
+
+    respond(response) {
+        if (response == null) return;
+        if ($isPromise(response)) {
+            this._promises.push(response.then(res => {
+                if (res != null) {
+                    this._results.push(res);
                 }
-                return _result;
-            },
-            set callbackResult(value) { _result = value; },
-            respond(response) {
-                if (response == null) return;
-                if ($isPromise(response)) {
-                    _promises.push(response.then(res => {
-                        if (res != null) {
-                            _results.push(res);
-                        }
-                    }));
-                } else {
-                    _results.push(response);
-                }
-                _result = undefined;
-            },            
-            dispatch(handler, greedy, composer) {
-                var count = _results.length;
-                return $handle.dispatch(handler, this.callback, null,
-                    composer, this.isMany, this.respond) !== $unhandled || 
-                    _results.length > count;     
-            }     
-        });
-    },    
-    get policy() { return $handle; },
+            }));
+        } else {
+            this._results.push(response);
+        }
+        this._result = undefined;
+    },            
+    dispatch(handler, greedy, composer) {
+        var count = this._results.length;
+        return $handle.dispatch(handler, this.callback, null,
+            composer, this.isMany, this.respond.bind(this)) !== $unhandled || 
+            this._results.length > count;     
+    },        
     toString() {
         return `Command ${this.isMany ? "many ": ""}| ${this.callback}`;
     }  

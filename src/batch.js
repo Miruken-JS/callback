@@ -34,13 +34,12 @@ const BatchingComplete = Batching.extend();
 export const Batcher = CompositeHandler.extend(BatchingComplete, {
     constructor(...protocols) {
         this.base();
-        protocols = $flatten(protocols, true);
-        this.extend({
-            shouldBatch(protocol) {
-                return protocol && (protocols.length == 0 ||
-                    protocols.indexOf(protocol) >= 0); 
-            }
-        });
+        this._protocols = $flatten(protocols, true);
+    },
+
+    shouldBatch(protocol) {
+        return protocol && (this._protocols.length == 0 ||
+            this._protocols.indexOf(protocol) >= 0); 
     },
     complete(composer) {
         let promise = false,

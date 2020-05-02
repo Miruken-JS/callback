@@ -12,88 +12,58 @@ import { Handler, HandlerAdapter } from "./handler";
  */
 export const CompositeHandler = Handler.extend({
     constructor(...handlers) {
-        let _handlers = [];
-        this.extend({
-            /**
-             * Gets all participating callback handlers.
-             * @method getHandlers
-             * @returns {Array} participating callback handlers.
-             */
-            getHandlers() { return _handlers.slice(); },
-            /**
-             * Adds the callback handlers to the composite.
-             * @method addHandlers
-             * @param   {Any}  ...handlers  -  handlers to add
-             * @returns {CompositeHandler}  composite
-             * @chainable
-             */
-            addHandlers(...handlers) {
-                handlers = $flatten(handlers, true)
-                    .filter(h => this.findHandler(h) == null)
-                    .map(h => h.toHandler());
-                _handlers.push(...handlers);
-                return this;
-            },
-            /**
-             * Adds the callback handlers to the composite.
-             * @method addHandlers
-             * @param   {number}  atIndex      -  index to insert at
-             * @param   {Any}     ...handlers  -  handlers to insert
-             * @returns {CompositeHandler}  composite
-             * @chainable
-             */
-            insertHandlers(atIndex, ...handlers) {
-                handlers = $flatten(handlers, true)
-                    .filter(h => this.findHandler(h) == null)
-                    .map(h => h.toHandler());
-                _handlers.splice(atIndex, 0, ...handlers);                
-                return this;                    
-            },                
-            /**
-             * Removes callback handlers from the composite.
-             * @method removeHandlers
-             * @param   {Any}  ...handlers  -  handlers to remove
-             * @returns {CompositeHandler}  composite
-             * @chainable
-             */
-            removeHandlers(...handlers) {
-                $flatten(handlers, true).forEach(handler => {
-                    const count = _handlers.length;
-                    for (let idx = 0; idx < count; ++idx) {
-                        const testHandler = _handlers[idx];
-                        if (testHandler === handler || 
-                            (testHandler instanceof HandlerAdapter &&
-                             testHandler.handler === handler)) {
-                            _handlers.splice(idx, 1);
-                            return;
-                        }
-                    }
-                });
-                return this;
-            },
-            findHandler(handler) {
-                for (const h of _handlers) {
-                    if (h === handler) return h;
-                    if (h instanceof HandlerAdapter && h.handler === handler) {
-                        return h;
-                    }
+        this._handlers = [];
+        this.addHandlers(handlers);
+    },
+
+    getHandlers() { return this._handlers.slice(); },
+    addHandlers(...handlers) {
+        handlers = $flatten(handlers, true)
+            .filter(h => this.findHandler(h) == null)
+            .map(h => h.toHandler());
+        this._handlers.push(...handlers);
+        return this;
+    },
+    insertHandlers(atIndex, ...handlers) {
+        handlers = $flatten(handlers, true)
+            .filter(h => this.findHandler(h) == null)
+            .map(h => h.toHandler());
+        this._handlers.splice(atIndex, 0, ...handlers);                
+        return this;                    
+    },                
+    removeHandlers(...handlers) {
+        $flatten(handlers, true).forEach(handler => {
+            const count = this._handlers.length;
+            for (let idx = 0; idx < count; ++idx) {
+                const testHandler = _handlers[idx];
+                if (testHandler === handler || 
+                    (testHandler instanceof HandlerAdapter &&
+                        testHandler.handler === handler)) {
+                    this._handlers.splice(idx, 1);
+                    return;
                 }
-            },
-            handleCallback(callback, greedy, composer) {
-                let handled = this.base(callback, greedy, composer);
-                if (handled && !greedy) { return true; }
-                let count   = _handlers.length;
-                for (let idx = 0; idx < count; ++idx) {
-                    const handler = _handlers[idx];
-                    if (handler.handleCallback(callback, greedy, composer)) {
-                        if (!greedy) { return true; }
-                        handled = true;
-                    }
-                }
-                return handled;
             }
         });
-        this.addHandlers(handlers);
+        return this;
+    },
+    findHandler(handler) {
+        for (const h of this._handlers) {
+            if (h === handler) return h;
+            if (h instanceof HandlerAdapter && h.handler === handler) {
+                return h;
+            }
+        }
+    },
+    handleCallback(callback, greedy, composer) {
+        let handled = this.base(callback, greedy, composer);
+        if (handled && !greedy) { return true; }
+        for (const handler of this._handlers) {
+            if (handler.handleCallback(callback, greedy, composer)) {
+                if (!greedy) { return true; }
+                handled = true;
+            }
+        }
+        return handled;
     }
 });
 

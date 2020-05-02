@@ -181,13 +181,13 @@ describe("HandleMethod", () => {
     describe("#methodArgs", () => {
         it("should get the method arguments", () => {
             const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
-            expect(method.methodArgs).to.eql([[1,3,8], 2]);
+            expect(method.args).to.eql([[1,3,8], 2]);
         });
 
         it("should be able to change arguments", () => {
             const method = new HandleMethod(MethodType.Invoke, undefined, "deal", [[1,3,8], 2]);
-            method.methodArgs[0] = [2,4,8];
-            expect(method.methodArgs).to.eql([[2,4,8], 2]);
+            method.args[0] = [2,4,8];
+            expect(method.args).to.eql([[2,4,8], 2]);
         });
     });
 
