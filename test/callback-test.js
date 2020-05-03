@@ -1,8 +1,9 @@
 import {
     True, False, Undefined, Base, Protocol,
-    DuckTyping, Variance, MethodType, Resolving,
-    Options, Metadata, assignID, designWithReturn,
-    copy, $isPromise, $eq, $instant, $using, $flatten
+    DuckTyping, Variance, MethodType, Options,
+    ResolvingProtocol, Metadata, assignID,
+    designWithReturn, copy, $isPromise, $eq,
+    $instant, $using, $flatten
 } from "miruken-core";
 
 import {
@@ -17,8 +18,8 @@ import {
     handles, provides, looksup
 } from "../src/policy"
 
+import HandleMethod from "../src/handle-method";
 import { Batching } from "../src/batch";
-import { HandleMethod } from "../src/handle-method";
 import { $unhandled } from "../src/policy";
 
 import {
@@ -848,7 +849,7 @@ describe("Handler", () => {
                   }));
             expect(inventory.resolve(Accountable)).to.be.undefined;
             expect(inventory.resolve(Cashier)).to.equal(cashier);
-            $provide(inventory, Cashier, resolution => cashier);
+            $provide(inventory, Cashier, inquiry => cashier);
             expect(inventory.resolve(Accountable)).to.equal(cashier);
         });
 
@@ -959,8 +960,8 @@ describe("Handler", () => {
                   }), 
                   settings = new (Handler.extend({
                       @provides(Config)
-                      config(resolution) {
-                          const config = resolution.key,
+                      config(inquiry) {
+                          const config = inquiry.key,
                                 key    = config.key;
                           if (key == "url") {
                               return "my.server.com";
@@ -978,8 +979,8 @@ describe("Handler", () => {
                   cashier   = new Cashier(1000000.00),
                   cardGames = new (Handler.extend({
                       @provides(CardTable, Cashier)
-                      stuff(resolution) {
-                          const key = resolution.key;
+                      stuff(inquiry) {
+                          const key = inquiry.key;
                           if (Game.isAdoptedBy(key)) {
                               return blackjack;
                           } else if (key === Cashier) {
@@ -995,8 +996,8 @@ describe("Handler", () => {
             const blackjack  = new CardTable("BlackJack", 1, 5),
                   cashier    = new Cashier(1000000.00),
                   cardGames  = new Handler(),
-                  unregister = $provide(cardGames, [CardTable, Cashier], resolution => {
-                      const key = resolution.key;
+                  unregister = $provide(cardGames, [CardTable, Cashier], inquiry => {
+                      const key = inquiry.key;
                       if (Game.isAdoptedBy(key)) {
                           return blackjack;
                       } else if (key === Cashier) {
@@ -1026,8 +1027,8 @@ describe("Handler", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
                       @provides(True)
-                      unknown(resolution) {
-                          if (resolution.key === CardTable) {
+                      unknown(inquiry) {
+                          if (inquiry.key === CardTable) {
                               return blackjack;
                           }
                       }
@@ -1095,22 +1096,22 @@ describe("Handler", () => {
                   stop3 = [ new PitBoss("Phil") ],
                   bus1  = new (Handler.extend({
                       @provides(PitBoss)
-                      pitBoss(resolution) {
-                          expect(resolution.isMany).to.be.true;
+                      pitBoss(inquiry) {
+                          expect(inquiry.isMany).to.be.true;
                           return Promise.delay(75).then(() => stop1);
                       }
                   })),
                   bus2  = new (Handler.extend({
                       @provides(PitBoss)
-                      pitBoss(resolution) {               
-                          expect(resolution.isMany).to.be.true;
+                      pitBoss(inquiry) {               
+                          expect(inquiry.isMany).to.be.true;
                           return Promise.delay(100).then(() => stop2);
                       }
                   })),
                   bus3  = new (Handler.extend({
                       @provides(PitBoss)
-                      pitBoss(resolution) {               
-                          expect(resolution.isMany).to.be.true;
+                      pitBoss(inquiry) {               
+                          expect(inquiry.isMany).to.be.true;
                           return Promise.delay(50).then(() => stop3);
                       }
                   })),
@@ -1246,7 +1247,7 @@ describe("Handler", () => {
             const cashier    = new Cashier(1000000.00),
                   casino     = new Casino("Belagio").addHandlers(cashier),
                   countMoney = new CountMoney();
-            expect(casino.aspect(True, countIt => countIt.record(-1))
+            expect(casino.aspect(True, inf => inf.callback.record(-1))
                    .handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(999999.00);
         });
@@ -1388,125 +1389,7 @@ describe("Handler", () => {
             expect(handler.resolve(CardTable)).to.be.undefined;
         })
     });
-    
-    describe("#when", () => {
-        it("should restrict handlers using short syntax", () => {
-            const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = (new (Handler.extend({
-                      @handles(True)
-                      close(cardTable) {
-                          cardTable.closed = true;
-                      }
-                  }))).when(CardTable);
-            expect(cardGames.handle(blackjack)).to.be.true;
-            expect(blackjack.closed).to.be.true;
-            expect(cardGames.handle(new Cashier())).to.be.false;
-        });
-
-        it("should restrict handlers invariantly using short syntax", () => {
-            const Blackjack  = CardTable.extend({
-                      constructor() {
-                          this.base("BlackJack", 1, 5);
-                     }
-                  }),
-                  blackjack  = new Blackjack(),
-                  cardGames  = (new (Handler.extend({
-                      @handles(True)
-                      close(cardTable) {
-                          cardTable.closed = true;
-                      }
-                  }))).when($eq(CardTable));
-            expect(cardGames.handle(blackjack)).to.be.false;
-            expect(blackjack.closed).to.be.undefined;
-            expect(cardGames.handle(new Cashier())).to.be.false;
-        });
-
-        it("should restrict providers using short syntax", () => {
-            const blackjack  = new CardTable("BlackJack", 1, 5),
-                  cardGames  = (new (Handler.extend({
-                      @provides(True)
-                      blackjack() { return blackjack; }
-                  }))).when(CardTable);
-            expect(cardGames.resolve(CardTable)).to.equal(blackjack);
-            expect(cardGames.resolve(Cashier)).to.be.undefined;
-        });
-
-        it("should restrict providers invariantly using short syntax", () => {
-            const blackjack  = new CardTable("BlackJack", 1, 5),
-                  cardGames  = (new (Handler.extend({
-                      @provides(True)
-                      blackjack() { return blackjack; }
-                  }))).when($eq(Activity));
-            expect(cardGames.resolve(Activity)).to.equal(blackjack);
-            expect(cardGames.resolve(CardTable)).to.be.undefined;
-            expect(cardGames.resolve(Cashier)).to.be.undefined;
-        });
-    });
-    
-    describe("#implementing", () => {
-        const Calculator = DuckTyping.extend({
-              add(op1, op2) {},
-              divide(dividend, divisor) {},
-              clear() {}
-        });
-        
-        it("should call function", () => {
-            const add = Handler.implementing("add", (op1, op2) => op1 + op2);
-            expect(Calculator(add).add(5, 10)).to.equal(15);
-        });
-
-        it("should propgate exception in function", () => {
-            const divide = Handler.implementing("divide", (dividend, divisor) => {
-                if (divisor === 0)
-                    throw new Error("Division by zero");
-                return dividend / divisor;
-            });
-            expect(() => {
-                Calculator(divide).divide(10,0);
-            }).to.throw(Error, /Division by zero/);
-        });
-
-        it("should bind function", () => {
-            const context = new Object(),
-                  clear   = Handler.implementing("clear", (() => {
-                  return context;
-            }).bind(context));
-            expect(Calculator(clear).clear()).to.equal(context);
-        });
-
-        it("should require non-empty method name", () => {
-            expect(() => {
-                Handler.implementing(null, () => {});
-            }).to.throw(Error, /No methodName specified/);
-
-            expect(() => {
-                 Handler.implementing(void 0, () => {});
-            }).to.throw(Error, /No methodName specified/);
-
-            expect(() => {
-                Handler.implementing(10, () => {});
-            }).to.throw(Error, /No methodName specified/);
-
-            expect(() => {
-                Handler.implementing("", () => {});
-            }).to.throw(Error, /No methodName specified/);
-
-            expect(() => {
-                Handler.implementing("   ", () => {});
-            }).to.throw(Error, /No methodName specified/);
-        });
-
-        it("should implement method with function", () => {
-            const Chat = Protocol.extend({
-                    send(msg) {}      
-                  }),
-                  handler = Handler.implementing("send", message => {
-                    return `Sending ${message}`;
-                  });
-            expect(Chat(handler.$duck()).send("Hello")).to.equal("Sending Hello");
-        });
-    });
-
+   
     describe("Options", () => {
         const ServerOptions = Options.extend({
             url:     undefined,
@@ -1673,7 +1556,7 @@ describe("InvocationHandler", () => {
         });
 
         it("should resolve target for invocation implicitly", () => {
-            const Pumping = Resolving.extend({
+            const Pumping = ResolvingProtocol.extend({
                       pump() {}
                   }),
                   Pump = Base.extend(Pumping, {
@@ -1744,7 +1627,7 @@ describe("InvocationHandler", () => {
                       }
                   }),                
                   handler = new CascadeHandler(new Poker(), new Slots()),
-                id      = Game(handler.$broadcast()).open(5);
+                  id      = Game(handler.$broadcast()).open(5);
             expect(id).to.equal("poker5");
             expect(count).to.equal(2);
         });
@@ -1762,7 +1645,7 @@ describe("InvocationHandler", () => {
                           ++count;
                           return "poker" + numPlayers;
                       }
-                  }),                
+                  }),
                   handler = new CascadeHandler(
                       new (Handler.extend({
                           @provides(Game)
@@ -1947,10 +1830,13 @@ describe("Handler", () => {
             });
         });
 
-        it("should pass promise returns through", done => {
+        it("should adopt promise returns", done => {
             const handler = new EmailHandler,
                   msg     = Promise.resolve("Hello");
-            expect(Emailing(handler).send(msg)).to.equal(msg);
+            Emailing(handler).send(msg).then(result => {
+                expect(result).to.eql("Hello");
+                done();
+            });
             Emailing(handler.$promise()).send(msg).then(result => {
                 expect(result).to.eql("Hello");
                 done();
@@ -2039,7 +1925,7 @@ describe("Handler", () => {
             Promise.resolve(casino.$timeout(50, BankError)
                             .command(wireMoney)).catch(err => {
                 expect(err).to.be.instanceOf(BankError);
-                expect(err.callback.callback).to.equal(wireMoney);
+                expect(err.callback.callback.callback).to.equal(wireMoney);
                 done();
             });
         });

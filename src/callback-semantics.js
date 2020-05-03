@@ -1,7 +1,7 @@
 import { Flags } from "miruken-core";
 import Handler from "./handler";
 import Composition from "./composition";
-import { RejectedError } from "./errors";
+import { NotHandledError, RejectedError } from "./errors";
 
 /**
  * CallbackOptions flags enum
@@ -64,7 +64,8 @@ export const CallbackSemantics = Composition.extend({
     },              
     isSpecified(options) {
         return this._specified.hasFlag(options);
-    },                  
+    },
+    inferCallback() { return this; }, 
     mergeInto(semantics) {
         const items = CallbackOptions.items;
         for (let i = 0; i < items.length; ++i) {
@@ -113,7 +114,7 @@ Handler.implement({
      */
     $notify() { return this.$callOptions(CallbackOptions.Notify); },
     /**
-     * Establishes custom callback semantics.
+     * Establishes callback semantics.
      * @method $callOptions
      * @param  {CallbackOptions}  options  -  callback semantics
      * @returns {Handler} custom callback semanics.
@@ -123,28 +124,39 @@ Handler.implement({
         const semantics = new CallbackSemantics(options);
         return this.decorate({
             handleCallback(callback, greedy, composer) {
-                let handled = false;
                 if (Composition.isComposed(callback, CallbackSemantics)) {
                     return false;
                 }
+
                 if (callback instanceof CallbackSemantics) {
                     semantics.mergeInto(callback);
-                    handled = true;
-                } else if (!greedy) {
-                    if (semantics.isSpecified(CallbackOptions.Broadcast)) {
-                        greedy = semantics.hasOption(CallbackOptions.Broadcast);
-                    } else {
-                        const cs = new CallbackSemantics();
-                        if (this.handle(cs, true) &&
-                            cs.isSpecified(CallbackOptions.Broadcast)) {
-                            greedy = cs.hasOption(CallbackOptions.Broadcast);
-                        }
+                    if (greedy) {
+                        this.base(callback, greedy, composer);
                     }
+                    return true;
+                } else if (callback instanceof Composition) {
+                    return this.base(callback, greedy, composer);
                 }
-                if (greedy || !handled) {
-                    handled = this.base(callback, greedy, composer) || handled;
+
+                if (semantics.isSpecified(CallbackOptions.Broadcast)) {
+                    greedy = semantics.hasOption(CallbackOptions.Broadcast);
                 }
-                return !!handled;
+
+                if (semantics.isSpecified(CallbackOptions.BestEffort) &&
+                    semantics.hasOption(CallbackOptions.BestEffort)) {
+                    try {
+                        this.base(callback, greedy, composer);
+                        return true;
+                    } catch (exception) {
+                        if (exception instanceof NotHandledError ||
+                            exception instanceof RejectedError) {
+                            return true;
+                        }
+                        throw exception;
+                    }                   
+                }
+                
+                return this.base(callback, greedy, composer);
             }
         });
     }  

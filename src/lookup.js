@@ -3,8 +3,7 @@ import {
     $isNothing, $instant, $flatten
 } from "miruken-core";
 
-import { $lookup } from "./policy";
-import { DispatchingCallback } from "./callback";
+import { DispatchingCallback, $lookup } from "./policy";
 
 /**
  * Callback representing the invariant lookup of a key.
@@ -30,7 +29,7 @@ export const Lookup = Base.extend(DispatchingCallback, {
     get isMany() { return this._many; },
     get instant() { return this._promises.length == 0; },
     get results() { return this._results; },
-    get policy() { return $lookup; },     
+    get callbackPolicy() { return $lookup; },     
     get callbackResult() {
         if (this._result === undefined) {
             const results = this._results;
@@ -48,7 +47,7 @@ export const Lookup = Base.extend(DispatchingCallback, {
     
     addResult(result, composer) {
         let found;
-        if (result == null) return false;
+        if ($isNothing(result)) return false;
         if (Array.isArray(result)) {
             found = $flatten(result, true).reduce(
                 (s, r) => include.call(this, r, composer) || s, false);  
@@ -74,7 +73,7 @@ export const Lookup = Base.extend(DispatchingCallback, {
 });
 
 function include(result, composer) {
-    if (result == null) return false;
+    if ($isNothing(result)) return false;
     if ($isPromise(result)) {
         if (this._instant) return false;
         this._promises.push(result.then(res => {

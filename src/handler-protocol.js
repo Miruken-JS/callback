@@ -1,12 +1,12 @@
 import {
     MethodType, Delegate, StrictProtocol,
-    DuckTyping, $isString, $isFunction
+    ResolvingProtocol, DuckTyping, $isPromise
 } from "miruken-core";
 
-import HandleMethod from "./handle-method";
-import ResolveMethod from "./resolve-method";
 import Handler from "./handler";
+import HandleMethod from "./handle-method";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
+import { NotHandledError } from "./errors";
 
 /**
  * Delegates properties and methods to a callback handler using 
@@ -47,26 +47,37 @@ function delegate(delegate, methodType, protocol, methodName, args) {
         && StrictProtocol.isAdoptedBy(protocol))
         options |= CallbackOptions.Strict;
 
+    if (ResolvingProtocol.isAdoptedBy(protocol)) {
+        if (semantics.isSpecified(CallbackOptions.Broadcast)) {
+            options |= CallbackOptions.Broadcast
+        }
+    }
+
     if (options != CallbackOptions.None)
     {
         semantics.setOption(options, true);
         handler = handler.$callOptions(options);
     }
 
-    const broadcast    = semantics.hasOption(CallbackOptions.Broadcast),
-          bestEffort   = semantics.hasOption(CallbackOptions.BestEffort),
-          handleMethod = new HandleMethod(methodType, protocol, methodName, args, semantics);
+    const handleMethod = new HandleMethod(
+        methodType, protocol, methodName, args, semantics);
 
-    if (handler.handle(handleMethod, broadcast)) {
-        return handleMethod.callbackResult;
-    }
-
-    const resolveMethod = new ResolveMethod(protocol, broadcast, handleMethod, bestEffort);
-    if (!handler.handle(resolveMethod, broadcast) && !bestEffort) {
+    if (!handler.handle(handleMethod)) {
         throw handleMethod.notHandledError();
     }
-    
-    return resolveMethod.callbackResult;
+
+    const result = handleMethod.callbackResult;
+    if (!$isPromise(result)) return result;
+    return result.catch(error => {
+        if (error instanceof NotHandledError) {
+            if (!(semantics.isSpecified(CallbackOptions.BestEffort) &&
+                semantics.hasOption(CallbackOptions.BestEffort))) {
+                throw handleMethod.notHandledError();
+            }
+        } else {
+            throw error;
+        }
+    });
 }
 
 Handler.implement({
@@ -77,31 +88,3 @@ Handler.implement({
      */            
     toDelegate() { return new InvocationDelegate(this); }
 });
-
-/**
- * Shortcut for handling a 
- * {{#crossLink "HandleMethod"}}{{/crossLink}} callback.
- * @method
- * @static
- * @param  {string}    methodName  -  method name
- * @param  {Function}  method      -  method function
- * @returns {Handler} method handler.
- * @for Handler
- */
-Handler.implementing = function (methodName, method) {
-    if (!$isString(methodName) || methodName.length === 0 || !methodName.trim()) {
-        throw new TypeError("No methodName specified.");
-    } else if (!$isFunction(method)) {
-        throw new TypeError(`Invalid method: ${method} is not a function.`);
-    }
-    return (new Handler()).extend({
-        handleCallback(callback, greedy, composer) {
-            if (callback instanceof HandleMethod) {
-                return callback.invokeOn({
-                    [methodName]: method
-                }, composer);
-            }
-            return false;
-        }
-    });
-};

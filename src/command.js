@@ -2,8 +2,7 @@ import {
     Base, $isPromise, $isNothing
 } from "miruken-core";
 
-import { $handle } from "./policy";
-import { DispatchingCallback } from "./callback";
+import { DispatchingCallback, $handle } from "./policy";
 
 /**
  * Callback representing a command with results.
@@ -27,7 +26,7 @@ export const Command = Base.extend(DispatchingCallback, {
     get isMany()   { return this._many; },
     get callback() { return this._callback; },
     get results()  { return this._results; },    
-    get policy()   { return $handle; },              
+    get callbackPolicy()   { return $handle; },              
     get callbackResult() {
         if (this._result === undefined) {
             const results  = this._results,
@@ -45,7 +44,7 @@ export const Command = Base.extend(DispatchingCallback, {
     set callbackResult(value) { this._result = value; },
 
     respond(response) {
-        if (response == null) return;
+        if ($isNothing(response)) return;
         if ($isPromise(response)) {
             this._promises.push(response.then(res => {
                 if (res != null) {

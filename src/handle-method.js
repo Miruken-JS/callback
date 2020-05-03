@@ -1,10 +1,11 @@
 import {
-    Base, MethodType, $isFunction, $isProtocol
+    Base, MethodType, $isNothing,$isFunction, $isProtocol
 } from "miruken-core";
 
-import { DispatchingCallback } from "./callback";
+import { DispatchingCallback, $unhandled } from "./policy";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
-import { $unhandled } from "./policy";
+import Trampoline from "./trampoline";
+import Resolving from "./resolving";
 
 /**
  * Invokes a method on a target.
@@ -19,7 +20,7 @@ import { $unhandled } from "./policy";
  */
 export const HandleMethod = Base.extend(DispatchingCallback, {
     constructor(methodType, protocol, methodName, args, semantics) {
-        if (methodName == null) {
+        if ($isNothing(methodName)) {
             throw new Error("Method name is required");
         }
         if (protocol && !$isProtocol(protocol)) {
@@ -45,6 +46,9 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
     get callbackResult() { return this._returnValue; },
     set callbackResult(value) { this._returnValue = value; },
 
+    inferCallback() {
+         return new Inference(this);
+    },
     /**
      * Attempts to invoke the method on the target.<br/>
      * During invocation, the receiver will have access to the ambient **$composer** property
@@ -117,6 +121,18 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
     dispatch(handler, greedy, composer) {
         return this.invokeOn(handler, composer);
     }    
+});
+
+var Inference = Trampoline.extend({
+    constructor(handleMethod) {
+        this.base(handleMethod);
+        this._resolving = new Resolving(handleMethod.protocol, handleMethod);
+    },
+    inferCallback() { return this; },
+    dispatch(handler, greedy, composer) {
+        return this.base(handler, greedy, composer) ||
+               this._resolving.dispatch(handler, greedy, composer);          
+    }
 });
 
 export default HandleMethod;

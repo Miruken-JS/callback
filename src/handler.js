@@ -4,6 +4,7 @@ import {
 
 import { $policy } from "./policy";
 import Composition from "./composition";
+import Inference from "./inference";
 
 export let $composer;
 
@@ -30,7 +31,8 @@ export const Handler = Base.extend({
         if ($isNothing(composer)) {
             composer = compositionScope(this);
         }
-        return !!this.handleCallback(callback, !!greedy, composer);
+        const inference = Inference.get(callback);
+        return !!this.handleCallback(inference, !!greedy, composer);
     },
     /**
      * Handles the callback with all arguments populated.

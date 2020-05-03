@@ -27,7 +27,7 @@ Handler.registerOptions = function (optionsType, optionsKey) {
 
     Handler.implement({
         [optionsKey](options) {
-            if (options == null) return this;
+            if ($isNothing(options)) return this;
             if (!(options instanceof optionsType)) {
                 options = Reflect.construct(optionsType, [options]);
             }

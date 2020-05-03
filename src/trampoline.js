@@ -1,6 +1,7 @@
 import { Base } from "miruken-core";
-import { DispatchingCallback } from "./callback";
-import { $handle, $policy } from "./policy";
+import {
+    DispatchingCallback, $handle, $policy
+} from "./policy";
 
 export const Trampoline = Base.extend(DispatchingCallback, {
     constructor(callback) {
@@ -30,3 +31,5 @@ export const Trampoline = Base.extend(DispatchingCallback, {
              : $handle.dispatch(handler, this, null, composer, greedy);
     }
 });
+
+export default Trampoline;

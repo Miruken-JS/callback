@@ -1,7 +1,7 @@
 import {
     False, Undefined, Base, Variance,
-    Metadata, Modifier, IndexedList, assignID,
-    decorate, isDescriptor, designWithReturn,
+    Protocol, Metadata, Modifier, IndexedList,
+    assignID, decorate, isDescriptor, designWithReturn,
     $isNothing, $isString, $isFunction, $isObject,
     $isClass, $isProtocol, $classOf, $eq, $use, $lift
 } from "miruken-core";
@@ -100,6 +100,36 @@ export function addPolicy(name, provider, allowGets, filter) {
     };
 }
 
+export const DispatchingCallback = Protocol.extend({
+    /**
+     * Gets the callback policy.
+     * @property {Function} policy
+     * @readOnly
+     */
+    callbackPolicy: undefined,
+
+    /**
+     * Guards the callback dispatch.
+     * @method dispatch
+     * @param   {Object}   handler     -  target handler
+     * @param   {Binding}  binding     -  handler binding
+     * @returns {Function} truthy if dispatch can proceed.
+     * If a function is returned it will be called after
+     * the dispatch with *this* callback as the receiver.
+     */
+    guardDispatch(handler, binding) {},
+
+    /**
+     * Dispatches the callback.
+     * @method dispatch
+     * @param   {Object}   handler     -  target handler
+     * @param   {boolean}  greedy      -  true if handle greedily
+     * @param   {Handler}  [composer]  -  composition handler
+     * @returns {boolean} true if the callback was handled, false otherwise.
+     */
+    dispatch(handler, greedy, composer) {}
+});
+
 /**
  * Defines a new callback policy.
  * This is the main extensibility point for handling callbacks.
@@ -109,7 +139,7 @@ export function addPolicy(name, provider, allowGets, filter) {
  * @return  {Function}  function to register with policy
  */
 export function $policy(variance, description) {
-    if (description == null) {
+    if ($isNothing(description)) {
         throw new Error("$policy requires a description.");
     }
 
@@ -228,11 +258,25 @@ export function $policy(variance, description) {
             let binding = list.getFirst(index) || list.head;
             while (binding) {
                 if (binding.match(constraint, v)) {
-                    const result = binding.handler.call(target, callback, composer);
-                    if (handled(result)) {
-                        if (!results || results.call(callback, result, composer) !== false) {
-                            if (!all) { return true; }
-                            dispatched = true;
+                    let guard;
+                    if ($isFunction(callback.guardDispatch)) {
+                        guard = callback.guardDispatch(target, binding);
+                        if (!guard) {
+                            binding = binding.next;
+                            continue;
+                        }
+                    }
+                    try {
+                        const result = binding.handler.call(target, callback, composer);
+                        if (handled(result)) {
+                            if (!results || results.call(callback, result, composer) !== false) {
+                                if (!all) { return true; }
+                                dispatched = true;
+                            }
+                        }
+                    } finally {
+                        if ($isFunction(guard)) {
+                            guard.call(callback);
                         }
                     }
                 } else if (invariant) {

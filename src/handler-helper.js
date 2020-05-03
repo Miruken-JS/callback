@@ -5,7 +5,7 @@ import {
 
 import Command from "./command";
 import Lookup from "./lookup";
-import Resolution from "./resolution";
+import Inquiry from "./inquiry";
 
 import { 
     Binding, $handle, $provide, $lookup
@@ -90,9 +90,9 @@ Handler.implement({
      * @async
      */                                
     resolve(key) {
-        const resolution = (key instanceof Resolution) ? key : new Resolution(key);
-        if (this.handle(resolution, false)) {
-            return resolution.callbackResult;
+        const inquiry = (key instanceof Inquiry) ? key : new Inquiry(key);
+        if (this.handle(inquiry, false)) {
+            return inquiry.callbackResult;
         }
     },
     /**
@@ -104,8 +104,8 @@ Handler.implement({
      * @async
      */                                        
     resolveAll(key) {
-        const resolution = (key instanceof Resolution) ? key : new Resolution(key, true);
-        return this.handle(resolution, true) ? resolution.callbackResult : [];
+        const inquiry = (key instanceof Inquiry) ? key : new Inquiry(key, true);
+        return this.handle(inquiry, true) ? inquiry.callbackResult : [];
     },    
     /**
      * Looks up the key.
@@ -217,30 +217,6 @@ Handler.implement({
         return this;
     },
     /**
-     * Decorates the handler to conditionally handle callbacks.
-     * @method when
-     * @param   {Any}  constraint  -  matching constraint
-     * @returns {Handler}  conditional callback handler.
-     * @for Handler
-     */                                                                        
-    when(constraint) {
-        const when = new Binding(constraint),
-            condition = callback => {
-                if (callback instanceof Command) {
-                    return when.match($classOf(callback.callback), Variance.Contravariant);
-                } else if (callback instanceof Resolution) {
-                    return when.match(callback.key, Variance.Covariant);
-                } else {
-                    return when.match($classOf(callback), Variance.Contravariant);
-                }
-            };
-        return this.decorate({
-            handleCallback(callback, greedy, composer) {
-                return condition(callback) && this.base(callback, greedy, composer);
-            }
-        });
-    },
-    /**
      * Builds a handler chain.
      * @method next
      * @param   {Arguments}  arguments  -  handler chain members
@@ -329,6 +305,9 @@ Handler.implement({
      */                
     $promise() {
         return this.filter((callback, composer, proceed) => {
+            if (!("callbackResult" in callback)) {
+                return proceed();
+            }
             try {                
                 const handled = proceed();
                 if (handled) {
@@ -354,6 +333,9 @@ Handler.implement({
     $timeout(ms, error) {
         return this.filter((callback, composer, proceed) => {
             const handled = proceed();
+            if (!("callbackResult" in callback)) {
+                return handled;
+            }
             if (handled) {
                 const result = callback.callbackResult;
                 if ($isPromise(result)) {
