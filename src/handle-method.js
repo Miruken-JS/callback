@@ -138,8 +138,8 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
               result    = resolving.callbackResult;
         if ($isPromise(result)) {
             callback.callbackResult = result.then(() => {
-                if (resolving.satisfied) {
-                    return resolving.effectiveCallbackResult;
+                if (resolving.succeeded) {
+                    return resolving.successfulCallbackResult;
                 }
                 throw new NotHandledError(callback);
             });

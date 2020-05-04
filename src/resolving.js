@@ -17,8 +17,8 @@ export const Resolving = Inquiry.extend({
     },
 
     get callback() { return this._callback; },
-    get satisfied() { return this._satisfied; },
-    get effectiveCallbackResult() { return this._effectiveCallbackResult; },
+    get succeeded() { return this._succeeded; },
+    get successfulCallbackResult() { return this._successfulCallbackResult; },
 
     inferCallback() { return this; },
     guardDispatch(handler, binding) {
@@ -47,14 +47,14 @@ export const Resolving = Inquiry.extend({
         return outer;
     },
     isSatisfied(resolution, greedy, composer) { 
-        if (this._satisfied && !greedy) return true;
+        if (this._succeeded && !greedy) return true;
         const callback = this.callback,
               handled  = $policy.dispatch(resolution, callback, greedy, composer);
         if (handled) {
             if ("callbackResult" in callback) {
-                this._effectiveCallbackResult = callback.callbackResult;
+                this._successfulCallbackResult = callback.callbackResult;
             }
-            this._satisfied = true;
+            this._succeeded = true;
         }    
         return handled;
     },
