@@ -1,9 +1,10 @@
-import { Base } from "miruken-core";
+import { Base, $isFunction } from "miruken-core";
+
 import {
-    DispatchingCallback, $handle, $policy
+    CallbackControl, $handle, $policy
 } from "./policy";
 
-export const Trampoline = Base.extend(DispatchingCallback, {
+export const Trampoline = Base.extend(CallbackControl, {
     constructor(callback) {
         if (callback) {
             this._callback = callback;
@@ -22,6 +23,19 @@ export const Trampoline = Base.extend(DispatchingCallback, {
         const callback = this.callback;
         if (callback) {
             callback.callbackResult = value;
+        }
+    },
+
+    guardDispatch(handler, binding) {
+        const callback = this.callback;
+        if (callback && $isFunction(callback.guardDispatch)) {
+            callback.guardDispatch(handler, binding);
+        }        
+    },
+    completeCallback() {
+        const callback = this.callback;
+        if (callback && $isFunction(callback.completeCallback)) {
+            callback.completeCallback();
         }
     },
     dispatch(handler, greedy, composer) {

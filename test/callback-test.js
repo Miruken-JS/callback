@@ -434,7 +434,7 @@ describe("Handler", () => {
         });
 
         it("should handle callbacks", () => {
-            const cashier    = new HandlerAdapter(new Cashier(1000000.00)),
+            const cashier    = Handler(new Cashier(1000000.00)),
                   countMoney = new CountMoney();
             expect(cashier.handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000000.00);
@@ -1534,7 +1534,7 @@ describe("InvocationHandler", () => {
                           return "poker" + numPlayers;
                       }
                   }),
-                  handler = new HandlerAdapter(new Poker()),
+                  handler = Handler(new Poker()),
                   id      = Game(handler).open(5);
             expect(id).to.equal("poker5");
         });
@@ -1576,7 +1576,7 @@ describe("InvocationHandler", () => {
 
         it("should fail invocation if method not found", () => {
             const Poker   = Base.extend(Game),
-                  handler = new HandlerAdapter(new Poker());
+                  handler = Handler(new Poker());
             expect(() => {
                 Game(handler).open(4);
             }).to.throw(TypeError, /open could not be handled/);
@@ -1676,7 +1676,7 @@ describe("InvocationHandler", () => {
                           return "poker" + numPlayers;
                       }
                   }),
-                  handler = new HandlerAdapter(new Poker());
+                  handler = Handler(new Poker());
             expect(Game(handler.filter(
                 (cb, cm, proceed) => proceed())).open(5))
                 .to.equal("poker5");

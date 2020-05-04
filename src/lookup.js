@@ -3,7 +3,7 @@ import {
     $isNothing, $instant, $flatten
 } from "miruken-core";
 
-import { DispatchingCallback, $lookup } from "./policy";
+import { CallbackControl, $lookup } from "./policy";
 
 /**
  * Callback representing the invariant lookup of a key.
@@ -13,7 +13,7 @@ import { DispatchingCallback, $lookup } from "./policy";
  * @param   {boolean}  many  -  lookup cardinality
  * @extends Base
  */
-export const Lookup = Base.extend(DispatchingCallback, {
+export const Lookup = Base.extend(CallbackControl, {
     constructor(key, many) {
         if ($isNothing(key)) {
             throw new Error("The key is required.");

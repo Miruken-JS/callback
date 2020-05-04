@@ -5,7 +5,7 @@ import {
 
 import Trampoline from "./trampoline";
 import Resolving from "./resolving";
-import { DispatchingCallback, $unhandled } from "./policy";
+import { CallbackControl, $unhandled } from "./policy";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 import { NotHandledError } from "./errors";
 
@@ -20,7 +20,7 @@ import { NotHandledError } from "./errors";
  * @param  {InvocationSemanics}  semantics   -  invocation semantics
  * @extends Base
  */
-export const HandleMethod = Base.extend(DispatchingCallback, {
+export const HandleMethod = Base.extend(CallbackControl, {
     constructor(methodType, protocol, methodName, args, semantics) {
         if ($isNothing(methodName)) {
             throw new Error("Method name is required");

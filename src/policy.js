@@ -100,7 +100,21 @@ export function addPolicy(name, provider, allowGets, filter) {
     };
 }
 
-export const DispatchingCallback = Protocol.extend({
+export const CallbackControl = Protocol.extend({
+    /**
+     * Tags this callback for boundary checking.
+     * @property {Any} bounds
+     * @readOnly
+     */    
+    get bounds() {},
+
+    /**
+     * Returns true if this callback can participate in batching.
+     * @property {Boolean} canBatch
+     * @readOnly
+     */    
+    get canBatch() {},
+
     /**
      * Gets the callback policy.
      * @property {Function} policy
@@ -112,7 +126,7 @@ export const DispatchingCallback = Protocol.extend({
      * Guards the callback dispatch.
      * @method dispatch
      * @param   {Object}   handler     -  target handler
-     * @param   {Binding}  binding     -  handler binding
+     * @param   {Any}      binding     -  usually Binding
      * @returns {Function} truthy if dispatch can proceed.
      * If a function is returned it will be called after
      * the dispatch with *this* callback as the receiver.
@@ -267,7 +281,8 @@ export function $policy(variance, description) {
                         }
                     }
                     try {
-                        const result = binding.handler.call(target, callback, composer);
+                        const result = binding.handler.call(
+                            target, callback, composer, { constraint, binding });
                         if (handled(result)) {
                             if (!results || results.call(callback, result, composer) !== false) {
                                 if (!all) { return true; }
@@ -330,6 +345,9 @@ Binding.prototype.equals = function (other) {
         && (this.handler === other.handler ||
             (this.handler.key && other.handler.key &&
              this.handler.key === other.handler.key));
+}
+Binding.prototype.toString = function () {
+    return `Binding | ${this.constraint}`;
 }
 
 function createIndex(constraint) {

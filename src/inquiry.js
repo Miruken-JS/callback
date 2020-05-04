@@ -5,7 +5,7 @@ import {
 } from "miruken-core";
 
 import {
-    DispatchingCallback, Binding, $provide
+    CallbackControl, Binding, $provide
 } from "./policy";
 
 /**
@@ -17,7 +17,7 @@ import {
  * @param   {Inquiry}  parent -  parent inquiry
  * @extends Base
  */
-export const Inquiry = Base.extend(DispatchingCallback, {
+export const Inquiry = Base.extend(CallbackControl, {
     constructor(key, many, parent) {
         if ($isNothing(key)) {
             throw new Error("The key is required.");
@@ -40,6 +40,8 @@ export const Inquiry = Base.extend(DispatchingCallback, {
     get key() { return this._key; },            
     get isMany() { return this._many; },
     get parent() { return this._parent; },
+    get handler() { return this._handler; },
+    get binding() { return this._binding; },          
     get instant() { return this._promises.length == 0; },             
     get resolutions() { return this._resolutions; },
     get callbackPolicy() { return $provide; },       
@@ -77,7 +79,7 @@ export const Inquiry = Base.extend(DispatchingCallback, {
         return promise.catch(Undefined);
     },
     guardDispatch(handler, binding) {
-        if (!inProgress.call(this, handler, binding)) {
+        if (!this.inProgress(handler, binding)) {
             return function (self, h, b) {
                 self._handler = handler;
                 self._binding = binding;
@@ -88,6 +90,11 @@ export const Inquiry = Base.extend(DispatchingCallback, {
             }(this, this._handler, this._binding);
         }
     },
+    inProgress(handler, binding) {
+        return this._handler === handler &&
+            this._binding === binding ||
+            (this.parent && this.parent.inProgress(handler, binding));
+    },    
     dispatch(handler, greedy, composer) {
         // check if handler implicitly satisfies key
         const implied  = new Binding(this.key);
@@ -132,13 +139,6 @@ function include(resolution, greedy, composer) {
         this._resolutions.push(resolution);
     }
     return true;                             
-}
-
-function inProgress(handler, binding)
-{
-    return this._handler === handler &&
-           this._binding === binding ||
-           (this.parent && this.parent.inProgress(handler, binding));
 }
 
 export default Inquiry;

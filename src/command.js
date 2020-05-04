@@ -2,7 +2,7 @@ import {
     Base, $isPromise, $isNothing
 } from "miruken-core";
 
-import { DispatchingCallback, $handle } from "./policy";
+import { CallbackControl, $handle } from "./policy";
 
 /**
  * Callback representing a command with results.
@@ -12,7 +12,7 @@ import { DispatchingCallback, $handle } from "./policy";
  * @param   {boolean}  many      -  command cardinality
  * @extends Base
  */
-export const Command = Base.extend(DispatchingCallback, {
+export const Command = Base.extend(CallbackControl, {
     constructor(callback, many) {
         if ($isNothing(callback)) {
             throw new TypeError("The callback is required.");
