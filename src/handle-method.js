@@ -1,11 +1,13 @@
 import {
-    Base, MethodType, $isNothing,$isFunction, $isProtocol
+    Base, MethodType, $isNothing, $isFunction,
+    $isProtocol, $isPromise
 } from "miruken-core";
 
-import { DispatchingCallback, $unhandled } from "./policy";
-import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 import Trampoline from "./trampoline";
 import Resolving from "./resolving";
+import { DispatchingCallback, $unhandled } from "./policy";
+import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
+import { NotHandledError } from "./errors";
 
 /**
  * Invokes a method on a target.
@@ -47,7 +49,7 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
     set callbackResult(value) { this._returnValue = value; },
 
     inferCallback() {
-         return new Inference(this);
+         return new HandleMethodInference(this);
     },
     /**
      * Attempts to invoke the method on the target.<br/>
@@ -123,12 +125,26 @@ export const HandleMethod = Base.extend(DispatchingCallback, {
     }    
 });
 
-var Inference = Trampoline.extend({
+ const HandleMethodInference = Trampoline.extend({
     constructor(handleMethod) {
         this.base(handleMethod);
         this._resolving = new Resolving(handleMethod.protocol, handleMethod);
     },
+
     inferCallback() { return this; },
+    completeCallback() {
+        const callback  = this.callback,
+              resolving = this._resolving,
+              result    = resolving.callbackResult;
+        if ($isPromise(result)) {
+            callback.callbackResult = result.then(() => {
+                if (resolving.satisfied) {
+                    return resolving.effectiveCallbackResult;
+                }
+                throw new NotHandledError(callback);
+            });
+        }
+    },
     dispatch(handler, greedy, composer) {
         return this.base(handler, greedy, composer) ||
                this._resolving.dispatch(handler, greedy, composer);          

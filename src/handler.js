@@ -32,7 +32,13 @@ export const Handler = Base.extend({
             composer = compositionScope(this);
         }
         const inference = Inference.get(callback);
-        return !!this.handleCallback(inference, !!greedy, composer);
+        if (!!this.handleCallback(inference, !!greedy, composer)) {
+            if ($isFunction(inference.completeCallback)) {
+                inference.completeCallback();
+            }
+            return true;
+        }
+        return false;
     },
     /**
      * Handles the callback with all arguments populated.
@@ -46,7 +52,7 @@ export const Handler = Base.extend({
         return $policy.dispatch(this, callback, greedy, composer);
     }
 }, {
-    coerce(object) { return new this(object); }
+    coerce(object) { return new HandlerAdapter(object); }
 });
 
 export const HandlerAdapter = Handler.extend({

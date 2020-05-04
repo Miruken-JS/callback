@@ -1630,7 +1630,7 @@ describe("InvocationHandler", () => {
                   id      = Game(handler.$broadcast()).open(5);
             expect(id).to.equal("poker5");
             expect(count).to.equal(2);
-        });
+        }).timeout(10000);
 
         it("should resolve all targets or invocation using promise", done => {
             let   count = 0;

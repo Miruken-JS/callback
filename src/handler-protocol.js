@@ -68,6 +68,7 @@ function delegate(delegate, methodType, protocol, methodName, args) {
 
     const result = handleMethod.callbackResult;
     if (!$isPromise(result)) return result;
+    
     return result.catch(error => {
         if (error instanceof NotHandledError) {
             if (!(semantics.isSpecified(CallbackOptions.BestEffort) &&
