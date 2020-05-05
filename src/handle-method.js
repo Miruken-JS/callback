@@ -1,6 +1,6 @@
 import {
     Base, MethodType, $isNothing, $isFunction,
-    $isProtocol, $isPromise
+    $isProtocol, $isPromise, createKeyChain
 } from "miruken-core";
 
 import Trampoline from "./trampoline";
@@ -8,6 +8,8 @@ import Resolving from "./resolving";
 import { CallbackControl, $unhandled } from "./policy";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 import { NotHandledError } from "./errors";
+
+const _ = createKeyChain();
 
 /**
  * Invokes a method on a target.
@@ -28,25 +30,25 @@ export const HandleMethod = Base.extend(CallbackControl, {
         if (protocol && !$isProtocol(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
         }
-        this._methodType = methodType;
-        this._protocol   = protocol;
-        this._methodName = methodName;
-        this._args       = args;
-        this._semantics  = semantics || new CallbackSemantics();
+        _(this).methodType = methodType;
+        _(this).protocol   = protocol;
+        _(this).methodName = methodName;
+        _(this).args       = args;
+        _(this).semantics  = semantics || new CallbackSemantics();
     },
 
-    get methodType() { return this._methodType; },
-    get protocol() { return this._protocol; },
-    get semantics() { return this._semantics; },
-    get methodName() { return this._methodName; },
-    get args() { return this._args; },
-    set args(value) { this._args = value; },
-    get returnValue() { return this._returnValue; },
-    set returnValue(value) { this._returnValue = value; },
-    get exception() { return this._exception; },
-    set exception(exception) { this._exception = exception; },          
-    get callbackResult() { return this._returnValue; },
-    set callbackResult(value) { this._returnValue = value; },
+    get methodType()          { return _(this).methodType; },
+    get protocol()            { return _(this).protocol; },
+    get semantics()           { return _(this).semantics; },
+    get methodName()          { return _(this).methodName; },
+    get args()                { return _(this).args; },
+    set args(value)           { _(this).args = value; },
+    get returnValue()         { return _(this).returnValue; },
+    set returnValue(value)    { _(this).returnValue = value; },
+    get exception()           { return _(this).exception; },
+    set exception(exception)  { _(this).exception = exception; },          
+    get callbackResult()      { return _(this).returnValue; },
+    set callbackResult(value) { _(this).returnValue = value; },
 
     inferCallback() {
          return new HandleMethodInference(this);
@@ -93,10 +95,10 @@ export const HandleMethod = Base.extend(CallbackControl, {
             if (result === $unhandled) {
                 return false;
             }
-            this._returnValue = result;
+            _(this).returnValue = result;
             return true;                        
         } catch (exception) {
-            this._exception = exception;
+            _(this).exception = exception;
             throw exception;
         }
     },
@@ -125,29 +127,29 @@ export const HandleMethod = Base.extend(CallbackControl, {
     }    
 });
 
- const HandleMethodInference = Trampoline.extend({
+const HandleMethodInference = Trampoline.extend({
     constructor(handleMethod) {
         this.base(handleMethod);
-        this._resolving = new Resolving(handleMethod.protocol, handleMethod);
+        _(this).resolving = new Resolving(handleMethod.protocol, handleMethod);
     },
 
-    inferCallback() { return this; },
-    completeCallback() {
-        const callback  = this.callback,
-              resolving = this._resolving,
-              result    = resolving.callbackResult;
+    get callbackResult() {
+        const result = _(this).resolving.callbackResult;
         if ($isPromise(result)) {
-            callback.callbackResult = result.then(() => {
-                if (resolving.succeeded) {
-                    return resolving.successfulCallbackResult;
+            return result.then(() => {
+                if (_(this).resolving.succeeded) {
+                    return this.callback.callbackResult;
                 }
-                throw new NotHandledError(callback);
+                throw new NotHandledError(this.callback);
             });
         }
+        return this.callback.callbackResult;
     },
+    
+    inferCallback() { return this; },
     dispatch(handler, greedy, composer) {
         return this.base(handler, greedy, composer) ||
-               this._resolving.dispatch(handler, greedy, composer);          
+               _(this).resolving.dispatch(handler, greedy, composer);          
     }
 });
 

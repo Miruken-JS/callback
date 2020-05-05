@@ -1,5 +1,7 @@
-import { $flatten } from "miruken-core";
+import { $flatten, createKeyChain } from "miruken-core";
 import { Handler, HandlerAdapter } from "./handler";
+
+const _ = createKeyChain();
 
 /**
  * Encapsulates zero or more
@@ -12,28 +14,30 @@ import { Handler, HandlerAdapter } from "./handler";
  */
 export const CompositeHandler = Handler.extend({
     constructor(...handlers) {
-        this._handlers = [];
+        _(this).handlers = [];
         this.addHandlers(handlers);
     },
 
-    getHandlers() { return this._handlers.slice(); },
+    getHandlers() { 
+        return _(this).handlers.slice();
+    },
     addHandlers(...handlers) {
         handlers = $flatten(handlers, true)
             .filter(h => this.findHandler(h) == null)
             .map(h => h.toHandler());
-        this._handlers.push(...handlers);
+        _(this).handlers.push(...handlers);
         return this;
     },
     insertHandlers(atIndex, ...handlers) {
         handlers = $flatten(handlers, true)
             .filter(h => this.findHandler(h) == null)
             .map(h => h.toHandler());
-        this._handlers.splice(atIndex, 0, ...handlers);                
+        _(this).handlers.splice(atIndex, 0, ...handlers);                
         return this;                    
     },                
     removeHandlers(...handlers) {
         $flatten(handlers, true).forEach(handler => {
-            const handlers = this._handlers,
+            const handlers = _(this).handlers,
                   count    = handlers.length;
             for (let idx = 0; idx < count; ++idx) {
                 const testHandler = handlers[idx];
@@ -48,7 +52,7 @@ export const CompositeHandler = Handler.extend({
         return this;
     },
     findHandler(handler) {
-        for (const h of this._handlers) {
+        for (const h of _(this).handlers) {
             if (h === handler) return h;
             if (h instanceof HandlerAdapter && h.handler === handler) {
                 return h;
@@ -58,7 +62,7 @@ export const CompositeHandler = Handler.extend({
     handleCallback(callback, greedy, composer) {
         let handled = this.base(callback, greedy, composer);
         if (handled && !greedy) { return true; }
-        for (const handler of this._handlers) {
+        for (const handler of _(this).handlers) {
             if (handler.handleCallback(callback, greedy, composer)) {
                 if (!greedy) { return true; }
                 handled = true;

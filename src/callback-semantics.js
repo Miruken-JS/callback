@@ -1,7 +1,9 @@
-import { Flags } from "miruken-core";
+import { Flags, createKeyChain } from "miruken-core";
 import Handler from "./handler";
 import Composition from "./composition";
 import { NotHandledError, RejectedError } from "./errors";
+
+const _ = createKeyChain();
 
 /**
  * CallbackOptions flags enum
@@ -49,21 +51,21 @@ export const CallbackOptions = Flags({
  */
 export const CallbackSemantics = Composition.extend({
     constructor(options) {
-        this._options   = CallbackOptions.None.addFlag(options);
-        this._specified = this._options;
+        _(this).options   = CallbackOptions.None.addFlag(options);
+        _(this).specified = _(this).options;
     },
 
     hasOption(options) {
-        return this._options.hasFlag(options);
+        return _(this).options.hasFlag(options);
     },              
     setOption(options, enabled) {
-        this._options = enabled
-                    ? this._options.addFlag(options)
-                    : this._options.removeFlag(options);
-        this._specified = this._specified.addFlag(options);
+        _(this).options = enabled
+            ? _(this).options.addFlag(options)
+            : _(this).options.removeFlag(options);
+        _(this).specified = _(this).specified.addFlag(options);
     },              
     isSpecified(options) {
-        return this._specified.hasFlag(options);
+        return _(this).specified.hasFlag(options);
     },
     inferCallback() { return this; }, 
     mergeInto(semantics) {

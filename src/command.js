@@ -1,8 +1,10 @@
 import {
-    Base, $isPromise, $isNothing
+    Base, $isPromise, $isNothing, createKeyChain
 } from "miruken-core";
 
 import { CallbackControl, $handle } from "./policy";
+
+const _ = createKeyChain();
 
 /**
  * Callback representing a command with results.
@@ -17,50 +19,50 @@ export const Command = Base.extend(CallbackControl, {
         if ($isNothing(callback)) {
             throw new TypeError("The callback is required.");
         }
-        this._callback = callback;
-        this._many     = !!many;
-        this._results  = [];
-        this._promises = [];
+        _(this).callback = callback;
+        _(this).many     = !!many;
+        _(this).results  = [];
+        _(this).promises = [];
     },
     
-    get isMany()   { return this._many; },
-    get callback() { return this._callback; },
-    get results()  { return this._results; },    
+    get isMany()   { return _(this).many; },
+    get callback() { return _(this).callback; },
+    get results()  { return _(this).results; },    
     get callbackPolicy()   { return $handle; },              
     get callbackResult() {
-        if (this._result === undefined) {
-            const results  = this._results,
-                  promises = this._promises;
+        if (_(this).result === undefined) {
+            const results  = _(this).results,
+                  promises = _(this).promises;
             if (promises.length == 0) {
-                this._result = this.isMany ? results : results[0];
+                _(this).result = this.isMany ? results : results[0];
             } else {
-                this._result = this.isMany
-                        ? Promise.all(promises).then(() => results)
-                        : Promise.all(promises).then(() => results[0]);
+                _(this).result = this.isMany
+                    ? Promise.all(promises).then(() => results)
+                    : Promise.all(promises).then(() => results[0]);
             }
         }
-        return this._result;
+        return _(this).result;
     },
-    set callbackResult(value) { this._result = value; },
+    set callbackResult(value) { _(this).result = value; },
 
     respond(response) {
         if ($isNothing(response)) return;
         if ($isPromise(response)) {
-            this._promises.push(response.then(res => {
+            _(this).promises.push(response.then(res => {
                 if (res != null) {
-                    this._results.push(res);
+                    _(this).results.push(res);
                 }
             }));
         } else {
-            this._results.push(response);
+            _(this).results.push(response);
         }
-        this._result = undefined;
+        _(this).result = undefined;
     },            
     dispatch(handler, greedy, composer) {
-        var count = this._results.length;
+        var count = _(this).results.length;
         return $handle.dispatch(handler, this.callback, null,
             composer, this.isMany, this.respond.bind(this)) || 
-            this._results.length > count;     
+            _(this).results.length > count;     
     },        
     toString() {
         return `Command ${this.isMany ? "many ": ""}| ${this.callback}`;

@@ -1,9 +1,12 @@
 import {
     Base, Undefined, $isPromise,
-    $isNothing, $instant, $flatten
+    $isNothing, $instant, $flatten,
+    createKeyChain
 } from "miruken-core";
 
 import { CallbackControl, $lookup } from "./policy";
+
+const _ = createKeyChain();
 
 /**
  * Callback representing the invariant lookup of a key.
@@ -18,32 +21,32 @@ export const Lookup = Base.extend(CallbackControl, {
         if ($isNothing(key)) {
             throw new Error("The key is required.");
         }
-        this._key      = key;
-        this._many     = !!many;
-        this._results  = [];
-        this._promises = [];
-        this._instant  = $instant.test(key);
+        _(this).key      = key;
+        _(this).many     = !!many;
+        _(this).results  = [];
+        _(this).promises = [];
+        _(this).instant  = $instant.test(key);
     },
 
-    get key() { return this._key; },
-    get isMany() { return this._many; },
-    get instant() { return this._promises.length == 0; },
-    get results() { return this._results; },
+    get key()            { return _(this).key; },
+    get isMany()         { return _(this).many; },
+    get instant()        { return _(this).promises.length == 0; },
+    get results()        { return _(this).results; },
     get callbackPolicy() { return $lookup; },     
     get callbackResult() {
-        if (this._result === undefined) {
-            const results = this._results;
+        if (_(this).result === undefined) {
+            const results = _(this).results;
             if (this.instant) {
-                this._result = this.isMany ? results : results[0];
+                _(this).result = this.isMany ? results : results[0];
             } else {
-                this._result = this.isMany 
-                    ? Promise.all(this._promises).then(() => results)
-                    : Promise.all(this._promises).then(() => results[0]);
+                _(this).result = this.isMany 
+                    ? Promise.all(_(this).promises).then(() => results)
+                    : Promise.all(_(this).promises).then(() => results[0]);
             }
         }
-        return this._result;
+        return _(this).result;
     },
-    set callbackResult(value) { this._result = value; },
+    set callbackResult(value) { _(this).result = value; },
     
     addResult(result, composer) {
         let found;
@@ -55,13 +58,13 @@ export const Lookup = Base.extend(CallbackControl, {
             found = include.call(this, result, composer);
         }
         if (found) {
-            this._result = undefined;
+            _(this).result = undefined;
         }
         return found;
     },               
     dispatch(handler, greedy, composer) {
-        const results  = this._results,
-              promises = this._promises,
+        const results  = _(this).results,
+              promises = _(this).promises,
               count    = results.length + promises.length,
               found    = $lookup.dispatch(handler, this, this.key,
                 composer, this.isMany, this.addResult.bind(this));
@@ -75,16 +78,16 @@ export const Lookup = Base.extend(CallbackControl, {
 function include(result, composer) {
     if ($isNothing(result)) return false;
     if ($isPromise(result)) {
-        if (this._instant) return false;
-        this._promises.push(result.then(res => {
+        if (_(this).instant) return false;
+        _(this).promises.push(result.then(res => {
             if (Array.isArray(res)) {
-                this._results.push(...res.filter(r => r != null));
+                _(this).results.push(...res.filter(r => r != null));
             } else if (res != null) {
-                this._results.push(res);
+                _(this).results.push(res);
             }
         }).catch(Undefined));
     } else {
-        this._results.push(result);
+        _(this).results.push(result);
     }
     return true;                             
 }

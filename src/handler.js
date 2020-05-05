@@ -32,13 +32,7 @@ export const Handler = Base.extend({
             composer = compositionScope(this);
         }
         const inference = Inference.get(callback);
-        if (!!this.handleCallback(inference, !!greedy, composer)) {
-            if ($isFunction(inference.completeCallback)) {
-                inference.completeCallback();
-            }
-            return true;
-        }
-        return false;
+        return !!this.handleCallback(inference, !!greedy, composer);
     },
     /**
      * Handles the callback with all arguments populated.

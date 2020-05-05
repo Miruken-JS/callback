@@ -1,16 +1,20 @@
-import { Base, $isFunction } from "miruken-core";
+import { 
+    Base, $isFunction, createKeyChain
+} from "miruken-core";
 
 import {
     CallbackControl, $handle, $policy
 } from "./policy";
 
+const _ = createKeyChain();
+
 export const Trampoline = Base.extend(CallbackControl, {
     constructor(callback) {
         if (callback) {
-            this._callback = callback;
+            _(this).callback = callback;
         }
     },
-    get callback() { return this._callback; },       
+    get callback() { return _(this).callback; },       
     get policy() { 
         const callback = this.callback;
         return callback && callback.policy;
@@ -31,12 +35,6 @@ export const Trampoline = Base.extend(CallbackControl, {
         if (callback && $isFunction(callback.guardDispatch)) {
             callback.guardDispatch(handler, binding);
         }        
-    },
-    completeCallback() {
-        const callback = this.callback;
-        if (callback && $isFunction(callback.completeCallback)) {
-            callback.completeCallback();
-        }
     },
     dispatch(handler, greedy, composer) {
         const callback = this.callback;

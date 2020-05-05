@@ -60,25 +60,29 @@ function delegate(delegate, methodType, protocol, methodName, args) {
     }
 
     const handleMethod = new HandleMethod(
-        methodType, protocol, methodName, args, semantics);
+            methodType, protocol, methodName, args, semantics),
+          inference    = handleMethod.inferCallback();
 
-    if (!handler.handle(handleMethod)) {
+    if (!handler.handle(inference)) {
         throw handleMethod.notHandledError();
     }
 
-    const result = handleMethod.callbackResult;
-    if (!$isPromise(result)) return result;
+    const result = inference.callbackResult;
     
-    return result.catch(error => {
-        if (error instanceof NotHandledError) {
-            if (!(semantics.isSpecified(CallbackOptions.BestEffort) &&
-                semantics.hasOption(CallbackOptions.BestEffort))) {
-                throw handleMethod.notHandledError();
+    if ($isPromise(result)) {
+        return result.catch(error => {
+            if (error instanceof NotHandledError) {
+                if (!(semantics.isSpecified(CallbackOptions.BestEffort) &&
+                    semantics.hasOption(CallbackOptions.BestEffort))) {
+                    throw handleMethod.notHandledError();
+                }
+            } else {
+                throw error;
             }
-        } else {
-            throw error;
-        }
-    });
+        });
+    }
+
+    return result;
 }
 
 Handler.implement({

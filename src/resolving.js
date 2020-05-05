@@ -1,7 +1,11 @@
-import { $isNothing, $isFunction } from "miruken-core";
+import { 
+    $isNothing, $isFunction, createKeyChain
+} from "miruken-core";
+
 import { $policy } from "./policy"
 import Inquiry from "./inquiry";
-import { NotHandledError } from "./errors";
+
+const _ = createKeyChain();
 
 export const Resolving = Inquiry.extend({
     constructor(key, callback) {
@@ -13,18 +17,17 @@ export const Resolving = Inquiry.extend({
         } else {
             this.base(key, true);
         }
-        this._callback = callback;
+        _(this).callback = callback;
     },
 
-    get callback() { return this._callback; },
-    get succeeded() { return this._succeeded; },
-    get successfulCallbackResult() { return this._successfulCallbackResult; },
+    get callback()  { return _(this).callback; },
+    get succeeded() { return _(this).succeeded; },
 
     inferCallback() { return this; },
     guardDispatch(handler, binding) {
         const outer = this.base(handler, binding);
         if (outer) {
-            const callback = this._callback;
+            const callback = _(this).callback;
             if ($isFunction(callback.guardDispatch)) {
                 const inner = callback.guardDispatch(handler, binding);
                 if (!inner) {
@@ -47,15 +50,10 @@ export const Resolving = Inquiry.extend({
         return outer;
     },
     isSatisfied(resolution, greedy, composer) { 
-        if (this._succeeded && !greedy) return true;
+        if (_(this).succeeded && !greedy) return true;
         const callback = this.callback,
               handled  = $policy.dispatch(resolution, callback, greedy, composer);
-        if (handled) {
-            if ("callbackResult" in callback) {
-                this._successfulCallbackResult = callback.callbackResult;
-            }
-            this._succeeded = true;
-        }    
+        if (handled) { _(this).succeeded = true; }    
         return handled;
     },
     toString() {

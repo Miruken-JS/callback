@@ -141,7 +141,7 @@ export const CallbackControl = Protocol.extend({
      * @param   {Handler}  [composer]  -  composition handler
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
-    dispatch(handler, greedy, composer) {}
+    dispatch(handler, greedy, composer) {},
 });
 
 /**

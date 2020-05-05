@@ -1,12 +1,15 @@
 import {
     Base, Undefined, Variance,
     $isPromise, $classOf, $isNothing,
-    $isSomething, $instant, $flatten
+    $isSomething, $instant, $flatten,
+    createKeyChain
 } from "miruken-core";
 
 import {
     CallbackControl, Binding, $provide
 } from "./policy";
+
+const _ = createKeyChain();
 
 /**
  * Callback representing the covariant resolution of a key.
@@ -27,38 +30,38 @@ export const Inquiry = Base.extend(CallbackControl, {
             if (!(parent instanceof Inquiry)) {
                 throw new TypeError("The parent is not an Inquiry.");
             }
-            this._parent = parent;
+            _(this).parent = parent;
         }
 
-        this._key         = key;
-        this._many        = !!many;
-        this._resolutions = [];
-        this._promises    = [];
-        this._instant     = $instant.test(key);
+        _(this).key         = key;
+        _(this).many        = !!many;
+        _(this).resolutions = [];
+        _(this).promises    = [];
+        _(this).instant     = $instant.test(key);
     },
 
-    get key() { return this._key; },            
-    get isMany() { return this._many; },
-    get parent() { return this._parent; },
-    get handler() { return this._handler; },
-    get binding() { return this._binding; },          
-    get instant() { return this._promises.length == 0; },             
-    get resolutions() { return this._resolutions; },
+    get key()            { return _(this).key; },            
+    get isMany()         { return _(this).many; },
+    get parent()         { return _(this).parent; },
+    get handler()        { return _(this).handler; },
+    get binding()        { return _(this).binding; },          
+    get instant()        { return _(this).promises.length == 0; },             
+    get resolutions()    { return _(this).resolutions; },
     get callbackPolicy() { return $provide; },       
     get callbackResult() {
-        if (this._result === undefined) {
-            const resolutions = this._resolutions;
+        if (_(this).result === undefined) {
+            const resolutions = _(this).resolutions;
             if (this.instant) {
-                this._result = this.isMany ? resolutions : resolutions[0];
+                _(this).result = this.isMany ? resolutions : resolutions[0];
             } else {
-                this._result = this.isMany 
-                    ? Promise.all(this._promises).then(() => resolutions)
-                    : Promise.all(this._promises).then(() => resolutions[0]);
+                _(this).result = this.isMany 
+                    ? Promise.all(_(this).promises).then(() => resolutions)
+                    : Promise.all(_(this).promises).then(() => resolutions[0]);
             }
         }
-        return this._result;
+        return _(this).result;
     },
-    set callbackResult(value) { this._result = value; },
+    set callbackResult(value) { _(this).result = value; },
 
     isSatisfied(resolution, greedy, composer) { return true; },
     resolve(resolution, greedy, composer) {
@@ -71,7 +74,7 @@ export const Inquiry = Base.extend(CallbackControl, {
             resolved = include.call(this, resolution, greedy, composer);
         }
         if (resolved) {
-            this._result = undefined;
+            _(this).result = undefined;
         }
         return resolved;
     },
@@ -87,12 +90,12 @@ export const Inquiry = Base.extend(CallbackControl, {
                     self._handler = h;
                     self._binding = b;
                 }
-            }(this, this._handler, this._binding);
+            }(this, _(this).handler, _(this).binding);
         }
     },
     inProgress(handler, binding) {
-        return this._handler === handler &&
-            this._binding === binding ||
+        return _(this).handler === handler &&
+            _(this).binding === binding ||
             (this.parent && this.parent.inProgress(handler, binding));
     },    
     dispatch(handler, greedy, composer) {
@@ -102,8 +105,8 @@ export const Inquiry = Base.extend(CallbackControl, {
             resolved = this.resolve(handler, composer);
             if (resolved && !greedy) return true;
         }
-        const resolutions = this._resolutions,
-              promises    = this._promises,
+        const resolutions = _(this).resolutions,
+              promises    = _(this).promises,
               count       = resolutions.length + promises.length;
 
         let   resolved = $provide.dispatch(handler, this, this.key,
@@ -120,23 +123,23 @@ export const Inquiry = Base.extend(CallbackControl, {
 function include(resolution, greedy, composer) {
     if ($isNothing(resolution)) return false;
     if ($isPromise(resolution)) {
-        if (this._instant) return false;
+        if (_(this).instant) return false;
         const promise = this.acceptPromise(resolution.then(res => {
             if (Array.isArray(res)) {
                 const satisfied = res
                     .filter(r => r && this.isSatisfied(r, greedy, composer));
-                this._resolutions.push(...satisfied);
+                _(this).resolutions.push(...satisfied);
             } else if (res && this.isSatisfied(res, greedy, composer)) {
-                this._resolutions.push(res);
+                _(this).resolutions.push(res);
             }
         }));
         if (promise != null) {
-            this._promises.push(promise);
+            _(this).promises.push(promise);
         }
     } else if (!this.isSatisfied(resolution, greedy, composer)) {
         return false;
     } else {
-        this._resolutions.push(resolution);
+        _(this).resolutions.push(resolution);
     }
     return true;                             
 }

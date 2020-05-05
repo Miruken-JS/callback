@@ -1,10 +1,13 @@
 import {
-    Protocol, $isPromise, $flatten
+    Protocol, createKeyChain,
+    $isPromise, $flatten
 } from "miruken-core";
 
 import Handler from "./handler";
 import Composition from "./composition";
 import CompositeHandler from "./composite-handler";
+
+const _ = createKeyChain();
 
 /**
  * Protocol to participate in batched operations.
@@ -35,12 +38,12 @@ const BatchingComplete = Batching.extend();
 export const Batcher = CompositeHandler.extend(BatchingComplete, {
     constructor(...protocols) {
         this.base();
-        this._protocols = $flatten(protocols, true);
+        _(this).protocols = $flatten(protocols, true);
     },
 
     shouldBatch(protocol) {
-        return protocol && (this._protocols.length == 0 ||
-            this._protocols.indexOf(protocol) >= 0); 
+        return protocol && (_(this).protocols.length == 0 ||
+            _(this).protocols.indexOf(protocol) >= 0); 
     },
     complete(composer) {
         let promise = false,
