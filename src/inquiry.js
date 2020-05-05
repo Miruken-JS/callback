@@ -26,37 +26,39 @@ export const Inquiry = Base.extend(CallbackControl, {
             throw new Error("The key is required.");
         }
         
+        const _this = _(this);
+
         if ($isSomething(parent)) {
             if (!(parent instanceof Inquiry)) {
                 throw new TypeError("The parent is not an Inquiry.");
             }
-            _(this).parent = parent;
+            _this.parent = parent;
         }
 
-        _(this).key         = key;
-        _(this).many        = !!many;
-        _(this).resolutions = [];
-        _(this).promises    = [];
-        _(this).instant     = $instant.test(key);
+        _this.key         = key;
+        _this.many        = !!many;
+        _this.resolutions = [];
+        _this.promises    = [];
+        _this.instant     = $instant.test(key);
     },
 
     get key()            { return _(this).key; },            
     get isMany()         { return _(this).many; },
     get parent()         { return _(this).parent; },
     get handler()        { return _(this).handler; },
-    get binding()        { return _(this).binding; },          
-    get instant()        { return _(this).promises.length == 0; },             
+    get binding()        { return _(this).binding; },         
     get resolutions()    { return _(this).resolutions; },
     get callbackPolicy() { return $provide; },       
     get callbackResult() {
         if (_(this).result === undefined) {
-            const resolutions = _(this).resolutions;
-            if (this.instant) {
+            const resolutions = this.resolutions,
+                  promises    = _(this).promises;
+            if (promises.length == 0) {
                 _(this).result = this.isMany ? resolutions : resolutions[0];
             } else {
                 _(this).result = this.isMany 
-                    ? Promise.all(_(this).promises).then(() => resolutions)
-                    : Promise.all(_(this).promises).then(() => resolutions[0]);
+                    ? Promise.all(promises).then(() => resolutions)
+                    : Promise.all(promises).then(() => resolutions[0]);
             }
         }
         return _(this).result;
@@ -84,11 +86,11 @@ export const Inquiry = Base.extend(CallbackControl, {
     guardDispatch(handler, binding) {
         if (!this.inProgress(handler, binding)) {
             return function (self, h, b) {
-                self._handler = handler;
-                self._binding = binding;
+                _(self).handler = handler;
+                _(self).binding = binding;
                 return function () {
-                    self._handler = h;
-                    self._binding = b;
+                    _(self).handler = h;
+                    _(self).binding = b;
                 }
             }(this, _(this).handler, _(this).binding);
         }
@@ -105,7 +107,7 @@ export const Inquiry = Base.extend(CallbackControl, {
             resolved = this.resolve(handler, composer);
             if (resolved && !greedy) return true;
         }
-        const resolutions = _(this).resolutions,
+        const resolutions = this.resolutions,
               promises    = _(this).promises,
               count       = resolutions.length + promises.length;
 
@@ -124,13 +126,14 @@ function include(resolution, greedy, composer) {
     if ($isNothing(resolution)) return false;
     if ($isPromise(resolution)) {
         if (_(this).instant) return false;
+        const resolutions = this.resolutions;
         const promise = this.acceptPromise(resolution.then(res => {
             if (Array.isArray(res)) {
                 const satisfied = res
                     .filter(r => r && this.isSatisfied(r, greedy, composer));
-                _(this).resolutions.push(...satisfied);
+                resolutions.push(...satisfied);
             } else if (res && this.isSatisfied(res, greedy, composer)) {
-                _(this).resolutions.push(res);
+                resolutions.push(res);
             }
         }));
         if (promise != null) {
@@ -139,7 +142,7 @@ function include(resolution, greedy, composer) {
     } else if (!this.isSatisfied(resolution, greedy, composer)) {
         return false;
     } else {
-        _(this).resolutions.push(resolution);
+        this.resolutions.push(resolution);
     }
     return true;                             
 }

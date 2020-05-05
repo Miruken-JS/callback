@@ -19,10 +19,11 @@ export const Command = Base.extend(CallbackControl, {
         if ($isNothing(callback)) {
             throw new TypeError("The callback is required.");
         }
-        _(this).callback = callback;
-        _(this).many     = !!many;
-        _(this).results  = [];
-        _(this).promises = [];
+        const _this = _(this);
+        _this.callback = callback;
+        _this.many     = !!many;
+        _this.results  = [];
+        _this.promises = [];
     },
     
     get isMany()   { return _(this).many; },
@@ -30,18 +31,17 @@ export const Command = Base.extend(CallbackControl, {
     get results()  { return _(this).results; },    
     get callbackPolicy()   { return $handle; },              
     get callbackResult() {
-        if (_(this).result === undefined) {
-            const results  = _(this).results,
-                  promises = _(this).promises;
+        const { result, results, promises} = _(this);
+        if (result === undefined) {
             if (promises.length == 0) {
-                _(this).result = this.isMany ? results : results[0];
+                _(this).result = result = this.isMany ? results : results[0];
             } else {
-                _(this).result = this.isMany
+                _(this).result = result = this.isMany
                     ? Promise.all(promises).then(() => results)
                     : Promise.all(promises).then(() => results[0]);
             }
         }
-        return _(this).result;
+        return result;
     },
     set callbackResult(value) { _(this).result = value; },
 
@@ -56,10 +56,10 @@ export const Command = Base.extend(CallbackControl, {
         } else {
             _(this).results.push(response);
         }
-        _(this).result = undefined;
+        delete _(this).result;
     },            
     dispatch(handler, greedy, composer) {
-        var count = _(this).results.length;
+        const count = _(this).results.length;
         return $handle.dispatch(handler, this.callback, null,
             composer, this.isMany, this.respond.bind(this)) || 
             _(this).results.length > count;     

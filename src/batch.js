@@ -42,8 +42,9 @@ export const Batcher = CompositeHandler.extend(BatchingComplete, {
     },
 
     shouldBatch(protocol) {
-        return protocol && (_(this).protocols.length == 0 ||
-            _(this).protocols.indexOf(protocol) >= 0); 
+        const { protocols } = _(this);
+        return protocol && (protocols.length == 0 ||
+            protocols.indexOf(protocol) >= 0); 
     },
     complete(composer) {
         let promise = false,

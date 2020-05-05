@@ -51,18 +51,20 @@ export const CallbackOptions = Flags({
  */
 export const CallbackSemantics = Composition.extend({
     constructor(options) {
-        _(this).options   = CallbackOptions.None.addFlag(options);
-        _(this).specified = _(this).options;
+        const _this = _(this);
+        _this.options   = CallbackOptions.None.addFlag(options);
+        _this.specified = _this.options;
     },
 
     hasOption(options) {
         return _(this).options.hasFlag(options);
     },              
     setOption(options, enabled) {
-        _(this).options = enabled
-            ? _(this).options.addFlag(options)
-            : _(this).options.removeFlag(options);
-        _(this).specified = _(this).specified.addFlag(options);
+        const _this = _(this);
+        _this.options = enabled
+            ? _this.options.addFlag(options)
+            : _this.options.removeFlag(options);
+        _this.specified = _this.specified.addFlag(options);
     },              
     isSpecified(options) {
         return _(this).specified.hasFlag(options);

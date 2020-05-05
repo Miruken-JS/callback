@@ -30,11 +30,12 @@ export const HandleMethod = Base.extend(CallbackControl, {
         if (protocol && !$isProtocol(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
         }
-        _(this).methodType = methodType;
-        _(this).protocol   = protocol;
-        _(this).methodName = methodName;
-        _(this).args       = args;
-        _(this).semantics  = semantics || new CallbackSemantics();
+        const _this = _(this);
+        _this.methodType = methodType;
+        _this.protocol   = protocol;
+        _this.methodName = methodName;
+        _this.args       = args;
+        _this.semantics  = semantics || new CallbackSemantics();
     },
 
     get methodType()          { return _(this).methodType; },

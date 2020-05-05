@@ -21,27 +21,29 @@ export const Lookup = Base.extend(CallbackControl, {
         if ($isNothing(key)) {
             throw new Error("The key is required.");
         }
-        _(this).key      = key;
-        _(this).many     = !!many;
-        _(this).results  = [];
-        _(this).promises = [];
-        _(this).instant  = $instant.test(key);
+
+        const _this = _(this);
+        _this.key      = key;
+        _this.many     = !!many;
+        _this.results  = [];
+        _this.promises = [];
+        _this.instant  = $instant.test(key);
     },
 
     get key()            { return _(this).key; },
     get isMany()         { return _(this).many; },
-    get instant()        { return _(this).promises.length == 0; },
     get results()        { return _(this).results; },
     get callbackPolicy() { return $lookup; },     
     get callbackResult() {
         if (_(this).result === undefined) {
-            const results = _(this).results;
-            if (this.instant) {
+            const results  = this.results,
+                  promises = _(this).promises;;
+            if (promises.length == 0) {
                 _(this).result = this.isMany ? results : results[0];
             } else {
                 _(this).result = this.isMany 
-                    ? Promise.all(_(this).promises).then(() => results)
-                    : Promise.all(_(this).promises).then(() => results[0]);
+                    ? Promise.all(promises).then(() => results)
+                    : Promise.all(promises).then(() => results[0]);
             }
         }
         return _(this).result;
@@ -58,12 +60,12 @@ export const Lookup = Base.extend(CallbackControl, {
             found = include.call(this, result, composer);
         }
         if (found) {
-            _(this).result = undefined;
+            delete _(this).result;
         }
         return found;
     },               
     dispatch(handler, greedy, composer) {
-        const results  = _(this).results,
+        const results  = this.results,
               promises = _(this).promises,
               count    = results.length + promises.length,
               found    = $lookup.dispatch(handler, this, this.key,
@@ -79,11 +81,12 @@ function include(result, composer) {
     if ($isNothing(result)) return false;
     if ($isPromise(result)) {
         if (_(this).instant) return false;
+        const results = this.results;
         _(this).promises.push(result.then(res => {
             if (Array.isArray(res)) {
-                _(this).results.push(...res.filter(r => r != null));
+                results.push(...res.filter(r => r != null));
             } else if (res != null) {
-                _(this).results.push(res);
+                results.push(res);
             }
         }).catch(Undefined));
     } else {
