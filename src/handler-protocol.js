@@ -1,12 +1,15 @@
 import {
     MethodType, Delegate, StrictProtocol,
-    ResolvingProtocol, DuckTyping, $isPromise
+    ResolvingProtocol, DuckTyping, $isPromise,
+    createKeyChain
 } from "miruken-core";
 
 import Handler from "./handler";
 import HandleMethod from "./handle-method";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 import { NotHandledError } from "./errors";
+
+const _ = createKeyChain();
 
 /**
  * Delegates properties and methods to a callback handler using 
@@ -18,10 +21,11 @@ import { NotHandledError } from "./errors";
  */
 export const InvocationDelegate = Delegate.extend({
     constructor(handler) {
-        this.extend({
-            get handler() { return handler; }
-        });
+        _(this).handler = handler;
     },
+    
+    get handler() { return _(this).handler; },
+
     get(protocol, propertyName) {
         return delegate(this, MethodType.Get, protocol, propertyName, null);
     },

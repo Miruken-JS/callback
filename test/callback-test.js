@@ -1,9 +1,9 @@
 import {
     True, False, Undefined, Base, Protocol,
-    DuckTyping, Variance, MethodType, Options,
+    DuckTyping, Variance, MethodType,
     ResolvingProtocol, Metadata, assignID,
     designWithReturn, copy, $isPromise, $eq,
-    $instant, $using, $flatten
+    $instant, $using, $flatten, createKeyChain
 } from "miruken-core";
 
 import {
@@ -12,6 +12,7 @@ import {
 
 import CascadeHandler from "../src/cascade-handler";
 import CompositeHandler from "../src/composite-handler";
+import Options from "../src/options";
 
 import {
     $policy, $handle, $provide, $lookup,
@@ -31,6 +32,8 @@ import "../src/handler-options"
 import "../src/handler-protocol"
 
 import { expect } from "chai";
+
+const _ = createKeyChain();
 
 const Guest = Base.extend({
     constructor(age) {
@@ -86,35 +89,42 @@ const WireMoney = Base.extend({
 
 const CountMoney = Base.extend({
     constructor() {
-        let _total = 0.0;
-        this.extend({
-            get total() { return _total; },
-            record(amount) { _total += amount; }
-        });
-    }
+        _(this).total = 0.0;
+    },
+
+    get total() { return _(this).total; },
+    record(amount) { _(this).total += amount; }
 });
 
 const Accountable = Base.extend({
     constructor(assets, liabilities) {
-        assets      = Number(assets || 0);
-        liabilities = Number(liabilities || 0);
-        this.extend({
-            get assets() { return assets; },
-            get liabilities() { return liabilities; },
-            get balance() { return assets - liabilities; },
-            addAssets(amount) { assets      += amount; },
-            addLiabilities(amount) { liabilities += amount; },
-            transfer(amount, receiver) {
-                assets -= amount;
-                if (assets < 0) {
-                    liabilties -= assets;
-                    assets      = 0;
-                }
-                receiver.addAssets(amount);
-                return Promise.delay(100);
-            }
-        });
+        _(this).assets      = Number(assets || 0);
+        _(this).liabilities = Number(liabilities || 0);
     },
+
+    get assets()      { return _(this).assets; },
+    get liabilities() { return _(this).liabilities; },
+    get balance()     { return this.assets - this.liabilities; },
+    
+    addAssets(amount) {
+        _(this).assets = _(this).assets + amount;
+    },
+    addLiabilities(amount) {
+        _(this).liabilities = _(this).liabilities + amount;
+    },
+    transfer(amount, receiver) {
+        const { assets, liabilties } = _(this);
+        assets -= amount;
+        if (assets < 0) {
+            _(this).liabilties = (liabilties -= assets);
+            _(this).assets     = 0;
+        } else {
+            _(this).assets = assets;
+        }
+        receiver.addAssets(amount);
+        return Promise.delay(100);
+    },
+
     @handles(CountMoney)
     countMoney(countMoney, composer) {
         countMoney.record(this.balance);        
@@ -141,13 +151,15 @@ const Activity = Accountable.extend({
 const CardTable = Activity.extend(Game, {
     constructor(name, minPlayers, maxPlayers) {
         this.base(name);
-        this.extend({
-            open(numPlayers) {
-                if (minPlayers > numPlayers || numPlayers > maxPlayers)
-                    return $unhandled;
-            },
-        });
-    }
+        _(this).minPlayers = minPlayers;
+        _(this).maxPlayers = maxPlayers;
+    },
+
+    open(numPlayers) {
+        const { minPlayers, maxPlayers } = _(this);
+        if (minPlayers > numPlayers || numPlayers > maxPlayers)
+            return $unhandled;
+    }    
 });
 
 const Casino = CompositeHandler.extend({
@@ -417,6 +429,79 @@ describe("Policies", () => {
         expect(removeCount).to.equal(2);
             expect(Metadata.getOwn($provide, handler)).to.be.undefined;
         });
+    });
+});
+
+describe("Options", () => {
+    const MyOptions = Options.extend({
+        ack:   false,
+        log:   false,
+        child: undefined
+    });
+
+    describe("#copy", () => {
+        it("should copy options", () => {
+            const options     = new Options({ack: true, log: true}),
+                  optionsCopy = options.copy();
+            expect(optionsCopy).to.not.equal(options);
+            expect(optionsCopy.ack).to.be.true;
+            expect(optionsCopy.log).to.be.true;
+            expect(optionsCopy.child).to.be.undefined;
+        });
+
+        it("should copy nested Options", () => {
+            const options = new Options({
+                      ack:   true,
+                      log:   true,
+                      child: new MyOptions({ack: true})
+                  }),
+                  optionsCopy = options.copy();
+            expect(optionsCopy).to.not.equal(options);
+            expect(optionsCopy.ack).to.be.true;
+            expect(optionsCopy.log).to.be.true;
+            expect(optionsCopy.child).to.not.equal(options.child);
+            expect(optionsCopy.child.ack).to.be.true;
+            expect(optionsCopy.child.log).to.be.false;
+            expect(optionsCopy.child.child).to.be.undefined;            
+        });        
+    });
+
+    describe("#mergeInto", () => {
+        it("should merge options", () => {
+            const options1 = new Options({
+                      ack:   true,
+                      log:   true,
+                      child: new MyOptions({ack: true})                
+                  }),
+                  options2 = new Options({log: false});
+            options1.mergeInto(options2);
+            expect(options2.ack).to.be.true;
+            expect(options2.log).to.be.false;
+            expect(options2.child).to.not.equal(options1.child);
+            expect(options2.child.ack).to.be.true;
+            expect(options2.child.log).to.be.false;            
+        });
+
+        it("should merge nested options", () => {
+            const options1 = new Options({
+                      ack:   true,
+                      log:   true,
+                      child: new MyOptions({ack: true})
+                  }),
+                  options2 = new Options({
+                      log:   false,
+                      child: new MyOptions({
+                          ack: false,
+                          log: true
+                      })
+                  });
+            options1.mergeInto(options2);
+            expect(options2.ack).to.be.true;
+            expect(options2.log).to.be.false;
+            expect(options2.child).to.not.equal(options1.child);
+            expect(options2.child.ack).to.be.false;
+            expect(options2.child.log).to.be.true;            
+        });        
     });
 });
 
@@ -1741,39 +1826,41 @@ describe("Handler", () => {
           });    
         const EmailBatch = Base.extend(Emailing, Batching, {
             constructor() {
-                let _msgs     = [],
-                    _resolves = [],
-                    _promises = [];
-                this.extend({
-                    send(msg) {
-                        _msgs.push(msg + " batch");
-                    },
-                    sendConfirm(msg) {
-                        _msgs.push(msg);
-                        const promise =  new Promise(resolve =>
-                            _resolves.push(() => { resolve(msg + " batch"); })
-                        );
-                        _promises.push(promise);
-                        return promise;
-                    },
-                    failConfirm(msg) {
-                        const promise = new Promise((resolve, reject) =>
-                            _resolves.push(() => { reject(Error("Can't send message")); })
-                        );
-                        _promises.push(promise);
-                        return promise;
-                    },
-                    complete(composer) {
-                        for (let i = 0; i < _resolves.length; ++i) {
-                            _resolves[i]();
-                        }
-                        const results = Emailing(composer).send(_msgs);
-                        return _promises.length > 0
-                             ? Promise.all(_promises).then(() => { return results; })
-                             : results;
-                    }
-                });
-            }
+                _(this).msgs     = [];
+                _(this).resolves = [];
+                _(this).promises = [];
+            },
+
+            send(msg) {
+                _(this).msgs.push(msg + " batch");
+            },
+            sendConfirm(msg) {
+                const { msgs, resolves, promises } = _(this);
+                msgs.push(msg);
+                const promise = new Promise(resolve =>
+                    resolves.push(() => { resolve(msg + " batch"); })
+                );
+                promises.push(promise);
+                return promise;
+            },
+            failConfirm(msg) {
+                const { resolves, promises } = _(this);
+                const promise = new Promise((resolve, reject) =>
+                    resolves.push(() => { reject(Error("Can't send message")); })
+                );
+                promises.push(promise);
+                return promise;
+            },
+            complete(composer) {
+                const { msgs, resolves, promises } = _(this);
+                for (let i = 0; i < resolves.length; ++i) {
+                    resolves[i]();
+                }
+                const results = Emailing(composer).send(msgs);
+                return promises.length > 0
+                     ? Promise.all(promises).then(() => results)
+                     : results;
+            }            
         });
 
     it("should require protocol conformance", () => {

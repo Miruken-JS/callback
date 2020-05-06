@@ -1,8 +1,9 @@
 import { 
-    Options, $isFunction, $isNothing, $isClass
+    $isFunction, $isNothing, $isClass
 } from "miruken-core";
 
 import Handler from "./handler";
+import Options from "./options";
 import { handles } from "./policy";
 
 /**
