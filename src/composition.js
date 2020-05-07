@@ -10,6 +10,10 @@ import Inference from "./inference"
  * @extends Trampoline
  */
 export const Composition = Trampoline.extend({
+    get canBatch() {
+        const callback = this.callback;
+        return $isNothing(callback) || callback.canBatch !== false;
+    },
     inferCallback() {
         const callback = this.callback;
         if ($isNothing(callback)) return this;

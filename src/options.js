@@ -4,6 +4,8 @@ import {
 } from "miruken-core";
 
 export const Options = Base.extend({
+    get canBatch() { return false },
+    
     inferCallback() { return this; },
     /**
      * Merges this options data into `options`.

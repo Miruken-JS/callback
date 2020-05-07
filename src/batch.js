@@ -3,8 +3,10 @@ import {
     $isPromise, $flatten
 } from "miruken-core";
 
+import Inquiry from "./inquiry";
 import Handler from "./handler";
 import Composition from "./composition";
+import Trampoline from "./trampoline";
 import CompositeHandler from "./composite-handler";
 
 const _ = createKeyChain();
@@ -27,7 +29,7 @@ export const Batching = Protocol.extend({
 /**
  * Coordinates batching operations through the protocol
  * {{#crossLink "Batching"}}{{/crossLink}}.
- * @class Batcher
+ * @class BatchingComplete
  * @constructor
  * @param   {Protocol}  [...protocols]  -  protocols to batch
  * @extends CompositeHandler
@@ -35,7 +37,7 @@ export const Batching = Protocol.extend({
  */
 const BatchingComplete = Batching.extend();
 
-export const Batcher = CompositeHandler.extend(BatchingComplete, {
+export const Batch = CompositeHandler.extend(BatchingComplete, {
     constructor(...protocols) {
         this.base();
         _(this).protocols = $flatten(protocols, true);
@@ -60,6 +62,11 @@ export const Batcher = CompositeHandler.extend(BatchingComplete, {
     }
 });
 
+export const NoBatch = Trampoline.extend({
+    get canBatch() { return false },
+    inferCallback() { return this; }
+});
+
 Handler.implement({
     /**
      * Prepares the Handler for batching.
@@ -69,20 +76,20 @@ Handler.implement({
      * @for Handler
      */
     $batch(protocols) {
-        let _batcher  = new Batcher(protocols),
+        let _batch    = new Batch(protocols),
             _complete = false,
             _promises = [];
         return this.decorate({
-            $provide: [Batcher, () =>  _batcher ],
+            $provide: [Batch, () =>  _batch ],
             handleCallback(callback, greedy, composer) {
                 let handled = false;
-                if (_batcher) {
-                    const b = _batcher;
+                if (_batch && callback.canBatch !== false) {
+                    const b = _batch;
                     if (_complete && !(callback instanceof Composition)) {
-                        _batcher = null;
+                        _batch = null;
                     }
                     if ((handled = b.handleCallback(callback, greedy, composer)) && !greedy) {
-                        if (_batcher) {
+                        if (_batch) {
                             const result = callback.callbackResult;
                             if ($isPromise(result)) {
                                 _promises.push(result);
@@ -102,10 +109,24 @@ Handler.implement({
             }
         });            
     },
-    getBatcher(protocol) {
-        const batcher = this.resolve(Batcher);
-        if (batcher && (!protocol || batcher.shouldBatch(protocol))) {
-            return batcher;
+    noBatch() {
+        return this.decorate({
+            handleCallback(callback, greedy, composer) {
+                let inquiry;
+                if (callback instanceof Inquiry) {
+                    inquiry = callback;
+                } else if (Composition.isComposed(callback, Inquiry)) {
+                    inquiry = callback.callback;
+                }
+                return (inquiry == null || inquiry.key !== Batch) &&
+                    this.base(new NoBatch(callback), greedy, composer);
+            }
+        });
+    },
+    getBatch(protocol) {
+        const batch = this.resolve(Batch);
+        if (batch && (!protocol || batch.shouldBatch(protocol))) {
+            return batch;
         }
     }  
 });

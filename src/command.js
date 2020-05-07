@@ -28,8 +28,11 @@ export const Command = Base.extend(CallbackControl, {
     
     get isMany()   { return _(this).many; },
     get callback() { return _(this).callback; },
-    get results()  { return _(this).results; },    
-    get callbackPolicy()   { return $handle; },              
+    get results()  { return _(this).results; }, 
+    get callbackPolicy()   { return $handle; },
+    get canBatch() {
+        return this.callback.canBatch !== false;
+    },           
     get callbackResult() {
         const { result, results, promises} = _(this);
         if (result === undefined) {

@@ -56,6 +56,8 @@ export const CallbackSemantics = Composition.extend({
         _this.specified = _this.options;
     },
 
+    get canBatch() { return false },
+
     hasOption(options) {
         return _(this).options.hasFlag(options);
     },              

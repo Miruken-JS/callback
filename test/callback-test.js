@@ -1782,14 +1782,14 @@ describe("Handler", () => {
           Offline = Emailing.extend(),
           EmailHandler = Handler.extend(Emailing, {
               send(msg) {
-                  const batch = this.getBatch();
+                  const batch = this.ensureBatch();
                   return batch ? batch.send(msg) : msg; 
               },
               sendConfirm(msg) {
-                  const batch = this.getBatch();
+                  const batch = this.ensureBatch();
                   return batch ? batch.sendConfirm(msg)
                        : Promise.resolve(msg);
-              },            
+              },
               fail(msg) {
                   if (msg === "OFF") {
                       return Offline($composer).fail(msg);
@@ -1797,16 +1797,16 @@ describe("Handler", () => {
                   throw new Error("Can't send message");
               },
               failConfirm(msg) {
-                  const batch = this.getBatch();
+                  const batch = this.ensureBatch();
                   return batch ? batch.failConfirm(msg)
                        : Promise.reject(Error("Can't send message"));
               },            
-              getBatch() {
-                  const batcher = $composer.getBatcher(Emailing);
-                  if (batcher) {
-                      const batch = new EmailBatch();
-                      batcher.addHandlers(batch);
-                      return batch;
+              ensureBatch() {
+                  const batch = $composer.getBatch(Emailing);
+                  if (batch) {
+                      const emailBatch = new EmailBatch();
+                      batch.addHandlers(emailBatch);
+                      return emailBatch;
                   }
               }
           }),
@@ -2141,6 +2141,14 @@ describe("Handler", () => {
                     });
                 });
             });
+        });
+
+        it("should suppress batching", done => {
+            const handler = new EmailHandler();
+            expect($using(handler.$batch(), batch => {
+                expect(Emailing(batch.noBatch()).send("Hello")).to.equal("Hello");
+                done();
+            })).to.eql([]);
         });
 
         it("should work with filters", () => {
