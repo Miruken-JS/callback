@@ -14,6 +14,7 @@ export const Trampoline = Base.extend(CallbackControl, {
             _(this).callback = callback;
         }
     },
+    
     get callback() { return _(this).callback; },       
     get policy() { 
         const callback = this.callback;

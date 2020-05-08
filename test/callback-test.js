@@ -2,8 +2,8 @@ import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType,
     ResolvingProtocol, Metadata, assignID,
-    designWithReturn, copy, $isPromise, $eq,
-    $instant, $using, $flatten, createKeyChain
+    design, designWithReturn, copy, $isPromise,
+    $eq, $instant, $using, $flatten, createKeyChain
 } from "miruken-core";
 
 import {
@@ -577,6 +577,19 @@ describe("Handler", () => {
                   }));
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
+        });
+
+        it("should handle callbacks statically", () => {
+            const Bank = Base.extend(null, {
+                      @handles
+                      @design(CountMoney)
+                      count(countMoney) {
+                          countMoney.record(500000.00);                        
+                      }
+                  }),
+                  countMoney = new CountMoney();
+            expect(Handler(Bank).handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(500000.00);
         });
 
         it("should ignore callback if $unhandled", () => {
