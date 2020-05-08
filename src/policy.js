@@ -6,7 +6,8 @@ import {
     $isClass, $isProtocol, $classOf, $eq, $use, $lift
 } from "miruken-core";
 
-const policies = {};
+const policies          = {},
+      policyMetadataKey = Symbol();
 
 /**
  * Sentinel indicating callback not handled.
@@ -215,20 +216,27 @@ export function $policy(variance, description) {
         }
         const binding = new Binding(constraint, handler, removed),
               index   = createIndex(binding.constraint),
-              list    = Metadata.getOrCreateOwn(key, owner, () => new IndexedList(comparer));
+              meta    = Metadata.getOrCreateOwn(policyMetadataKey, owner, () => ({})),
+              list    = meta[key] || (meta[key] = new IndexedList(comparer));
         list.insert(binding, index);
         return function (notifyRemoved) {
             list.remove(binding);
             if (list.isEmpty()) {
-                Metadata.remove(key, owner);
+                delete meta[key];
             }
             if (binding.removed && (notifyRemoved !== false)) {
                 binding.removed(owner);
             }
         };
     };
-    policy.removeAll = function (owner) {
-        const list = Metadata.getOwn(key, owner);
+    policy.getBindings = function (owner) {
+        const meta = Metadata.getOwn(policyMetadataKey, owner);
+        if (meta) return meta[key];
+    }
+    policy.removeBindings = function (owner) {
+        const meta = Metadata.getOwn(policyMetadataKey, owner);
+        if (!meta) { return };
+        const list = meta[key];
         if (!list) { return };
         let   head = list.head;
         while (head) {
@@ -237,7 +245,7 @@ export function $policy(variance, description) {
             }
             head = head.next;
         }
-        Metadata.remove(key, owner);
+        delete meta[key];
     };
     policy.dispatch = function (handler, callback, constraint, composer, all, results) {
         let v = variance;
@@ -255,7 +263,9 @@ export function $policy(variance, description) {
 
         let dispatched = false;
 
-        Metadata.collect(key, handler, list => {
+        Metadata.collect(policyMetadataKey, handler, meta => {
+            const list = meta[key];
+            if (!list) return false;
             dispatched = _dispatch(handler, callback, constraint, v,
                                    list, composer, all, results)
                       || dispatched;
