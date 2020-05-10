@@ -9,7 +9,7 @@ import Inquiry from "./inquiry";
 
 import {
     $handle, $provide, $lookup
-} from "./policy";
+} from "./callback-policy";
 
 import Handler from "./handler";
 import Composition  from "./composition";

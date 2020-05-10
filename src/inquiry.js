@@ -7,7 +7,7 @@ import {
 
 import CallbackControl from "./callback-control";
 import { Binding } from "./handler-descriptor";
-import { $provide } from "./policy";
+import { $provide } from "./callback-policy";
 
 const _ = createKeyChain();
 

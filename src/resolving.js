@@ -2,8 +2,8 @@ import {
     $isNothing, $isFunction, createKeyChain
 } from "miruken-core";
 
-import { $policy } from "./policy"
 import Inquiry from "./inquiry";
+import { CallbackPolicy } from "./callback-policy";
 
 const _ = createKeyChain();
 
@@ -52,7 +52,8 @@ export const Resolving = Inquiry.extend({
     isSatisfied(resolution, greedy, composer) { 
         if (_(this).succeeded && !greedy) return true;
         const callback = this.callback,
-              handled  = $policy.dispatch(resolution, callback, greedy, composer);
+              handled  = CallbackPolicy.dispatch(
+                  resolution, callback, greedy, composer);
         if (handled) { _(this).succeeded = true; }    
         return handled;
     },

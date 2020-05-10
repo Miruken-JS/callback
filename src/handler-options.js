@@ -4,7 +4,7 @@ import {
 
 import Handler from "./handler";
 import Options from "./options";
-import { handles } from "./policy";
+import { handles } from "./callback-policy";
 
 /**
  * Register the options to be applied by a Handler.

@@ -16,14 +16,14 @@ import CompositeHandler from "../src/composite-handler";
 import HandlerDescriptor from "../src/handler-descriptor";
 import Options from "../src/options";
 
-import {
-    $policy, $handle, $provide, $lookup,
-    handles, provides, looksup
-} from "../src/policy"
-
 import HandleMethod from "../src/handle-method";
 import { Batching } from "../src/batch";
-import { $unhandled } from "../src/callback-policy";
+
+import {
+    CallbackPolicy, $handle, $provide,
+    $lookup, handles, provides, looksup,
+    $unhandled
+} from "../src/callback-policy";
 
 import {
     RejectedError, TimeoutError
@@ -249,15 +249,15 @@ describe("HandleMethod", () => {
 });
 
 describe("Policies", () => {
-    describe("$policy", () => {
-        it("Should accept variance option", () => {
-            const baz = $policy(Variance.Contravariant, "baz");
+    describe("CallbackPolicy", () => {
+        it("Should create from variance", () => {
+            const baz = CallbackPolicy.create(Variance.Contravariant, "baz");
             expect(baz).to.be.ok;
         });
 
         it("Should reject invalid variance option", () => {
             expect(() => {
-                $policy({ variance: 1000 }, "policy #2");
+                CallbackPolicy.create({ variance: 1000 }, "policy #2");
             }).to.throw(TypeError, "Invalid variance parameter.");
         });
   
@@ -271,6 +271,12 @@ describe("Policies", () => {
             const descriptor = HandlerDescriptor.get(Cashier),
                   bindings   = descriptor.getBindings($handle);
             expect(bindings.head.constraint).to.equal(CountMoney);
+        });
+
+        it("Should fail instantiation of CallbackPolicy", () => {
+            expect(() => {
+                new CallbackPolicy(Variance.Contravariant, "bam");
+            }).to.throw(Error, "CallbackPolicy cannot be instantiated.");    
         });
     });
 

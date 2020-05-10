@@ -3,7 +3,7 @@ import {
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
-import { $handle, $policy } from "./policy";
+import { CallbackPolicy, $handle } from "./callback-policy";
 
 const _ = createKeyChain();
 
@@ -39,7 +39,7 @@ export const Trampoline = Base.extend(CallbackControl, {
     dispatch(handler, greedy, composer) {
         const callback = this.callback;
         return callback
-             ? $policy.dispatch(handler, callback, greedy, composer)
+             ? CallbackPolicy.dispatch(handler, callback, greedy, composer)
              : $handle.dispatch(handler, this, null, composer, greedy);
     }
 });

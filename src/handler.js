@@ -2,9 +2,9 @@ import {
     Base, $isNothing, $isFunction, $decorator
 } from "miruken-core";
 
-import { $policy } from "./policy";
 import Composition from "./composition";
 import Inference from "./inference";
+import { CallbackPolicy } from "./callback-policy";
 
 export let $composer;
 
@@ -43,7 +43,7 @@ export const Handler = Base.extend({
      * @returns {boolean} true if the callback was handled, false otherwise.
      */
     handleCallback(callback, greedy, composer) {
-        return $policy.dispatch(this, callback, greedy, composer);
+        return CallbackPolicy.dispatch(this, callback, greedy, composer);
     }
 }, {
     coerce(object) { return new HandlerAdapter(object); }
@@ -60,7 +60,7 @@ export const HandlerAdapter = Handler.extend({
         });
     },
     handleCallback(callback, greedy, composer) {
-        return $policy.dispatch(this.handler, callback, greedy, composer);
+        return CallbackPolicy.dispatch(this.handler, callback, greedy, composer);
     }
 });
 

@@ -5,7 +5,7 @@ import {
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
-import { $lookup } from "./policy";
+import { $lookup } from "./callback-policy";
 
 const _ = createKeyChain();
 

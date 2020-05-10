@@ -1,6 +1,7 @@
 import { 
-    Base, Undefined, Variance, $isNothing,
-    Modifier, $isFunction, $classOf, $use,
+    Base, Undefined, Variance, Modifier,
+    decorate, isDescriptor, designWithReturn,
+    $isNothing, $isFunction, $classOf, $use,
     $lift, createKey
 } from "miruken-core";
 
@@ -24,7 +25,7 @@ export const CallbackPolicy = Base.extend({
     */    
     constructor(variance, description) {
         if ($classOf(this) === CallbackPolicy) {
-            throw new Error("CallbackPolicy cannot be instantiated");
+            throw new Error("CallbackPolicy cannot be instantiated.");
         }
 
         _(this).variance    = variance;
@@ -124,7 +125,13 @@ export const CallbackPolicy = Base.extend({
             case Variance.Invariant:
                 return new InvariantPolicy(description);
         }    
-    }
+    },
+    dispatch(handler, callback, greedy, composer) {
+        if ($isFunction(callback.dispatch)) {
+            return callback.dispatch(handler, greedy, composer);
+        }
+        return $handle.dispatch(handler, callback, null, composer, greedy);   
+    } 
 });
 
 export const CovariantPolicy = CallbackPolicy.extend({
@@ -200,6 +207,61 @@ function addHandler(owner, constraint, handler, removed) {
     return descriptor.addBinding(this, constraint, handler, removed);
 };
 
+/**
+ * Registers methods and properties as handlers.
+ * @method addHandler
+ * @param  {String}         name         - policy name
+ * @param  {CallbackPolicy} policy       - the policy
+ * @param  {Object}         [allowGets]  - true to allow property handlers
+ * @param  {Function}       [filter]     - optional callback filter
+ */
+export function registerHandlers(name, policy, allowGets, filter) {
+    if (!policy) {
+        throw new Error(`The policy for @${name} is required.`);
+    }
+    return (target, key, descriptor, constraints) => {
+        if (!isDescriptor(descriptor)) {
+            throw new SyntaxError(`@${name} cannot be applied to classes.`);
+        }
+        if (key === "constructor") {
+            throw new SyntaxError(`@${name} cannot be applied to constructors.`);
+        }
+        const { get, value } = descriptor;
+        if (!$isFunction(value)) {
+            if (allowGets) {
+                if (!$isFunction(get)) {
+                    throw new SyntaxError(`@${name} can only be applied to methods and getters.`);
+                }
+            } else {
+                throw new SyntaxError(`@${name} can only be applied to methods.`);
+            }
+        }
+        if (constraints.length == 0) {
+            if (policy.variance === Variance.Covariant ||
+                policy.variance === Variance.Invariant) {
+                const signature = designWithReturn.get(target, key);
+                constraints = signature ? signature[0] : null;
+            } else {
+                constraints = null;
+            }
+        }
+        function lateBinding() {
+            const result = this[key];
+            if ($isFunction(result)) {
+                return result.apply(this, arguments);
+            }
+            return allowGets ? result : $unhandled;
+        }
+        const handler = $isFunction(filter) ? function () {
+            return filter.apply(this, [key, ...arguments]) === false
+                 ? $unhandled
+                 : lateBinding.apply(this, arguments);
+            } : lateBinding;
+        handler.key = key;
+        policy.addHandler(target, constraints, handler);
+    };
+}
+
 function validateCompareArguments(binding, otherBinding) {
     if ($isNothing(binding)) {
         throw new Error("The binding argument is required.");
@@ -210,3 +272,32 @@ function validateCompareArguments(binding, otherBinding) {
     }
 }
 
+/**
+ * Policy for handling callbacks contravariantly.
+ * @property {Function} $handle
+ */
+export const $handle = new ContravariantPolicy("handle");
+
+export function handles(...args) {
+    return decorate(registerHandlers("handle", $handle), args);
+}
+
+/**
+ * Policy for providing callbacks covariantly.
+ * @property {Function} $provide  
+ */        
+export const $provide = new CovariantPolicy("provide");
+
+export function provides(...args) {
+    return decorate(registerHandlers("provide", $provide, true), args);
+}
+
+/**
+ * Policy for matching callbacks invariantly.
+ * @property {Function} $lookup  
+ */                
+export const $lookup = new InvariantPolicy("lookup");
+
+export function looksup(...args) {
+    return decorate(registerHandlers("lookup", $lookup, true), args);    
+}

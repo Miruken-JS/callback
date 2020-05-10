@@ -3,7 +3,7 @@ import {
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
-import { $handle } from "./policy";
+import { $handle } from "./callback-policy";
 
 const _ = createKeyChain();
 
