@@ -1,5 +1,5 @@
 import {
-    Variance, $isFunction, isSomething,
+    Variance, $isFunction, $isSomething,
     $isPromise, $classOf, $flatten, $decorate
 } from "miruken-core";
 
@@ -7,8 +7,8 @@ import Command from "./command";
 import Lookup from "./lookup";
 import Inquiry from "./inquiry";
 
-import { 
-    Binding, $handle, $provide, $lookup
+import {
+    $handle, $provide, $lookup
 } from "./policy";
 
 import Handler from "./handler";

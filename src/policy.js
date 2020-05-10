@@ -1,13 +1,12 @@
 import {
-    False, Undefined, Base, Variance,
-    Protocol, Metadata, Modifier, IndexedList,
-    assignID, decorate, isDescriptor, designWithReturn,
-    $isNothing, $isString, $isFunction, $isObject,
-    $isClass, $isProtocol, $classOf, $eq, $use, $lift
+    Undefined, Base, Variance, Modifier,
+    decorate, isDescriptor, designWithReturn,
+    $isNothing, $isFunction, $classOf, $use, $lift
 } from "miruken-core";
 
-const policies          = {},
-      policyMetadataKey = Symbol();
+import HandlerDescriptor from "./handler-descriptor";
+
+const policies = {};
 
 /**
  * Sentinel indicating callback not handled.
@@ -101,50 +100,6 @@ export function addPolicy(name, provider, allowGets, filter) {
     };
 }
 
-export const CallbackControl = Protocol.extend({
-    /**
-     * Tags this callback for boundary checking.
-     * @property {Any} bounds
-     * @readOnly
-     */    
-    get bounds() {},
-
-    /**
-     * Returns true if this callback can participate in batching.
-     * @property {Boolean} canBatch
-     * @readOnly
-     */    
-    get canBatch() {},
-
-    /**
-     * Gets the callback policy.
-     * @property {Function} policy
-     * @readOnly
-     */
-    callbackPolicy: undefined,
-
-    /**
-     * Guards the callback dispatch.
-     * @method dispatch
-     * @param   {Object}   handler     -  target handler
-     * @param   {Any}      binding     -  usually Binding
-     * @returns {Function} truthy if dispatch can proceed.
-     * If a function is returned it will be called after
-     * the dispatch with *this* callback as the receiver.
-     */
-    guardDispatch(handler, binding) {},
-
-    /**
-     * Dispatches the callback.
-     * @method dispatch
-     * @param   {Object}   handler     -  target handler
-     * @param   {boolean}  greedy      -  true if handle greedily
-     * @param   {Handler}  [composer]  -  composition handler
-     * @returns {boolean} true if the callback was handled, false otherwise.
-     */
-    dispatch(handler, greedy, composer) {},
-});
-
 /**
  * Defines a new callback policy.
  * This is the main extensibility point for handling callbacks.
@@ -163,21 +118,20 @@ export function $policy(variance, description) {
         throw new TypeError("$policy expects a Variance parameter.");
     }
 
-    const key = Symbol(description);
-    let handled, comparer;
+    let acceptResult, comparer;
     
     switch (variance) {
     case Variance.Covariant:
-        handled  = requiresResult;
-        comparer = compareCovariant; 
+        acceptResult = requiresResult;
+        comparer     = compareCovariant; 
         break;
     case Variance.Contravariant:
-        handled  = impliesSuccess;
-        comparer = compareContravariant; 
+        acceptResult = impliesSuccess;
+        comparer     = compareContravariant; 
         break;
     case Variance.Invariant:
-        handled  = requiresResult;
-        comparer = compareInvariant; 
+        acceptResult = requiresResult;
+        comparer     = compareInvariant; 
         break;
     }
 
@@ -214,109 +168,20 @@ export function $policy(variance, description) {
             const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
             handler = $lift(source);
         }
-        const binding = new Binding(constraint, handler, removed),
-              index   = createIndex(binding.constraint),
-              meta    = Metadata.getOrCreateOwn(policyMetadataKey, owner, () => ({})),
-              list    = meta[key] || (meta[key] = new IndexedList(comparer));
-        list.insert(binding, index);
-        return function (notifyRemoved) {
-            list.remove(binding);
-            if (list.isEmpty()) {
-                delete meta[key];
-            }
-            if (binding.removed && (notifyRemoved !== false)) {
-                binding.removed(owner);
-            }
-        };
-    };
-    policy.getBindings = function (owner) {
-        const meta = Metadata.getOwn(policyMetadataKey, owner);
-        if (meta) return meta[key];
-    }
-    policy.removeBindings = function (owner) {
-        const meta = Metadata.getOwn(policyMetadataKey, owner);
-        if (!meta) { return };
-        const list = meta[key];
-        if (!list) { return };
-        let   head = list.head;
-        while (head) {
-            if (head.removed) {
-                head.removed(owner);
-            }
-            head = head.next;
-        }
-        delete meta[key];
+        const descriptor = HandlerDescriptor.get(owner, true);
+        return descriptor.addBinding(policy, constraint, handler, removed);
     };
     policy.dispatch = function (handler, callback, constraint, composer, all, results) {
-        let v = variance;
-        constraint = constraint || callback;
-        
-        if (constraint) {
-            if ($eq.test(constraint)) {
-                v = Variance.Invariant;
-            }
-            constraint = Modifier.unwrap(constraint);
-            if ($isObject(constraint)) {
-                constraint = $classOf(constraint);
-            }
-        }
-
-        let dispatched = false;
-
-        Metadata.collect(policyMetadataKey, handler, meta => {
-            const list = meta[key];
-            if (!list) return false;
-            dispatched = _dispatch(handler, callback, constraint, v,
-                                   list, composer, all, results)
-                      || dispatched;
-            return dispatched && !all;
-        });
-
-        return dispatched;
+        const descriptor = HandlerDescriptor.get(handler);
+        return descriptor != null && descriptor.dispatch(
+            policy, handler, callback, constraint, composer, all, results);
     };
-    function _dispatch(target, callback, constraint, v, list, composer, all, results) {
-        let   dispatched = false;
-        const invariant  = (v === Variance.Invariant),
-              index      = createIndex(constraint);
-        if (!invariant || index) {
-            let binding = list.getFirst(index) || list.head;
-            while (binding) {
-                if (binding.match(constraint, v)) {
-                    let guard;
-                    if ($isFunction(callback.guardDispatch)) {
-                        guard = callback.guardDispatch(target, binding);
-                        if (!guard) {
-                            binding = binding.next;
-                            continue;
-                        }
-                    }
-                    try {
-                        const result = binding.handler.call(
-                            target, callback, composer, { constraint, binding });
-                        if (handled(result)) {
-                            if (!results || results.call(callback, result, composer) !== false) {
-                                if (!all) { return true; }
-                                dispatched = true;
-                            }
-                        }
-                    } finally {
-                        if ($isFunction(guard)) {
-                            guard.call(callback);
-                        }
-                    }
-                } else if (invariant) {
-                    break;  // stop matching if invariant not satisifed
-                }
-                binding = binding.next;
-            }
-        }
-        return dispatched;
-    }
-    policy.key         = key;
-    policy.description = description;
-    policy.variance    = variance;
+    policy.description  = description;
+    policy.variance     = variance;
+    policy.acceptResult = acceptResult;
+    policy.comparer     = comparer; 
     Object.freeze(policy);
-    return policies[key] = policy;
+    return policies[policy] = policy;
 }
 
 $policy.dispatch = function (handler, callback, greedy, composer) {
@@ -325,95 +190,6 @@ $policy.dispatch = function (handler, callback, greedy, composer) {
     }
     return $handle.dispatch(handler, callback, null, composer, greedy);       
 };
-
-export function Binding(constraint, handler, removed) {
-    const invariant = $eq.test(constraint);
-    constraint      = Modifier.unwrap(constraint);
-    this.constraint = constraint;
-    this.handler    = handler;
-    if ($isNothing(constraint)) {
-        this.match = invariant ? False : matchEverything;
-    } else if ($isProtocol(constraint)) {
-        this.match = invariant ? matchInvariant : matchProtocol;
-    } else if ($isClass(constraint)) {
-        this.match = invariant ? matchInvariant : matchClass;
-    } else if ($isString(constraint)) {
-        this.match = matchString;
-    } else if (constraint instanceof RegExp) {
-        this.match = invariant ? False : matchRegExp;
-    } else if ($isFunction(constraint)) {
-        this.match = constraint;
-    } else {
-        this.match = False;
-    }
-    if (removed) {
-        this.removed = removed;
-    }
-}
-Binding.prototype.equals = function (other) {
-    return this.constraint === other.constraint
-        && (this.handler === other.handler ||
-            (this.handler.key && other.handler.key &&
-             this.handler.key === other.handler.key));
-}
-Binding.prototype.toString = function () {
-    return `Binding | ${this.constraint}`;
-}
-
-function createIndex(constraint) {
-    if (!constraint) { return; }
-    if ($isString(constraint)) {
-        return constraint;
-    }
-    if ($isFunction(constraint)) {
-        return assignID(constraint);
-    }
-}
-
-function matchInvariant(match) {
-    return this.constraint === match;
-}
-
-function matchEverything(match, variance) {
-    return variance !== Variance.Invariant;
-}
-
-function matchProtocol(match, variance) {
-    const constraint = this.constraint;
-    if (constraint === match) {
-        return true;
-    } else if (variance === Variance.Covariant) {
-        return $isProtocol(match) && match.isAdoptedBy(constraint);
-    } else if (variance === Variance.Contravariant) {
-        return !$isString(match) && constraint.isAdoptedBy(match);
-    }
-    return false;
-}
-
-function matchClass(match, variance) {
-    const constraint = this.constraint;
-    if (constraint === match) { return true; }
-    if (variance === Variance.Contravariant) {
-        return match.prototype instanceof constraint;
-    }
-    if (variance === Variance.Covariant) {
-        return match.prototype &&
-            (constraint.prototype instanceof match
-             || ($isProtocol(match) && match.isAdoptedBy(constraint)));
-    }
-    return false;
-}
-
-function matchString(match, variance) {
-    if (!$isString(match)) { return false;}
-    return variance === Variance.Invariant
-         ? this.constraint == match
-         : this.constraint.toLowerCase() == match.toLowerCase();
-}
-
-function matchRegExp(match, variance) {
-    return (variance !== Variance.Invariant) && this.constraint.test(match);
-}
 
 function compareCovariant(binding, insert) {
     if (insert.match(binding.constraint, Variance.Invariant)) {

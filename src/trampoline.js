@@ -2,9 +2,8 @@ import {
     Base, $isFunction, createKeyChain
 } from "miruken-core";
 
-import {
-    CallbackControl, $handle, $policy
-} from "./policy";
+import CallbackControl from "./callback-control";
+import { $handle, $policy } from "./policy";
 
 const _ = createKeyChain();
 

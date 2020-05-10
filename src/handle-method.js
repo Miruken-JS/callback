@@ -5,9 +5,10 @@ import {
 
 import Trampoline from "./trampoline";
 import Resolving from "./resolving";
-import { CallbackControl, $unhandled } from "./policy";
+import CallbackControl from "./callback-control";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 import { NotHandledError } from "./errors";
+import { $unhandled } from "./policy";
 
 const _ = createKeyChain();
 

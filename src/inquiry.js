@@ -5,9 +5,9 @@ import {
     createKeyChain
 } from "miruken-core";
 
-import {
-    CallbackControl, Binding, $provide
-} from "./policy";
+import CallbackControl from "./callback-control";
+import { Binding } from "./handler-descriptor";
+import { $provide } from "./policy";
 
 const _ = createKeyChain();
 
