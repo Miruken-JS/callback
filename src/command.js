@@ -18,7 +18,7 @@ const _ = createKeyChain();
 export const Command = Base.extend(CallbackControl, {
     constructor(callback, many) {
         if ($isNothing(callback)) {
-            throw new TypeError("The callback is required.");
+            throw new TypeError("The callback argument is required.");
         }
         const _this = _(this);
         _this.callback = callback;

@@ -9,10 +9,10 @@ import {
 const _ = createKey(),
       descriptorMetadataKey = Symbol();
 
-const HandlerDescriptor = Base.extend({
+export const HandlerDescriptor = Base.extend({
     constructor(owner) {
         if ($isNothing(owner)) {
-            throw new Error("The owner is required.");
+            throw new Error("The owner argument is required.");
         }
         _(this).owner    = owner;
         _(this).bindings = new Map();
@@ -34,7 +34,7 @@ const HandlerDescriptor = Base.extend({
         
         let policyBindings = bindings.get(policy);
         if (policyBindings == null) {
-            policyBindings = new IndexedList(policy.comparer);
+            policyBindings = new IndexedList(policy.compareBinding.bind(policy));
             bindings.set(policy, policyBindings);
         }
 
@@ -87,7 +87,7 @@ const HandlerDescriptor = Base.extend({
         }
 
         const index = createIndex(constraint);
-        
+
         let dispatched = false;
         Metadata.collect(descriptorMetadataKey, handler, descriptor => {
             const bindings = descriptor.getBindings(policy);
@@ -152,13 +152,7 @@ function dispatch(policy, target, callback, constraint, index,
 
 function requireValidPolicy(policy) {
     if ($isNothing(policy)) {
-        throw new Error("The policy is required.")
-    }
-    if (!$isFunction(policy.comparer)) {
-        throw new TypeError("The policy requires a comparer function.")
-    }
-    if (!$isFunction(policy.acceptResult)) {
-        throw new TypeError("The policy requires an acceptResult function.")
+        throw new Error("The policy argument is required.")
     }
 }
 

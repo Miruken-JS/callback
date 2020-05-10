@@ -1,6 +1,6 @@
 import {
-    Variance, $isFunction, $isSomething,
-    $isPromise, $classOf, $flatten, $decorate
+    $isFunction, $isSomething,
+    $isPromise, $flatten, $decorate
 } from "miruken-core";
 
 import Command from "./command";
@@ -31,7 +31,7 @@ import {
  */
 Handler.accepting = function (handler, constraint) {
     const accepting = new Handler();
-    $handle(accepting, constraint, handler);
+    $handle.addHandler(accepting, constraint, handler);
     return accepting;
 };
 
@@ -46,7 +46,7 @@ Handler.accepting = function (handler, constraint) {
  */
 Handler.providing = function (provider, constraint) {
     const providing = new Handler();
-    $provide(providing, constraint, provider);
+    $provide.addHandler(providing, constraint, provider);
     return providing;
 };
 
@@ -211,7 +211,7 @@ Handler.implement({
         values = $flatten(values, true);
         if (values.length > 0) {
             const provider = this.decorate();
-            values.forEach(value => $provide(provider, value));
+            values.forEach(value => $provide.addHandler(provider, value));
             return provider;
         }
         return this;

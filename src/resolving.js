@@ -10,7 +10,7 @@ const _ = createKeyChain();
 export const Resolving = Inquiry.extend({
     constructor(key, callback) {
         if ($isNothing(callback)) {
-            throw new Error("The callback is required.");
+            throw new Error("The callback argument is required.");
         }
         if (callback instanceof Inquiry) {
             this.base(key, true, callback);

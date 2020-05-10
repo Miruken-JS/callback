@@ -23,7 +23,7 @@ const _ = createKeyChain();
 export const Inquiry = Base.extend(CallbackControl, {
     constructor(key, many, parent) {
         if ($isNothing(key)) {
-            throw new Error("The key is required.");
+            throw new Error("The key argument is required.");
         }
         
         const _this = _(this);

@@ -20,7 +20,7 @@ const _ = createKeyChain();
 export const Lookup = Base.extend(CallbackControl, {
     constructor(key, many) {
         if ($isNothing(key)) {
-            throw new Error("The key is required.");
+            throw new Error("The key argument is required.");
         }
 
         const _this = _(this);

@@ -4,7 +4,7 @@ import Trampoline from "./trampoline";
 export const Inference = Trampoline.extend({
     constructor(callback) {
         if ($isNothing(callback)) {
-            throw new Error("Inference callback is required.");
+            throw new Error("The callback argument is required.");
         }
         this.base(callback);
     },
