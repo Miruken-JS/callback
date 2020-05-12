@@ -1,6 +1,6 @@
 import { 
     Base, False, Variance, IndexedList,
-    Metadata, Modifier, $isNothing, $eq,
+    Metadata, $isNothing, $eq, $contents,
     $isFunction, $isString, $isProtocol,
     $isClass, $classOf, $isObject, assignID,
     createKey
@@ -80,7 +80,7 @@ export const HandlerDescriptor = Base.extend({
             if ($eq.test(constraint)) {
                 variance = Variance.Invariant;
             }
-            constraint = Modifier.unwrap(constraint);
+            constraint = $contents(constraint);
             if ($isObject(constraint)) {
                 constraint = $classOf(constraint);
             }
@@ -158,7 +158,7 @@ function requireValidPolicy(policy) {
 
 export function Binding(constraint, handler, removed) {
     const invariant = $eq.test(constraint);
-    constraint      = Modifier.unwrap(constraint);
+    constraint      = $contents(constraint);
     this.constraint = constraint;
     this.handler    = handler;
     if ($isNothing(constraint)) {

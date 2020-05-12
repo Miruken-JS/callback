@@ -1,11 +1,11 @@
 import { 
-    Base, Undefined, Variance, Modifier,
-    decorate, isDescriptor, designWithReturn,
-    $isNothing, $isFunction, $classOf, $use,
-    $lift, createKey
+    Base, Undefined, Variance, decorate,
+    isDescriptor, designWithReturn,
+    $isNothing, $isFunction, $classOf,
+    $lift, $contents, createKey
 } from "miruken-core";
 
-import { HandlerDescriptor } from "./handler-descriptor";
+import HandlerDescriptor from "./handler-descriptor";
 
 const _ = createKey();
 
@@ -20,14 +20,13 @@ export const CallbackPolicy = Base.extend({
     /**
     * Constructs a callback policy.
     * @method create
-    * @param   {Variance}  [variance=Variance.Contravariant]  -  policy variance 
-    * @param   {String}    description                        -  policy description
+    * @param   {Variance}  variance    -  policy variance 
+    * @param   {String}    description -  policy description
     */    
     constructor(variance, description) {
         if ($classOf(this) === CallbackPolicy) {
             throw new Error("CallbackPolicy cannot be instantiated.");
         }
-
         _(this).variance    = variance;
         _(this).description = description;
     },
@@ -49,7 +48,7 @@ export const CallbackPolicy = Base.extend({
             throw new Error("The owner argument is required");
         } else if ($isNothing(handler)) {
             handler    = constraint;
-            constraint = $classOf(Modifier.unwrap(constraint));
+            constraint = $classOf($contents(constraint));
         }
         if ($isNothing(handler)) {
             throw new Error("The handler argument is required");
@@ -70,7 +69,11 @@ export const CallbackPolicy = Base.extend({
         return addHandler.call(this, owner, constraint, handler, removed);
     },
 
-    dispatch (handler, callback, constraint, composer, all, results) {
+    dispatch(handler, callback, constraint, composer, all, results) {
+        if ("dispatchCallback" in handler) {
+            return handler.dispatchCallback(
+                this, callback, constraint, composer, all, results);
+        }
         const descriptor = HandlerDescriptor.get(handler);
         return descriptor != null && descriptor.dispatch(
             this, handler, callback, constraint, composer, all, results);
@@ -108,15 +111,12 @@ export const CallbackPolicy = Base.extend({
         if ($isNothing(variance)) {
             throw new Error("The variance argument is required.");
         }
-
         if ($isNothing(description)) {
             throw new Error("The description argument is required.");
         }
-
         if (!(variance instanceof Variance)) {
             throw new TypeError("Invalid variance parameter.");
         }
-
         switch (variance) {
             case Variance.Covariant:
                 return new CovariantPolicy(description);
@@ -143,7 +143,7 @@ export const CovariantPolicy = CallbackPolicy.extend({
         return (result != null) && (result !== $unhandled);
     },
     compareBinding(binding, otherBinding) {
-        validateCompareArguments(binding, otherBinding);
+        validateComparer(binding, otherBinding);
         if (otherBinding.match(binding.constraint, Variance.Invariant)) {
             return 0;
         } else if (otherBinding.match(binding.constraint, Variance.Covariant)) {
@@ -162,7 +162,7 @@ export const ContravariantPolicy = CallbackPolicy.extend({
        return result !== $unhandled;
     },
     compareBinding(binding, otherBinding) {
-        validateCompareArguments(binding, otherBinding);
+        validateComparer(binding, otherBinding);
         if (otherBinding.match(binding.constraint, Variance.Invariant)) {
             return 0;
         } else if (otherBinding.match(binding.constraint, Variance.Contravariant)) {
@@ -181,7 +181,7 @@ export const InvariantPolicy = CallbackPolicy.extend({
         return (result != null) && (result !== $unhandled);
     },
     compareBinding(binding, otherBinding) {
-        validateCompareArguments(binding, otherBinding);
+        validateComparer(binding, otherBinding);
         return otherBinding.match(binding.constraint, Variance.Invariant) ? 0 : -1;    
     }
 });
@@ -191,7 +191,7 @@ function addHandler(owner, constraint, handler, removed) {
         throw new Error("The owner argument is required.");
     } else if ($isNothing(handler)) {
         handler    = constraint;
-        constraint = $classOf(Modifier.unwrap(constraint));
+        constraint = $classOf($contents(constraint));
     }
     if ($isNothing(handler)) {
         throw new Error("The handler argument is required.");
@@ -200,8 +200,7 @@ function addHandler(owner, constraint, handler, removed) {
         throw new TypeError("The removed argument is not a function.");
     }
     if (!$isFunction(handler)) {
-        const source = $use.test(handler) ? Modifier.unwrap(handler) : handler;
-        handler = $lift(source);
+        handler = $lift($contents(handler));
     }
     const descriptor = HandlerDescriptor.get(owner, true);
     return descriptor.addBinding(this, constraint, handler, removed);
@@ -262,11 +261,10 @@ export function registerHandlers(name, policy, allowGets, filter) {
     };
 }
 
-function validateCompareArguments(binding, otherBinding) {
+function validateComparer(binding, otherBinding) {
     if ($isNothing(binding)) {
         throw new Error("The binding argument is required.");
     }
-    
     if ($isNothing(otherBinding)) {
         throw new Error("The otherBinding argument is required.");
     }
