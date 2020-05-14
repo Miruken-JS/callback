@@ -603,12 +603,18 @@ describe("Handler", () => {
 
         it("should handle callbacks with extension", () => {
             const cashier    = new Cashier(1000000.00),
-                  handler    = new (Handler.extend().implement({
+                  handler    = new (Handler.extend({
+                    @handles(WireMoney)
+                    wireMoney(wireMoney) {
+                        wireMoney.received = wireMoney.requested;       
+                    },
+                  }).implement({
                       @handles(Cashier)
                       account(cashier) {
                           this.cashier = cashier;                          
                       }                      
                   }));
+            expect(handler.handle(new WireMoney(100))).to.be.true;
             expect(handler.handle(cashier)).to.be.true;
             expect(handler.cashier).to.equal(cashier);
         });

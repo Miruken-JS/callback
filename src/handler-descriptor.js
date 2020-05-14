@@ -7,7 +7,7 @@ import {
 } from "miruken-core";
 
 const _ = createKey(),
-      descriptorMetadataKey = Symbol();
+      descriptorMetadataKey = Symbol("descriptor-metadata");
 
 export const HandlerDescriptor = Base.extend({
     constructor(owner) {
@@ -18,7 +18,9 @@ export const HandlerDescriptor = Base.extend({
         _(this).bindings = new Map();
     },
 
-    get owner() { return _(this).owner; },
+    get owner()    { return _(this).owner; },
+    get policies() { return [..._(this).bindings.keys()]; },
+    get bindings() { return [..._(this).bindings.entries()]; },
 
     getBindings(policy) {
         requireValidPolicy(policy);
@@ -68,6 +70,19 @@ export const HandlerDescriptor = Base.extend({
         }
 
         bindings.delete(policy);
+    },
+    merge(otherDescriptor) {
+        if (otherDescriptor instanceof $classOf(this)) {
+            const bindings = _(this).bindings;
+            for (let [otherPolicy, otherBindings] of otherDescriptor.bindings) {
+                let policyBindings = bindings.get(otherPolicy);
+                if (policyBindings == null) {
+                    policyBindings = new IndexedList(otherPolicy.compareBinding.bind(otherPolicy));
+                    bindings.set(otherPolicy, policyBindings);
+                }
+                policyBindings.merge(otherBindings);
+            }
+        }
     },
     dispatch(policy, handler, callback, constraint, composer, all, results) {
         requireValidPolicy(policy);
