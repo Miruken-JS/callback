@@ -20,19 +20,19 @@ export const CallbackPolicy = Base.extend({
     /**
     * Constructs a callback policy.
     * @method create
-    * @param   {Variance}  variance    -  policy variance 
-    * @param   {String}    description -  policy description
+    * @param   {Variance}  variance -  policy variance
+    * @param   {String}    name     -  policy name 
     */    
-    constructor(variance, description) {
+    constructor(variance, name) {
         if ($classOf(this) === CallbackPolicy) {
             throw new Error("CallbackPolicy cannot be instantiated.");
         }
-        _(this).variance    = variance;
-        _(this).description = description;
+        _(this).variance = variance;
+        _(this).name     = name;
     },
 
-    get variance()    { return _(this).variance; },
-    get description() { return _(this).description; },
+    get variance() { return _(this).variance; },
+    get name() { return _(this).name; },
 
     /**
      * Registers the handler for the specified constraint.
@@ -101,42 +101,36 @@ export const CallbackPolicy = Base.extend({
     }
 }, {
     /**
-    * Creates a new callback policy.
-    * @method create
-    * @param   {Variance}  [variance=Variance.Contravariant]  -  policy variance 
-    * @param   {String}    description                        -  policy description
-    * @return  {CallbackPolicy}  returns the new CallbackPolicy.
-    */
-    create(variance, description) {
-        if ($isNothing(variance)) {
-            throw new Error("The variance argument is required.");
+     * Creates a decorator for the implied policy.
+     * @method createDecorator
+     * @param  {Object}    [allowGets]  -  true to allow property handlers
+     * @param  {Function}  [filter]     -  optional callback filter
+     */
+    createDecorator(name, allowGets, filter) {
+        const policy = new this(name);
+        function decorator(...args) {
+            return decorate(registerHandlers(name, policy, allowGets, filter), args);
         }
-        if ($isNothing(description)) {
-            throw new Error("The description argument is required.");
-        }
-        if (!(variance instanceof Variance)) {
-            throw new TypeError("Invalid variance parameter.");
-        }
-        switch (variance) {
-            case Variance.Covariant:
-                return new CovariantPolicy(description);
-            case Variance.Contravariant:
-                return new ContravariantPolicy(description);
-            case Variance.Invariant:
-                return new InvariantPolicy(description);
-        }    
+        decorator.policy     = policy;
+        decorator.addHandler = function (...args) {
+            return policy.addHandler.apply(policy, args);
+        };
+        decorator.dispatch = function (...args) {
+            return policy.dispatch.apply(policy, args);
+        }; 
+        return decorator;
     },
     dispatch(handler, callback, greedy, composer) {
         if ($isFunction(callback.dispatch)) {
             return callback.dispatch(handler, greedy, composer);
         }
-        return $handle.dispatch(handler, callback, null, composer, greedy);   
+        return handles.dispatch(handler, callback, null, composer, greedy);   
     } 
 });
 
 export const CovariantPolicy = CallbackPolicy.extend({
-    constructor(description) {
-        this.base(Variance.Covariant, description)
+    constructor(name) {
+        this.base(Variance.Covariant, name);
     },
 
     acceptResult(result) {
@@ -154,8 +148,8 @@ export const CovariantPolicy = CallbackPolicy.extend({
 });
 
 export const ContravariantPolicy = CallbackPolicy.extend({
-    constructor(description) {
-        this.base(Variance.Contravariant, description)
+    constructor(name) {
+        this.base(Variance.Contravariant, name);
     },
 
     acceptResult(result) {
@@ -173,8 +167,8 @@ export const ContravariantPolicy = CallbackPolicy.extend({
 });
 
 export const InvariantPolicy = CallbackPolicy.extend({
-    constructor(description) {
-        this.base(Variance.Invariant, description)
+    constructor(name) {
+        this.base(Variance.Invariant, name);
     },
 
     acceptResult(result) {
@@ -214,8 +208,8 @@ function addHandler(owner, constraint, handler, removed) {
  * @param  {Object}         [allowGets]  - true to allow property handlers
  * @param  {Function}       [filter]     - optional callback filter
  */
-export function registerHandlers(name, policy, allowGets, filter) {
-    if (!policy) {
+function registerHandlers(name, policy, allowGets, filter) {
+    if ($isNothing(policy)) {
         throw new Error(`The policy for @${name} is required.`);
     }
     return (target, key, descriptor, constraints) => {
@@ -272,30 +266,18 @@ function validateComparer(binding, otherBinding) {
 
 /**
  * Policy for handling callbacks contravariantly.
- * @property {Function} $handle
+ * @property {Function} handles
  */
-export const $handle = new ContravariantPolicy("handle");
-
-export function handles(...args) {
-    return decorate(registerHandlers("handle", $handle), args);
-}
+export const handles = ContravariantPolicy.createDecorator("handles");
 
 /**
- * Policy for providing callbacks covariantly.
- * @property {Function} $provide  
+ * Policy for providing instnces covariantly.
+ * @property {Function} provides
  */        
-export const $provide = new CovariantPolicy("provide");
-
-export function provides(...args) {
-    return decorate(registerHandlers("provide", $provide, true), args);
-}
+export const provides = CovariantPolicy.createDecorator("provides", true);
 
 /**
- * Policy for matching callbacks invariantly.
- * @property {Function} $lookup  
+ * Policy for matching instances invariantly.
+ * @property {Function} looksup
  */                
-export const $lookup = new InvariantPolicy("lookup");
-
-export function looksup(...args) {
-    return decorate(registerHandlers("lookup", $lookup, true), args);    
-}
+export const looksup = InvariantPolicy.createDecorator("looksup", true);

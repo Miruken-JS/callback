@@ -3,7 +3,7 @@ import {
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
-import { $handle } from "./callback-policy";
+import { handles } from "./callback-policy";
 
 const _ = createKeyChain();
 
@@ -27,10 +27,10 @@ export const Command = Base.extend(CallbackControl, {
         _this.promises = [];
     },
     
-    get isMany()   { return _(this).many; },
-    get callback() { return _(this).callback; },
-    get results()  { return _(this).results; }, 
-    get callbackPolicy()   { return $handle; },
+    get isMany()         { return _(this).many; },
+    get callback()       { return _(this).callback; },
+    get results()        { return _(this).results; }, 
+    get callbackPolicy() { return handles.policy; },
     get canBatch() {
         return this.callback.canBatch !== false;
     },           
@@ -64,7 +64,7 @@ export const Command = Base.extend(CallbackControl, {
     },            
     dispatch(handler, greedy, composer) {
         const count = _(this).results.length;
-        return $handle.dispatch(handler, this.callback, null,
+        return handles.dispatch(handler, this.callback, null,
             composer, this.isMany, this.respond.bind(this)) || 
             _(this).results.length > count;     
     },        

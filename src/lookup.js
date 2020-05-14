@@ -5,7 +5,7 @@ import {
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
-import { $lookup } from "./callback-policy";
+import { looksup } from "./callback-policy";
 
 const _ = createKeyChain();
 
@@ -34,7 +34,7 @@ export const Lookup = Base.extend(CallbackControl, {
     get key()            { return _(this).key; },
     get isMany()         { return _(this).many; },
     get results()        { return _(this).results; },
-    get callbackPolicy() { return $lookup; },     
+    get callbackPolicy() { return lookups.policy; },     
     get callbackResult() {
         if (_(this).result === undefined) {
             const results  = this.results,
@@ -69,7 +69,7 @@ export const Lookup = Base.extend(CallbackControl, {
         const results  = this.results,
               promises = _(this).promises,
               count    = results.length + promises.length,
-              found    = $lookup.dispatch(handler, this, this.key,
+              found    = looksup.dispatch(handler, this, this.key,
                 composer, this.isMany, this.addResult.bind(this));
         return found || (results.length + promises.length > count);
     },

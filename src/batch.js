@@ -8,6 +8,7 @@ import Handler from "./handler";
 import Composition from "./composition";
 import Trampoline from "./trampoline";
 import CompositeHandler from "./composite-handler";
+import { provides } from "./callback-policy";
 
 const _ = createKeyChain();
 
@@ -80,7 +81,8 @@ Handler.implement({
             _complete = false,
             _promises = [];
         return this.decorate({
-            $provide: [Batch, () =>  _batch ],
+            //@provides(Batch)
+            //get batch() { return _batch; },
             handleCallback(callback, greedy, composer) {
                 let handled = false;
                 if (_batch && callback.canBatch !== false) {

@@ -20,9 +20,8 @@ import HandleMethod from "../src/handle-method";
 import { Batching } from "../src/batch";
 
 import {
-    CallbackPolicy, $handle, $provide,
-    $lookup, handles, provides, looksup,
-    $unhandled
+    CallbackPolicy, handles, provides,
+    looksup, $unhandled
 } from "../src/callback-policy";
 
 import {
@@ -250,17 +249,6 @@ describe("HandleMethod", () => {
 
 describe("Policies", () => {
     describe("CallbackPolicy", () => {
-        it("Should create from variance", () => {
-            const baz = CallbackPolicy.create(Variance.Contravariant, "baz");
-            expect(baz).to.be.ok;
-        });
-
-        it("Should reject invalid variance option", () => {
-            expect(() => {
-                CallbackPolicy.create({ variance: 1000 }, "policy #2");
-            }).to.throw(TypeError, "Invalid variance parameter.");
-        });
-  
         it("should define callbacks on class", () => {
             const Cashier = Base.extend(null, {
                     @handles(CountMoney)
@@ -269,8 +257,21 @@ describe("Policies", () => {
                     }
                 });
             const descriptor = HandlerDescriptor.get(Cashier),
-                  bindings   = descriptor.getBindings($handle);
+                  bindings   = descriptor.getBindings(handles.policy);
             expect(bindings.head.constraint).to.equal(CountMoney);
+        });
+
+        it("should fallback to first design argument for Contravarient policies", () => {
+            const Cashier = Base.extend(null, {
+                    @handles
+                    @design(CountMoney)
+                    countMoney(countMoney, composer) {
+                        countMoney.record(10);
+                    }
+                });
+            //const descriptor = HandlerDescriptor.get(Cashier),
+            //      bindings   = descriptor.getBindings(handles.policy);
+            //expect(bindings.head.constraint).to.equal(CountMoney);
         });
 
         it("Should fail instantiation of CallbackPolicy", () => {
@@ -281,82 +282,82 @@ describe("Policies", () => {
     });
 
     describe("#list", () => {
-        it("should create $handle when first handler registered", () => {
+        it("should create 'handles' when first handler registered", () => {
             const handler  = new Handler();
-            $handle.addHandler(handler, True, True);
+            handles.addHandler(handler, True, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle);
+                  bindings   = descriptor.getBindings(handles.policy);
             expect(bindings).to.be.ok;
         });
 
         it("should maintain linked-list of handlers", () => {
             const handler = new Handler();
-            $handle.addHandler(handler, Activity, Undefined);
-            $handle.addHandler(handler, Accountable, Undefined);
-            $handle.addHandler(handler, Game, Undefined);
+            handles.addHandler(handler, Activity, Undefined);
+            handles.addHandler(handler, Accountable, Undefined);
+            handles.addHandler(handler, Game, Undefined);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle);            
+                  bindings   = descriptor.getBindings(handles.policy);            
             expect(bindings.head.constraint).to.equal(Activity);
             expect(bindings.head.next.constraint).to.equal(Accountable);
             expect(bindings.tail.prev.constraint).to.equal(Accountable);
             expect(bindings.tail.constraint).to.equal(Game);
         });
 
-        it("should order $handle contravariantly", () => {
+        it("should order 'handles' contravariantly", () => {
             const handler = new Handler();
-            $handle.addHandler(handler, Accountable, Undefined);
-            $handle.addHandler(handler, Activity, Undefined);
+            handles.addHandler(handler, Accountable, Undefined);
+            handles.addHandler(handler, Activity, Undefined);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle);            
+                  bindings   = descriptor.getBindings(handles.policy);            
             expect(bindings.head.constraint).to.equal(Activity);
             expect(bindings.tail.constraint).to.equal(Accountable);
         });
 
-        it("should order $handle invariantly", () => {
+        it("should order 'handles' invariantly", () => {
             const handler = new Handler();
-            $handle.addHandler(handler, Activity, Undefined);
-            $handle.addHandler(handler, Activity, True);
+            handles.addHandler(handler, Activity, Undefined);
+            handles.addHandler(handler, Activity, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle);      
+                  bindings   = descriptor.getBindings(handles.policy);      
             expect(bindings.head.handler).to.equal(Undefined);
             expect(bindings.tail.handler).to.equal(True);
         });
 
-        it("should order $provide covariantly", () => {
+        it("should order 'provides' covariantly", () => {
             const handler = new Handler();
-            $provide.addHandler(handler, Activity, Undefined);
-            $provide.addHandler(handler, Accountable, Undefined);
+            provides.addHandler(handler, Activity, Undefined);
+            provides.addHandler(handler, Accountable, Undefined);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($provide);          
+                  bindings   = descriptor.getBindings(provides.policy);          
             expect(bindings.head.constraint).to.equal(Accountable);
             expect(bindings.tail.constraint).to.equal(Activity);
         });
 
-        it("should order $provide invariantly", () => {
+        it("should order 'provides' invariantly", () => {
             const handler = new Handler();
-            $provide.addHandler(handler, Activity, Undefined);
-            $provide.addHandler(handler, Activity, True);
+            provides.addHandler(handler, Activity, Undefined);
+            provides.addHandler(handler, Activity, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($provide);  
+                  bindings   = descriptor.getBindings(provides.policy);  
             expect(bindings.head.handler).to.equal(Undefined);
             expect(bindings.tail.handler).to.equal(True);
         });
 
-        it("should order $lookup invariantly", () => {
+        it("should order 'looksup' invariantly", () => {
             const handler = new Handler();
-            $lookup.addHandler(handler, Activity, Undefined);
-            $lookup.addHandler(handler, Activity, True);
+            looksup.addHandler(handler, Activity, Undefined);
+            looksup.addHandler(handler, Activity, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($lookup);  
+                  bindings   = descriptor.getBindings(looksup.policy);  
             expect(bindings.head.handler).to.equal(Undefined);
             expect(bindings.tail.handler).to.equal(True);
         });
 
         it("should index first registered handler with head and tail", () => {
             const handler    = new Handler,
-                  unregister = $handle.addHandler(handler, True, Undefined);
+                  unregister = handles.addHandler(handler, True, Undefined);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle);        
+                  bindings   = descriptor.getBindings(handles.policy);        
             expect(unregister).to.be.a("function");
             expect(bindings.head.handler).to.equal(Undefined);
             expect(bindings.tail.handler).to.equal(Undefined);
@@ -365,13 +366,13 @@ describe("Policies", () => {
         it("should call function when handler removed", () => {
             let handler        = new Handler,
                 handlerRemoved = false,
-                unregister     = $handle.addHandler(
+                unregister     = handles.addHandler(
                     handler, True, Undefined, () => {
                     handlerRemoved = true;
                 });
             unregister();
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle); 
+                  bindings   = descriptor.getBindings(handles.policy); 
             expect(handlerRemoved).to.be.true;
             expect(bindings).to.be.undefined;
         });
@@ -379,23 +380,23 @@ describe("Policies", () => {
         it("should suppress handler removed if requested", () => {
             let handler        = new Handler,
                 handlerRemoved = false,
-                unregister     = $handle
+                unregister     = handles
                     .addHandler(handler, True, Undefined, () => {
                     handlerRemoved = true;
                 });
             unregister(false);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle);             
+                  bindings   = descriptor.getBindings(handles.policy);             
             expect(handlerRemoved).to.be.false;
             expect(bindings).to.be.undefined;
         });
 
-        it("should remove $handle when no handlers remain", () => {
+        it("should remove 'handles' when no handlers remain", () => {
             const handler    = new Handler,
-                  unregister = $handle.addHandler(handler, True, Undefined);
+                  unregister = handles.addHandler(handler, True, Undefined);
             unregister();
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle); 
+                  bindings   = descriptor.getBindings(handles.policy); 
             expect(bindings).to.be.undefined;
         });
     });
@@ -404,36 +405,36 @@ describe("Policies", () => {
         it("should index class constraints using assignID", () => {
             const handler = new Handler,
                   index   = assignID(Activity);
-            $handle.addHandler(handler, Activity, Undefined);
+            handles.addHandler(handler, Activity, Undefined);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle); 
+                  bindings   = descriptor.getBindings(handles.policy); 
             expect(bindings.getFirst(index).constraint).to.equal(Activity);
         });
 
         it("should index protocol constraints using assignID", () => {
             const handler   = new Handler,
                   index     = assignID(Game);
-            $handle.addHandler(handler, Game, Undefined);
+            handles.addHandler(handler, Game, Undefined);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle); 
+                  bindings   = descriptor.getBindings(handles.policy); 
             expect(bindings.getFirst(index).constraint).to.equal(Game);
         });
 
         it("should index string constraints using string", () => {
             const handler   = new Handler();
-            $handle.addHandler(handler, "something", Undefined);
+            handles.addHandler(handler, "something", Undefined);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle); 
+                  bindings   = descriptor.getBindings(handles.policy); 
             expect(bindings.getFirst("something").handler).to.equal(Undefined);
         });
 
         it("should move index to next match", () => {
             let handler     = new Handler,
                 index       = assignID(Activity),
-                unregister  = $handle.addHandler(handler, Activity, Undefined);
-            $handle.addHandler(handler, Activity, True);
+                unregister  = handles.addHandler(handler, Activity, Undefined);
+            handles.addHandler(handler, Activity, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle); 
+                  bindings   = descriptor.getBindings(handles.policy); 
             expect(bindings.getFirst(index).handler).to.equal(Undefined);
             unregister();
             expect(bindings.getFirst(index).handler).to.equal(True);
@@ -442,38 +443,38 @@ describe("Policies", () => {
         it("should remove index when no more matches", () => {
             const handler   = new Handler,
                   index     = assignID(Activity);
-            $handle.addHandler(handler, Accountable, Undefined);
-            const unregister = $handle.addHandler(handler, Activity, Undefined);
+            handles.addHandler(handler, Accountable, Undefined);
+            const unregister = handles.addHandler(handler, Activity, Undefined);
             unregister();
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings($handle); 
+                  bindings   = descriptor.getBindings(handles.policy); 
             expect(bindings.getFirst(index)).to.be.undefined;
         });
     });
 
     describe("#removeAll", () => {
-        it("should remove all $handler definitions", () => {
+        it("should remove all 'handles' definitions", () => {
             let handler     = new Handler,
                 removeCount = 0,
                 removed     = () => { ++removeCount; };
-            $handle.addHandler(handler, Accountable, Undefined, removed);
-            $handle.addHandler(handler, Activity, Undefined, removed);
+            handles.addHandler(handler, Accountable, Undefined, removed);
+            handles.addHandler(handler, Activity, Undefined, removed);
             const descriptor = HandlerDescriptor.get(handler);
-            descriptor.removeBindings($handle);
+            descriptor.removeBindings(handles.policy);
             expect(removeCount).to.equal(2);
-            expect(descriptor.getBindings($handle)).to.be.undefined;
+            expect(descriptor.getBindings(handles.policy)).to.be.undefined;
         });
 
-        it("should remove all $provider definitions", () => {
+        it("should remove all 'provides' definitions", () => {
             let handler     = new Handler,
                 removeCount = 0,
                 removed     = () => { ++removeCount; };
-            $provide.addHandler(handler, Activity, Undefined, removed);
-            $provide.addHandler(handler, Accountable, Undefined, removed);
+            provides.addHandler(handler, Activity, Undefined, removed);
+            provides.addHandler(handler, Accountable, Undefined, removed);
             const descriptor = HandlerDescriptor.get(handler);
-            descriptor.removeBindings($provide);
+            descriptor.removeBindings(provides.policy);
             expect(removeCount).to.equal(2);
-            expect(descriptor.getBindings($provide)).to.be.undefined;
+            expect(descriptor.getBindings(provides.policy)).to.be.undefined;
         });
     });
 });
@@ -582,7 +583,7 @@ describe("Handler", () => {
         it("should handle callbacks per instance", () => {
             const cashier    = new Cashier(1000000.00),
                   handler    = new Handler();
-            $handle.addHandler(handler, Cashier, function (cashier) {
+            handles.addHandler(handler, Cashier, function (cashier) {
                 this.cashier = cashier;
             });
             expect(handler.handle(cashier)).to.be.true;
@@ -603,10 +604,11 @@ describe("Handler", () => {
 
         it("should handle callbacks with extension", () => {
             const cashier    = new Cashier(1000000.00),
+                  wireMoney  = new WireMoney(100),
                   handler    = new (Handler.extend({
                     @handles(WireMoney)
                     wireMoney(wireMoney) {
-                        wireMoney.received = wireMoney.requested;       
+                        wireMoney.received = wireMoney.requested + .50;       
                     },
                   }).implement({
                       @handles(Cashier)
@@ -614,7 +616,8 @@ describe("Handler", () => {
                           this.cashier = cashier;                          
                       }                      
                   }));
-            expect(handler.handle(new WireMoney(100))).to.be.true;
+            expect(handler.handle(wireMoney)).to.be.true;
+            expect(wireMoney.received).to.equal(100.50);
             expect(handler.handle(cashier)).to.be.true;
             expect(handler.cashier).to.equal(cashier);
         });
@@ -652,7 +655,7 @@ describe("Handler", () => {
             expect(inventory.handle(cashier)).to.be.false;
             expect(inventory.handle(accountable)).to.be.true;
             expect(inventory.accountable).to.equal(accountable);
-            $handle.addHandler(inventory, Accountable, function (accountable) {
+            handles.addHandler(inventory, Accountable, function (accountable) {
                 this.accountable = accountable;
             });
             expect(inventory.handle(cashier)).to.be.true;
@@ -843,7 +846,7 @@ describe("Handler", () => {
                   blackjack  = new Activity("Blackjack"),
                   bank       = new (Accountable.extend()),
                   inventory  = new Handler,
-                  unregister = $handle.addHandler(inventory, [Cashier, Activity],
+                  unregister = handles.addHandler(inventory, [Cashier, Activity],
                       function (accountable) {
                           this.accountable = accountable;
                       });
@@ -921,7 +924,7 @@ describe("Handler", () => {
         it("should infer constraint from explicit objects", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new Handler();
-            $provide.addHandler(inventory, cashier);
+            provides.addHandler(inventory, cashier);
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
 
@@ -975,7 +978,7 @@ describe("Handler", () => {
         it("should resolve objects by per instance", () => {
             const cashier  = new Cashier(1000000.00),
                   provider = new Handler();
-            $provide.addHandler(provider, Cashier, () => cashier);
+            provides.addHandler(provider, Cashier, () => cashier);
             expect(provider.resolve(Cashier)).to.equal(cashier);
         });
 
@@ -987,7 +990,7 @@ describe("Handler", () => {
                   }));
             expect(inventory.resolve(Accountable)).to.be.undefined;
             expect(inventory.resolve(Cashier)).to.equal(cashier);
-            $provide.addHandler(inventory, Cashier, inquiry => cashier);
+            provides.addHandler(inventory, Cashier, inquiry => cashier);
             expect(inventory.resolve(Accountable)).to.equal(cashier);
         });
 
@@ -1023,6 +1026,16 @@ describe("Handler", () => {
                   }));
             expect($isPromise(cardGames.resolve(Game))).to.be.true;
             expect(cardGames.resolve($instant(Game))).to.be.undefined;
+        });
+
+        it("should resolve using constructor", () => {
+            const Shape  = Protocol.extend(),
+                  Circle = Shape.extend({
+                      constructor(radius) {
+                          this.radius = radius;
+                      }
+                  }),          
+                  circle  = (new Handler()).resolve(Circle);           
         });
 
         it("should resolve by string literal", () => {
@@ -1134,7 +1147,7 @@ describe("Handler", () => {
             const blackjack  = new CardTable("BlackJack", 1, 5),
                   cashier    = new Cashier(1000000.00),
                   cardGames  = new Handler(),
-                  unregister = $provide.addHandler(cardGames, [CardTable, Cashier],
+                  unregister = provides.addHandler(cardGames, [CardTable, Cashier],
                       inquiry => {
                           const key = inquiry.key;
                           if (Game.isAdoptedBy(key)) {
@@ -1702,7 +1715,7 @@ describe("InvocationHandler", () => {
                       pump() { return 5; }
                   }),
                   handler = new Handler();
-            $provide.addHandler(handler, new Pump());
+            provides.addHandler(handler, new Pump());
             expect(Pumping(handler).pump()).to.equal(5);
         });
         

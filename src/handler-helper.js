@@ -8,7 +8,7 @@ import Lookup from "./lookup";
 import Inquiry from "./inquiry";
 
 import {
-    $handle, $provide, $lookup
+    handles, provides, looksup
 } from "./callback-policy";
 
 import Handler from "./handler";
@@ -31,7 +31,7 @@ import {
  */
 Handler.accepting = function (handler, constraint) {
     const accepting = new Handler();
-    $handle.addHandler(accepting, constraint, handler);
+    handles.addHandler(accepting, constraint, handler);
     return accepting;
 };
 
@@ -46,7 +46,7 @@ Handler.accepting = function (handler, constraint) {
  */
 Handler.providing = function (provider, constraint) {
     const providing = new Handler();
-    $provide.addHandler(providing, constraint, provider);
+    provides.addHandler(providing, constraint, provider);
     return providing;
 };
 
@@ -211,7 +211,7 @@ Handler.implement({
         values = $flatten(values, true);
         if (values.length > 0) {
             const provider = this.decorate();
-            values.forEach(value => $provide.addHandler(provider, value));
+            values.forEach(value => provides.addHandler(provider, value));
             return provider;
         }
         return this;

@@ -7,7 +7,7 @@ import {
 
 import CallbackControl from "./callback-control";
 import { Binding } from "./handler-descriptor";
-import { $provide } from "./callback-policy";
+import { provides } from "./callback-policy";
 
 const _ = createKeyChain();
 
@@ -48,7 +48,7 @@ export const Inquiry = Base.extend(CallbackControl, {
     get handler()        { return _(this).handler; },
     get binding()        { return _(this).binding; },         
     get resolutions()    { return _(this).resolutions; },
-    get callbackPolicy() { return $provide; },       
+    get callbackPolicy() { return provides.policy; },       
     get callbackResult() {
         if (_(this).result === undefined) {
             const resolutions = this.resolutions,
@@ -111,7 +111,7 @@ export const Inquiry = Base.extend(CallbackControl, {
               promises    = _(this).promises,
               count       = resolutions.length + promises.length;
 
-        let   resolved = $provide.dispatch(handler, this, this.key,
+        let   resolved = provides.dispatch(handler, this, this.key,
             composer, this.isMany, (r, c) => this.resolve(r, greedy, c))
             || resolved;
 

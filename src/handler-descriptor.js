@@ -6,6 +6,8 @@ import {
     createKey
 } from "miruken-core";
 
+import { CallbackPolicy } from "./callback-policy";
+
 const _ = createKey(),
       descriptorMetadataKey = Symbol("descriptor-metadata");
 
@@ -77,7 +79,8 @@ export const HandlerDescriptor = Base.extend({
             for (let [otherPolicy, otherBindings] of otherDescriptor.bindings) {
                 let policyBindings = bindings.get(otherPolicy);
                 if (policyBindings == null) {
-                    policyBindings = new IndexedList(otherPolicy.compareBinding.bind(otherPolicy));
+                    policyBindings = new IndexedList(
+                        otherPolicy.compareBinding.bind(otherPolicy));
                     bindings.set(otherPolicy, policyBindings);
                 }
                 policyBindings.merge(otherBindings);
@@ -168,6 +171,9 @@ function dispatch(policy, target, callback, constraint, index,
 function requireValidPolicy(policy) {
     if ($isNothing(policy)) {
         throw new Error("The policy argument is required.")
+    }
+    if (!(policy instanceof CallbackPolicy)) {
+        throw new TypeError("The policy argument is not a valid CallbackPolicy.");
     }
 }
 
