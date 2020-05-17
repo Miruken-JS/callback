@@ -1,12 +1,12 @@
 import { 
-    Base, Variance, IndexedList, Metadata,
-    $isNothing, $eq, $contents, $isFunction,
-    $isString, $isProtocol, $isClass, $classOf,
-    $isObject, assignID, createKey
+    Base, Variance, Undefined, IndexedList,
+    Metadata, $isNothing, $eq, $contents,
+    $isFunction, $isString, $isProtocol,
+    $isClass, $classOf, $isObject, assignID,
+    createKey
 } from "miruken-core";
 
 import { CallbackPolicy } from "./callback-policy";
-import StaticHandler from "./static-handler";
 
 const _ = createKey(),
       descriptorMetadataKey = Symbol("descriptor-metadata");
@@ -30,7 +30,7 @@ export const HandlerDescriptor = Base.extend({
     },
     addBinding(policy, constraint, handler, removed) {
         requireValidPolicy(policy);
-        const binding  = Binding.create(constraint, handler, removed);
+        const binding = Binding.create(constraint, handler, removed);
         return addBinding.call(this, policy, binding);
     },
     removeBindings(policy) {
@@ -49,7 +49,7 @@ export const HandlerDescriptor = Base.extend({
 
         bindings.delete(policy);
     },
-    dispatch(policy, handler, callback, constraint, composer, all, results) {
+    dispatch(policy, handler, callback, constraint, composer, greedy, results) {
         requireValidPolicy(policy);
 
         const variance = policy.variance;
@@ -73,9 +73,9 @@ export const HandlerDescriptor = Base.extend({
             if (bindings == null) return false;
             dispatched = dispatch(policy, handler, callback, constraint,
                                   index, variance, bindings, composer,
-                                  all, results)
+                                  greedy, results)
                       || dispatched;
-            return dispatched && !all;
+            return dispatched && !greedy;
         });
         return dispatched; 
     },
@@ -89,19 +89,28 @@ export const HandlerDescriptor = Base.extend({
      * the correct classes or prototypes.
      */
 
-    copyMetadata(sourceDescriptor, target, source) {
+    copyMetadata(sourceDescriptor, target, source, sourceKey) {
+        if (sourceKey) return;
         const targetDescriptor = HandlerDescriptor.get(target, true);
          for (let [policy, bindings] of sourceDescriptor.bindings) {
             for (let binding of bindings) {
-                addBinding.call(targetDescriptor, policy, binding.copy());
+                // Base2 classes can have constructor decorators.
+                if (binding.constraint == "#constructor") {
+                    const clazz       = $classOf(target),
+                          constructor = Binding.create(clazz, binding.handler.bind(clazz));
+                    addBinding.call(staticDescriptor, policy, constructor, true);
+                } else {
+                    addBinding.call(targetDescriptor, policy, binding.copy());
+                }
             }
         }
         return targetDescriptor;
     },
-    mergeMetadata(sourceDescriptor) {
-        if (sourceDescriptor.constructor !== this.constructor) {
+    mergeMetadata(sourceDescriptor, target, source, sourceKey) {
+        if ($classOf(sourceDescriptor) !== $classOf(this)) {
             throw new TypeError("mergeMetadata expects a HandlerDescriptor.");
         }
+        if (sourceKey) return;
         for (let [policy, bindings] of sourceDescriptor.bindings) {
             for (let binding of bindings) {
                 addBinding.call(this, policy, binding.copy());
@@ -112,13 +121,38 @@ export const HandlerDescriptor = Base.extend({
     get(owner, create) {
         if (create) {
             return Metadata.getOrCreateOwn(
-                descriptorMetadataKey, owner, () => new HandlerDescriptor(owner));
+                descriptorMetadataKey, owner, () => new this(owner));
         }
         return Metadata.get(descriptorMetadataKey, owner);
+    },
+    remove(owner) {
+        return Metadata.remove(descriptorMetadataKey, owner);
     }
 });
 
-function addBinding(policy, binding) {
+const ownerSymbol      = Symbol();
+const StaticHandler    = Base.extend();
+const InferenceHandler = Base.extend({
+    collect(_, { binding }) {
+
+    }
+});
+
+const staticDescriptor    = HandlerDescriptor.get(StaticHandler, true);
+const inferenceDescriptor = HandlerDescriptor.get(InferenceHandler, true);
+
+Object.defineProperties(HandlerDescriptor, {
+    StaticHandler:  {
+        value:    StaticHandler,
+        writable: false
+    },         
+    InferenceHandler: {
+        value:    InferenceHandler,
+        writable: false
+    }
+});
+
+function addBinding(policy, binding, skipStatic, skipInference) {
     const owner    = _(this).owner,
           bindings = _(this).bindings,
           index    = createIndex(binding.constraint);
@@ -131,10 +165,35 @@ function addBinding(policy, binding) {
 
     policyBindings.insert(binding, index);
 
+    let removeStaticBinding;
+    let removeInferenceBinding;
+
+    if (!(skipStatic && skipInference)) {
+        if ($isClass(owner)) {
+            if (!skipStatic) {
+                const staticBinding = binding.copy(null, binding.handler.bind(owner));
+                removeStaticBinding = addBinding.call(
+                    staticDescriptor, policy, staticBinding, true, true);
+            }
+        } else if (!skipInference) {
+            const inferenceBinding = binding.copy(null, InferenceHandler.prototype.collect);
+            inferenceBinding[ownerSymbol] = owner;
+            removeInferenceBinding = addBinding.call(
+                inferenceDescriptor, policy, inferenceBinding, true, true);
+        }
+    } else {
+         return Undefined;
+    }
+
     return function (notifyRemoved) {
         policyBindings.remove(binding);
         if (policyBindings.isEmpty) {
             bindings.delete(policy);
+        }
+        if (removeStaticBinding) {
+            removeStaticBinding(notifyRemoved);
+        } else if (removeInferenceBinding) {
+            removeInferenceBinding(notifyRemoved);
         }
         if ($isFunction(binding.removed) && (notifyRemoved !== false)) {
             binding.removed(owner);
@@ -156,7 +215,7 @@ function dispatch(policy, target, callback, constraint, index,
                 }
                 try {
                     const result = binding.handler.call(
-                        target, callback, composer, { constraint, binding });
+                        target, callback, { composer, constraint, binding });
                     if (policy.acceptResult(result)) {
                         if (!results || results.call(callback, result, composer) !== false) {
                             if (!all) return true;
@@ -176,79 +235,70 @@ function dispatch(policy, target, callback, constraint, index,
     return dispatched;
 }
 
-function requireValidPolicy(policy) {
-    if ($isNothing(policy)) {
-        throw new Error("The policy argument is required.")
-    }
-    if (!(policy instanceof CallbackPolicy)) {
-        throw new TypeError("The policy argument is not a valid CallbackPolicy.");
-    }
-}
-
-// Binding Support
-
 export const Binding = Base.extend({
+    constructor(constraint, handler, removed) {
+        if ($classOf(this) === Binding) {
+             throw new Error("Binding cannot be instantiated.  Use Binding.create().");
+        }
+        this.constraint = constraint;
+        this.handler    = handler;
+        if (removed) {
+            this.removed = removed;
+        }
+    },
+
     equals(other) {
         return this.constraint === other.constraint
             && (this.handler === other.handler ||
                (this.handler.key && other.handler.key &&
                 this.handler.key === other.handler.key));
     },
-    copy() {
-        const binding = new this.constructor();
-        binding.constraint = this.constraint;
-        binding.handler    = this.handler;
-        return binding;
-    },   
-    toString() {
-        return `Binding | ${this.constraint}`;
+    copy(constraint, handler) {
+        return new ($classOf(this))(
+            constraint || this.constraint,
+            handler    || this.handler);
     }
 }, {
     create(constraint, handler, removed) {
-        let binding;
+        let bindingType;
         const invariant = $eq.test(constraint);
         constraint = $contents(constraint);
         if ($isNothing(constraint)) {
-            binding = invariant ? new BindingMatchNone : new BindingMatchEverything;
+            bindingType = invariant ? BindingNone : BindingEverything;
         } else if ($isProtocol(constraint)) {
-            binding = invariant ? new BindingMatchInvariant : new BindingMatchProtocol;
+            bindingType = invariant ? BindingInvariant : BindingProtocol;
         } else if ($isClass(constraint)) {
-            binding = invariant ? new BindingMatchInvariant : new BindingMatchClass;
+            bindingType = invariant ? BindingInvariant : BindingClass;
         } else if ($isString(constraint)) {
-            binding = new BindingMatchString;
+            bindingType = BindingString;
         } else if (constraint instanceof RegExp) {
-            binding = invariant ? new BindingMatchNone : new BindingMatchRegExp;
+            bindingType = invariant ? BindingNone : BindingRegExp;
         } else if ($isFunction(constraint)) {
-            binding = new BindingMatchCustom(constraint);
+            bindingType = BindingCustom;
         } else {
-            binding = new BindingMatchNone;
+            bindingType = BindingNone;
         }
-        binding.constraint = constraint;
-        binding.handler    = handler;
-        if (removed) {
-            binding.removed = removed;
-        }
-        return binding;
+        return new bindingType(constraint, handler, removed);
     }
 });
 
-const BindingMatchNone = Binding.extend({
+const BindingNone = Binding.extend({
     match() { return false; }
 });
 
-const BindingMatchInvariant = Binding.extend({
+const BindingInvariant = Binding.extend({
     match(match) {
         return this.constraint === match;
     }
 });
 
-const BindingMatchEverything = Binding.extend({
+const BindingEverything = Binding.extend({
     match(match, variance) {
         return variance !== Variance.Invariant;
     }
 });
 
-const BindingMatchProtocol = Binding.extend({
+const BindingProtocol = Binding.extend({
     match(match, variance) {
         const constraint = this.constraint;
         if (constraint === match) {
@@ -262,7 +312,7 @@ const BindingMatchProtocol = Binding.extend({
     }
 });
 
-const BindingMatchClass = Binding.extend({
+const BindingClass = Binding.extend({
     match(match, variance) {
         const constraint = this.constraint;
         if (constraint === match) return true;
@@ -278,7 +328,7 @@ const BindingMatchClass = Binding.extend({
     }
 })
 
-const BindingMatchString = Binding.extend({
+const BindingString = Binding.extend({
     match(match, variance) {
         if (!$isString(match)) return false;
         return variance === Variance.Invariant
@@ -287,24 +337,26 @@ const BindingMatchString = Binding.extend({
     }
 });
 
-const BindingMatchRegExp = Binding.extend({
+const BindingRegExp = Binding.extend({
     match(match, variance) {
         return (variance !== Variance.Invariant) && this.constraint.test(match);
     }
 });
 
-const BindingMatchCustom = Binding.extend({
-    constructor(match) {
-        this.match = match;
-    },
-
-    copy() {
-        const binding = new BindingMatchCustom(this.match);
-        binding.constraint = this.constraint;
-        binding.handler    = this.handler;
-        return binding;
-    },
+const BindingCustom = Binding.extend({
+    match(match, variance) {
+        return this.constraint.call(this, match, variance);
+    }
 });
+
+function requireValidPolicy(policy) {
+    if ($isNothing(policy)) {
+        throw new Error("The policy argument is required.")
+    }
+    if (!(policy instanceof CallbackPolicy)) {
+        throw new TypeError("The policy argument is not a valid CallbackPolicy.");
+    }
+}
 
 function createIndex(constraint) {
     if ($isNothing(constraint)) return;

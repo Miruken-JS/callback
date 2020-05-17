@@ -132,3 +132,5 @@ Handler.implement({
         }
     }  
 });
+
+export default Batching;

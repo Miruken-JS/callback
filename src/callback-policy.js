@@ -24,7 +24,7 @@ export const CallbackPolicy = Base.extend({
     * @param   {String}    name     -  policy name 
     */    
     constructor(variance, name) {
-        if ($classOf(this) === CallbackPolicy) {
+        if (this.constructor === CallbackPolicy) {
             throw new Error("CallbackPolicy cannot be instantiated.  Use CovariantPolicy, ContravariantPolicy, or InvariantPolicy.");
         }
         _(this).variance = variance;
@@ -69,10 +69,10 @@ export const CallbackPolicy = Base.extend({
         return addHandler.call(this, owner, constraint, handler, removed);
     },
 
-    dispatch(handler, callback, constraint, composer, all, results) {
+    dispatch(handler, callback, constraint, composer, greedy, results) {
         const descriptor = HandlerDescriptor.get(handler);
         return descriptor != null && descriptor.dispatch(
-            this, handler, callback, constraint, composer, all, results);
+            this, handler, callback, constraint, composer, greedy, results);
     },
 
     /**
@@ -196,6 +196,15 @@ function addHandler(owner, constraint, handler, removed) {
     return descriptor.addBinding(this, constraint, handler, removed);
 };
 
+function validateComparer(binding, otherBinding) {
+    if ($isNothing(binding)) {
+        throw new Error("The binding argument is required.");
+    }
+    if ($isNothing(otherBinding)) {
+        throw new Error("The otherBinding argument is required.");
+    }
+}
+
 /**
  * Registers methods and properties as handlers.
  * @method addHandler
@@ -209,13 +218,14 @@ function registerHandlers(name, policy, allowGets, filter) {
         throw new Error(`The policy for @${name} is required.`);
     }
     return (target, key, descriptor, constraints) => {
+        // Base2 classes can have constructor decorators, but real classes
+        // can't.  Therefore, we must allow decorators on classes too.
         if (!isDescriptor(descriptor)) {
-            throw new SyntaxError(`@${name} cannot be applied to classes.`);
+            policy.addHandler(target, target, instantiate);
+            return;
         }
-        if (key === "constructor") {
-            const clazz   = target.constructor,
-                  handler = function () { return new clazz(); };
-            policy.addHandler(target, clazz, handler);
+        if (key === "constructor") {    
+            policy.addHandler(target, "#constructor", instantiate);
             return;
         }
         const { get, value } = descriptor;
@@ -257,13 +267,8 @@ function registerHandlers(name, policy, allowGets, filter) {
     };
 }
 
-function validateComparer(binding, otherBinding) {
-    if ($isNothing(binding)) {
-        throw new Error("The binding argument is required.");
-    }
-    if ($isNothing(otherBinding)) {
-        throw new Error("The otherBinding argument is required.");
-    }
+function instantiate() {
+    return new this();
 }
 
 /**

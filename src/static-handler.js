@@ -1,5 +1,4 @@
-import { Base } from "miruken-core";
+import Handler from "./handler";
+import HandlerDescriptor from "./handler-descriptor";
 
-export const StaticHandler = Base.extend();
-
-export default StaticHandler;
+export default Handler(HandlerDescriptor.StaticHandler);
