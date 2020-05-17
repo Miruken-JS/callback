@@ -7,6 +7,7 @@ import {
 } from "miruken-core";
 
 import { CallbackPolicy } from "./callback-policy";
+import StaticHandler from "./static-handler";
 
 const _ = createKey(),
       descriptorMetadataKey = Symbol("descriptor-metadata");
@@ -46,7 +47,7 @@ export const HandlerDescriptor = Base.extend({
 
         return function (notifyRemoved) {
             policyBindings.remove(binding);
-            if (policyBindings.isEmpty()) {
+            if (policyBindings.isEmpty) {
                 bindings.delete(policy);
             }
             if ($isFunction(removed) && (notifyRemoved !== false)) {
@@ -62,30 +63,13 @@ export const HandlerDescriptor = Base.extend({
               policyBindings = bindings.get(policy);
         if (policyBindings == null) return;
 
-        let head = policyBindings.head;
-        
-        while (head) {
-            if (head.removed) {
-                head.removed(owner);
+        for (let binding of policyBindings) {
+            if (binding.removed) {
+                binding.removed(owner);
             }
-            head = head.next;
         }
 
         bindings.delete(policy);
-    },
-    merge(otherDescriptor) {
-        if (otherDescriptor instanceof $classOf(this)) {
-            const bindings = _(this).bindings;
-            for (let [otherPolicy, otherBindings] of otherDescriptor.bindings) {
-                let policyBindings = bindings.get(otherPolicy);
-                if (policyBindings == null) {
-                    policyBindings = new IndexedList(
-                        otherPolicy.compareBinding.bind(otherPolicy));
-                    bindings.set(otherPolicy, policyBindings);
-                }
-                policyBindings.merge(otherBindings);
-            }
-        }
     },
     dispatch(policy, handler, callback, constraint, composer, all, results) {
         requireValidPolicy(policy);
@@ -118,6 +102,35 @@ export const HandlerDescriptor = Base.extend({
             return dispatched && !all;
         });
         return dispatched; 
+    },
+
+    /**
+     * Metadata management methods.
+     * The following methods are used to support the metadata
+     * system when base2 classes are used.  The instance and
+     * static object literals will be decorated first so it
+     * is necessary to copy or merge their metadata on to
+     * the correct classes or prototypes.
+     */
+
+    copyMetadata(sourceDescriptor, target, source) {
+        // This will most likely be true when base2
+        // static handler methods are present.
+        if ($isClass(target) && $isObject(source)) {
+        }
+        return sourceDescriptor;
+    },
+    mergeMetadata(sourceDescriptor, target, source) {
+        const bindings = _(this).bindings;
+        for (let [sourcePolicy, sourceBindings] of sourceDescriptor.bindings) {
+            let myBindings = bindings.get(sourcePolicy);
+            if (myBindings == null) {
+                myBindings = new IndexedList(
+                    sourcePolicy.compareBinding.bind(sourcePolicy));
+                bindings.set(sourcePolicy, myBindings);
+            }
+            myBindings.merge(sourceBindings);
+        }
     }
 }, {
     get(owner, create) {
@@ -134,23 +147,19 @@ function dispatch(policy, target, callback, constraint, index,
     let dispatched  = false;
     const invariant = (variance === Variance.Invariant);
     if (!invariant || index) {
-        let binding = bindings.getFirst(index) || bindings.head;
-        while (binding) {
+        for (let binding of bindings.fromIndex(index)) {
             if (binding.match(constraint, variance)) {
                 let guard;
                 if ($isFunction(callback.guardDispatch)) {
                     guard = callback.guardDispatch(target, binding);
-                    if (!guard) {
-                        binding = binding.next;
-                        continue;
-                    }
+                    if (!guard) continue;
                 }
                 try {
                     const result = binding.handler.call(
                         target, callback, composer, { constraint, binding });
                     if (policy.acceptResult(result)) {
                         if (!results || results.call(callback, result, composer) !== false) {
-                            if (!all) { return true; }
+                            if (!all) return true;
                             dispatched = true;
                         }
                     }
@@ -162,7 +171,6 @@ function dispatch(policy, target, callback, constraint, index,
             } else if (invariant) {
                 break;  // stop matching if invariant not satisifed
             }
-            binding = binding.next;
         }
     }
     return dispatched;

@@ -1,6 +1,6 @@
 import { 
     Base, Undefined, Variance, decorate,
-    isDescriptor, designWithReturn,
+    isDescriptor, design, designWithReturn,
     $isNothing, $isFunction, $classOf,
     $lift, $contents, createKey
 } from "miruken-core";
@@ -25,7 +25,7 @@ export const CallbackPolicy = Base.extend({
     */    
     constructor(variance, name) {
         if ($classOf(this) === CallbackPolicy) {
-            throw new Error("CallbackPolicy cannot be instantiated.");
+            throw new Error("CallbackPolicy cannot be instantiated.  Use CovariantPolicy, ContravariantPolicy, or InvariantPolicy.");
         }
         _(this).variance = variance;
         _(this).name     = name;
@@ -70,10 +70,6 @@ export const CallbackPolicy = Base.extend({
     },
 
     dispatch(handler, callback, constraint, composer, all, results) {
-        if ("dispatchCallback" in handler) {
-            return handler.dispatchCallback(
-                this, callback, constraint, composer, all, results);
-        }
         const descriptor = HandlerDescriptor.get(handler);
         return descriptor != null && descriptor.dispatch(
             this, handler, callback, constraint, composer, all, results);
@@ -217,7 +213,10 @@ function registerHandlers(name, policy, allowGets, filter) {
             throw new SyntaxError(`@${name} cannot be applied to classes.`);
         }
         if (key === "constructor") {
-            throw new SyntaxError(`@${name} cannot be applied to constructors.`);
+            const clazz   = target.constructor,
+                  handler = function () { return new clazz(); };
+            policy.addHandler(target, clazz, handler);
+            return;
         }
         const { get, value } = descriptor;
         if (!$isFunction(value)) {
@@ -230,8 +229,11 @@ function registerHandlers(name, policy, allowGets, filter) {
             }
         }
         if (constraints.length == 0) {
-            if (policy.variance === Variance.Covariant ||
-                policy.variance === Variance.Invariant) {
+            if (policy.variance === Variance.Contravariant) {
+                const signature = design.get(target, key);
+                constraints = signature ? signature[0] : null;
+            } else if (policy.variance === Variance.Covariant ||
+                       policy.variance === Variance.Invariant) {
                 const signature = designWithReturn.get(target, key);
                 constraints = signature ? signature[0] : null;
             } else {

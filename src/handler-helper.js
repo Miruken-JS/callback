@@ -216,6 +216,7 @@ Handler.implement({
         }
         return this;
     },
+    $with(...values) { return this.$provides(values); },
     /**
      * Builds a handler chain.
      * @method next

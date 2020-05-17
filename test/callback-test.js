@@ -177,6 +177,7 @@ const Casino = CompositeHandler.extend({
     toString() { return "Casino " + this.name; },
 });
 
+
 describe("HandleMethod", () => {
     describe("#type", () => {
         it("should get the method type", () => {
@@ -249,35 +250,91 @@ describe("HandleMethod", () => {
 
 describe("Policies", () => {
     describe("CallbackPolicy", () => {
-        it("should define callbacks on class", () => {
-            const Cashier = Base.extend(null, {
-                    @handles(CountMoney)
-                    countMoney(countMoney, composer) {
-                        countMoney.record(10);
-                    }
-                });
-            const descriptor = HandlerDescriptor.get(Cashier),
-                  bindings   = descriptor.getBindings(handles.policy);
-            expect(bindings.head.constraint).to.equal(CountMoney);
+        it("should define callbacks on base2 classes", () => {
+            const Cashier = Handler.extend({
+                      @handles(CountMoney)
+                      countMoney(countMoney, composer) {
+                          countMoney.record(200);
+                      }
+                  }),
+                  countMoney = new CountMoney(),
+                  wireMoney  = new WireMoney(75),
+                  cashier    = new Cashier();
+            Cashier.implement({
+                @handles(WireMoney)
+                wireMoney(wireMoney) {
+                    wireMoney.received = wireMoney.requested;     
+                }
+            });                  
+            expect(cashier.handle(countMoney)).to.be.true;
+            expect(cashier.handle(wireMoney)).to.be.true;
+            expect(countMoney.total).to.equal(200);
+            expect(wireMoney.received).to.equal(75);
         });
 
-        it("should fallback to first design argument for Contravarient policies", () => {
+        it("should define callbacks on real classes", () => {
+            class Cashier {
+                @handles(CountMoney)
+                countMoney(countMoney, composer) {
+                    countMoney.record(10);
+                }
+            }
+            const countMoney = new CountMoney();
+            expect(Handler(new Cashier()).handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(10);
+        });
+
+        it("should define callbacks on base2 static members", () => {
             const Cashier = Base.extend(null, {
-                    @handles
-                    @design(CountMoney)
-                    countMoney(countMoney, composer) {
-                        countMoney.record(10);
-                    }
-                });
-            //const descriptor = HandlerDescriptor.get(Cashier),
-            //      bindings   = descriptor.getBindings(handles.policy);
-            //expect(bindings.head.constraint).to.equal(CountMoney);
+                      @handles(CountMoney)
+                      countMoney(countMoney, composer) {
+                          countMoney.record(1000);
+                      }
+                  }),
+                  countMoney = new CountMoney();
+            expect(Handler(Cashier).handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(1000);
+        });
+
+        it("should define callbacks on static class members", () => {
+            class Cashier {
+                @handles(CountMoney)
+                static countMoney(countMoney, composer) {
+                    countMoney.record(3500);
+                }
+            }
+            const countMoney = new CountMoney();
+            expect(Handler(Cashier).handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(3500);
+        });
+
+        it("should fallback to the first design argument for Contravarient policies", () => {
+            const Cashier = Handler.extend({
+                      @handles
+                      @design(CountMoney)
+                      countMoney(countMoney, composer) {
+                          countMoney.record(150);
+                      }
+                  });
+            const countMoney = new CountMoney();
+            expect(new Cashier().handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(150);
+        });
+
+        it("should fallback to the design return type for Covariant policies", () => {
+            const cashier   = new Cashier(1000000.00),
+                  inventory = new (Handler.extend({
+                      @provides
+                      @designWithReturn(Cashier)
+                      cashier() { return cashier; }
+                  }));
+            expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
 
         it("Should fail instantiation of CallbackPolicy", () => {
             expect(() => {
                 new CallbackPolicy(Variance.Contravariant, "bam");
-            }).to.throw(Error, "CallbackPolicy cannot be instantiated.");    
+            }).to.throw(Error, "CallbackPolicy cannot be instantiated.  Use CovariantPolicy, ContravariantPolicy, or InvariantPolicy.");    
         });
     });
 
@@ -295,22 +352,20 @@ describe("Policies", () => {
             handles.addHandler(handler, Activity, Undefined);
             handles.addHandler(handler, Accountable, Undefined);
             handles.addHandler(handler, Game, Undefined);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy);            
-            expect(bindings.head.constraint).to.equal(Activity);
-            expect(bindings.head.next.constraint).to.equal(Accountable);
-            expect(bindings.tail.prev.constraint).to.equal(Accountable);
-            expect(bindings.tail.constraint).to.equal(Game);
+            const descriptor  = HandlerDescriptor.get(handler),
+                  bindings    = descriptor.getBindings(handles.policy),
+                  constraints = [...bindings].map(x => x.constraint);
+            expect(constraints).to.eql([Activity, Accountable, Game]);
         });
 
         it("should order 'handles' contravariantly", () => {
             const handler = new Handler();
             handles.addHandler(handler, Accountable, Undefined);
             handles.addHandler(handler, Activity, Undefined);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy);            
-            expect(bindings.head.constraint).to.equal(Activity);
-            expect(bindings.tail.constraint).to.equal(Accountable);
+            const descriptor  = HandlerDescriptor.get(handler),
+                  bindings    = descriptor.getBindings(handles.policy),
+                  constraints = [...bindings].map(x => x.constraint);
+            expect(constraints).to.eql([Activity, Accountable]);
         });
 
         it("should order 'handles' invariantly", () => {
@@ -318,19 +373,19 @@ describe("Policies", () => {
             handles.addHandler(handler, Activity, Undefined);
             handles.addHandler(handler, Activity, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy);      
-            expect(bindings.head.handler).to.equal(Undefined);
-            expect(bindings.tail.handler).to.equal(True);
+                  bindings   = descriptor.getBindings(handles.policy),
+                  handlers   = [...bindings].map(x => x.handler);
+            expect(handlers).to.eql([Undefined, True]);
         });
 
         it("should order 'provides' covariantly", () => {
             const handler = new Handler();
             provides.addHandler(handler, Activity, Undefined);
             provides.addHandler(handler, Accountable, Undefined);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(provides.policy);          
-            expect(bindings.head.constraint).to.equal(Accountable);
-            expect(bindings.tail.constraint).to.equal(Activity);
+            const descriptor  = HandlerDescriptor.get(handler),
+                  bindings    = descriptor.getBindings(provides.policy),
+                  constraints = [...bindings].map(x => x.constraint);
+            expect(constraints).to.eql([Accountable, Activity]);
         });
 
         it("should order 'provides' invariantly", () => {
@@ -338,9 +393,9 @@ describe("Policies", () => {
             provides.addHandler(handler, Activity, Undefined);
             provides.addHandler(handler, Activity, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(provides.policy);  
-            expect(bindings.head.handler).to.equal(Undefined);
-            expect(bindings.tail.handler).to.equal(True);
+                  bindings   = descriptor.getBindings(provides.policy),
+                  handlers   = [...bindings].map(x => x.handler);
+            expect(handlers).to.eql([Undefined, True]);
         });
 
         it("should order 'looksup' invariantly", () => {
@@ -348,19 +403,9 @@ describe("Policies", () => {
             looksup.addHandler(handler, Activity, Undefined);
             looksup.addHandler(handler, Activity, True);
             const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(looksup.policy);  
-            expect(bindings.head.handler).to.equal(Undefined);
-            expect(bindings.tail.handler).to.equal(True);
-        });
-
-        it("should index first registered handler with head and tail", () => {
-            const handler    = new Handler,
-                  unregister = handles.addHandler(handler, True, Undefined);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy);        
-            expect(unregister).to.be.a("function");
-            expect(bindings.head.handler).to.equal(Undefined);
-            expect(bindings.tail.handler).to.equal(Undefined);
+                  bindings   = descriptor.getBindings(looksup.policy),
+                  handlers   = [...bindings].map(x => x.handler);
+            expect(handlers).to.eql([Undefined, True]);
         });
 
         it("should call function when handler removed", () => {
@@ -910,16 +955,6 @@ describe("Handler", () => {
                   }));
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
-
-        it("should check design return type if empty @provides", () => {
-            const cashier   = new Cashier(1000000.00),
-                  inventory = new (Handler.extend({
-                      @provides
-                      @designWithReturn(Cashier)
-                      cashier() { return cashier; }
-                  }));
-            expect(inventory.resolve(Cashier)).to.equal(cashier);
-        });
         
         it("should infer constraint from explicit objects", () => {
             const cashier   = new Cashier(1000000.00),
@@ -1028,16 +1063,17 @@ describe("Handler", () => {
             expect(cardGames.resolve($instant(Game))).to.be.undefined;
         });
 
+/* CFN
         it("should resolve using constructor", () => {
-            const Shape  = Protocol.extend(),
-                  Circle = Shape.extend({
-                      constructor(radius) {
-                          this.radius = radius;
-                      }
+            const Car     = Protocol.extend(),
+                  Ferarri = Car.extend({
+                      @provides
+                      constructor() {}
                   }),          
-                  circle  = (new Handler()).resolve(Circle);           
+                  car    = (new Handler()).resolve(Car);  
+            expect(car).to.be.instanceOf(Ferarri);               
         });
-
+*/
         it("should resolve by string literal", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (Handler.extend({
