@@ -13,16 +13,18 @@ import {
 
 import CascadeHandler from "../src/cascade-handler";
 import CompositeHandler from "../src/composite-handler";
-import HandlerDescriptor from "../src/handler-descriptor";
-import Options from "../src/options";
-
 import HandleMethod from "../src/handle-method";
 import { Batching } from "../src/batch";
+import Options from "../src/options";
 
 import {
     CallbackPolicy, handles, provides,
     looksup, $unhandled
 } from "../src/callback-policy";
+
+import { 
+    HandlerDescriptor, Binding
+} from "../src/handler-descriptor";
 
 import {
     RejectedError, TimeoutError
@@ -338,7 +340,7 @@ describe("Policies", () => {
         });
     });
 
-    describe("#list", () => {
+    describe("Bindings", () => {
         it("should create 'handles' when first handler registered", () => {
             const handler  = new Handler();
             handles.addHandler(handler, True, True);
@@ -444,82 +446,82 @@ describe("Policies", () => {
                   bindings   = descriptor.getBindings(handles.policy); 
             expect(bindings).to.be.undefined;
         });
-    });
 
-    describe("#index", () => {
-        it("should index class constraints using assignID", () => {
-            const handler = new Handler,
-                  index   = assignID(Activity);
-            handles.addHandler(handler, Activity, Undefined);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy); 
-            expect(bindings.getFirst(index).constraint).to.equal(Activity);
+        describe("#index", () => {
+            it("should index class constraints using assignID", () => {
+                const handler = new Handler,
+                    index   = assignID(Activity);
+                handles.addHandler(handler, Activity, Undefined);
+                const descriptor = HandlerDescriptor.get(handler),
+                    bindings   = descriptor.getBindings(handles.policy); 
+                expect(bindings.getFirst(index).constraint).to.equal(Activity);
+            });
+
+            it("should index protocol constraints using assignID", () => {
+                const handler   = new Handler,
+                    index     = assignID(Game);
+                handles.addHandler(handler, Game, Undefined);
+                const descriptor = HandlerDescriptor.get(handler),
+                    bindings   = descriptor.getBindings(handles.policy); 
+                expect(bindings.getFirst(index).constraint).to.equal(Game);
+            });
+
+            it("should index string constraints using string", () => {
+                const handler   = new Handler();
+                handles.addHandler(handler, "something", Undefined);
+                const descriptor = HandlerDescriptor.get(handler),
+                    bindings   = descriptor.getBindings(handles.policy); 
+                expect(bindings.getFirst("something").handler).to.equal(Undefined);
+            });
+
+            it("should move index to next match", () => {
+                let handler     = new Handler,
+                    index       = assignID(Activity),
+                    unregister  = handles.addHandler(handler, Activity, Undefined);
+                handles.addHandler(handler, Activity, True);
+                const descriptor = HandlerDescriptor.get(handler),
+                    bindings   = descriptor.getBindings(handles.policy); 
+                expect(bindings.getFirst(index).handler).to.equal(Undefined);
+                unregister();
+                expect(bindings.getFirst(index).handler).to.equal(True);
+            });
+
+            it("should remove index when no more matches", () => {
+                const handler   = new Handler,
+                    index     = assignID(Activity);
+                handles.addHandler(handler, Accountable, Undefined);
+                const unregister = handles.addHandler(handler, Activity, Undefined);
+                unregister();
+                const descriptor = HandlerDescriptor.get(handler),
+                    bindings   = descriptor.getBindings(handles.policy); 
+                expect(bindings.getFirst(index)).to.be.undefined;
+            });
         });
 
-        it("should index protocol constraints using assignID", () => {
-            const handler   = new Handler,
-                  index     = assignID(Game);
-            handles.addHandler(handler, Game, Undefined);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy); 
-            expect(bindings.getFirst(index).constraint).to.equal(Game);
-        });
+        describe("#removeAll", () => {
+            it("should remove all 'handles' definitions", () => {
+                let handler     = new Handler,
+                    removeCount = 0,
+                    removed     = () => { ++removeCount; };
+                handles.addHandler(handler, Accountable, Undefined, removed);
+                handles.addHandler(handler, Activity, Undefined, removed);
+                const descriptor = HandlerDescriptor.get(handler);
+                descriptor.removeBindings(handles.policy);
+                expect(removeCount).to.equal(2);
+                expect(descriptor.getBindings(handles.policy)).to.be.undefined;
+            });
 
-        it("should index string constraints using string", () => {
-            const handler   = new Handler();
-            handles.addHandler(handler, "something", Undefined);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy); 
-            expect(bindings.getFirst("something").handler).to.equal(Undefined);
-        });
-
-        it("should move index to next match", () => {
-            let handler     = new Handler,
-                index       = assignID(Activity),
-                unregister  = handles.addHandler(handler, Activity, Undefined);
-            handles.addHandler(handler, Activity, True);
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy); 
-            expect(bindings.getFirst(index).handler).to.equal(Undefined);
-            unregister();
-            expect(bindings.getFirst(index).handler).to.equal(True);
-        });
-
-        it("should remove index when no more matches", () => {
-            const handler   = new Handler,
-                  index     = assignID(Activity);
-            handles.addHandler(handler, Accountable, Undefined);
-            const unregister = handles.addHandler(handler, Activity, Undefined);
-            unregister();
-            const descriptor = HandlerDescriptor.get(handler),
-                  bindings   = descriptor.getBindings(handles.policy); 
-            expect(bindings.getFirst(index)).to.be.undefined;
-        });
-    });
-
-    describe("#removeAll", () => {
-        it("should remove all 'handles' definitions", () => {
-            let handler     = new Handler,
-                removeCount = 0,
-                removed     = () => { ++removeCount; };
-            handles.addHandler(handler, Accountable, Undefined, removed);
-            handles.addHandler(handler, Activity, Undefined, removed);
-            const descriptor = HandlerDescriptor.get(handler);
-            descriptor.removeBindings(handles.policy);
-            expect(removeCount).to.equal(2);
-            expect(descriptor.getBindings(handles.policy)).to.be.undefined;
-        });
-
-        it("should remove all 'provides' definitions", () => {
-            let handler     = new Handler,
-                removeCount = 0,
-                removed     = () => { ++removeCount; };
-            provides.addHandler(handler, Activity, Undefined, removed);
-            provides.addHandler(handler, Accountable, Undefined, removed);
-            const descriptor = HandlerDescriptor.get(handler);
-            descriptor.removeBindings(provides.policy);
-            expect(removeCount).to.equal(2);
-            expect(descriptor.getBindings(provides.policy)).to.be.undefined;
+            it("should remove all 'provides' definitions", () => {
+                let handler     = new Handler,
+                    removeCount = 0,
+                    removed     = () => { ++removeCount; };
+                provides.addHandler(handler, Activity, Undefined, removed);
+                provides.addHandler(handler, Accountable, Undefined, removed);
+                const descriptor = HandlerDescriptor.get(handler);
+                descriptor.removeBindings(provides.policy);
+                expect(removeCount).to.equal(2);
+                expect(descriptor.getBindings(provides.policy)).to.be.undefined;
+            });
         });
     });
 });

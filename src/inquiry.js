@@ -102,7 +102,7 @@ export const Inquiry = Base.extend(CallbackControl, {
     },    
     dispatch(handler, greedy, composer) {
         // check if handler implicitly satisfies key
-        const implied  = new Binding(this.key);
+        const implied = Binding.create(this.key);
         if (implied.match($classOf(handler), Variance.Contravariant)) {
             resolved = this.resolve(handler, composer);
             if (resolved && !greedy) return true;

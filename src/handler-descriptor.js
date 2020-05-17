@@ -1,9 +1,8 @@
 import { 
-    Base, False, Variance, IndexedList,
-    Metadata, $isNothing, $eq, $contents,
-    $isFunction, $isString, $isProtocol,
-    $isClass, $classOf, $isObject, assignID,
-    createKey
+    Base, Variance, IndexedList, Metadata,
+    $isNothing, $eq, $contents, $isFunction,
+    $isString, $isProtocol, $isClass, $classOf,
+    $isObject, assignID, createKey
 } from "miruken-core";
 
 import { CallbackPolicy } from "./callback-policy";
@@ -31,29 +30,8 @@ export const HandlerDescriptor = Base.extend({
     },
     addBinding(policy, constraint, handler, removed) {
         requireValidPolicy(policy);
-
-        const owner    = _(this).owner,
-              bindings = _(this).bindings,
-              binding  = new Binding(constraint, handler, removed),
-              index    = createIndex(binding.constraint);
-        
-        let policyBindings = bindings.get(policy);
-        if (policyBindings == null) {
-            policyBindings = new IndexedList(policy.compareBinding.bind(policy));
-            bindings.set(policy, policyBindings);
-        }
-
-        policyBindings.insert(binding, index);
-
-        return function (notifyRemoved) {
-            policyBindings.remove(binding);
-            if (policyBindings.isEmpty) {
-                bindings.delete(policy);
-            }
-            if ($isFunction(removed) && (notifyRemoved !== false)) {
-                removed(owner);
-            }
-        };
+        const binding  = Binding.create(constraint, handler, removed);
+        return addBinding.call(this, policy, binding);
     },
     removeBindings(policy) {
         requireValidPolicy(policy);
@@ -75,7 +53,6 @@ export const HandlerDescriptor = Base.extend({
         requireValidPolicy(policy);
 
         const variance = policy.variance;
-
         constraint = constraint || callback;
          
         if (constraint) {
@@ -94,7 +71,6 @@ export const HandlerDescriptor = Base.extend({
         Metadata.collect(descriptorMetadataKey, handler, descriptor => {
             const bindings = descriptor.getBindings(policy);
             if (bindings == null) return false;
-
             dispatched = dispatch(policy, handler, callback, constraint,
                                   index, variance, bindings, composer,
                                   all, results)
@@ -114,22 +90,22 @@ export const HandlerDescriptor = Base.extend({
      */
 
     copyMetadata(sourceDescriptor, target, source) {
-        // This will most likely be true when base2
-        // static handler methods are present.
-        if ($isClass(target) && $isObject(source)) {
-        }
-        return sourceDescriptor;
-    },
-    mergeMetadata(sourceDescriptor, target, source) {
-        const bindings = _(this).bindings;
-        for (let [sourcePolicy, sourceBindings] of sourceDescriptor.bindings) {
-            let myBindings = bindings.get(sourcePolicy);
-            if (myBindings == null) {
-                myBindings = new IndexedList(
-                    sourcePolicy.compareBinding.bind(sourcePolicy));
-                bindings.set(sourcePolicy, myBindings);
+        const targetDescriptor = HandlerDescriptor.get(target, true);
+         for (let [policy, bindings] of sourceDescriptor.bindings) {
+            for (let binding of bindings) {
+                addBinding.call(targetDescriptor, policy, binding.copy());
             }
-            myBindings.merge(sourceBindings);
+        }
+        return targetDescriptor;
+    },
+    mergeMetadata(sourceDescriptor) {
+        if (sourceDescriptor.constructor !== this.constructor) {
+            throw new TypeError("mergeMetadata expects a HandlerDescriptor.");
+        }
+        for (let [policy, bindings] of sourceDescriptor.bindings) {
+            for (let binding of bindings) {
+                addBinding.call(this, policy, binding.copy());
+            }
         }
     }
 }, {
@@ -141,6 +117,30 @@ export const HandlerDescriptor = Base.extend({
         return Metadata.get(descriptorMetadataKey, owner);
     }
 });
+
+function addBinding(policy, binding) {
+    const owner    = _(this).owner,
+          bindings = _(this).bindings,
+          index    = createIndex(binding.constraint);
+    
+    let policyBindings = bindings.get(policy);
+    if (policyBindings == null) {
+        policyBindings = new IndexedList(policy.compareBinding.bind(policy));
+        bindings.set(policy, policyBindings);
+    }
+
+    policyBindings.insert(binding, index);
+
+    return function (notifyRemoved) {
+        policyBindings.remove(binding);
+        if (policyBindings.isEmpty) {
+            bindings.delete(policy);
+        }
+        if ($isFunction(binding.removed) && (notifyRemoved !== false)) {
+            binding.removed(owner);
+        }
+    };
+}
 
 function dispatch(policy, target, callback, constraint, index,
                   variance, bindings, composer, all, results) {
@@ -185,93 +185,133 @@ function requireValidPolicy(policy) {
     }
 }
 
-export function Binding(constraint, handler, removed) {
-    const invariant = $eq.test(constraint);
-    constraint      = $contents(constraint);
-    this.constraint = constraint;
-    this.handler    = handler;
-    if ($isNothing(constraint)) {
-        this.match = invariant ? False : matchEverything;
-    } else if ($isProtocol(constraint)) {
-        this.match = invariant ? matchInvariant : matchProtocol;
-    } else if ($isClass(constraint)) {
-        this.match = invariant ? matchInvariant : matchClass;
-    } else if ($isString(constraint)) {
-        this.match = matchString;
-    } else if (constraint instanceof RegExp) {
-        this.match = invariant ? False : matchRegExp;
-    } else if ($isFunction(constraint)) {
-        this.match = constraint;
-    } else {
-        this.match = False;
+// Binding Support
+
+export const Binding = Base.extend({
+    equals(other) {
+        return this.constraint === other.constraint
+            && (this.handler === other.handler ||
+               (this.handler.key && other.handler.key &&
+                this.handler.key === other.handler.key));
+    },
+    copy() {
+        const binding = new this.constructor();
+        binding.constraint = this.constraint;
+        binding.handler    = this.handler;
+        return binding;
+    },   
+    toString() {
+        return `Binding | ${this.constraint}`;
     }
-    if (removed) {
-        this.removed = removed;
+}, {
+    create(constraint, handler, removed) {
+        let binding;
+        const invariant = $eq.test(constraint);
+        constraint = $contents(constraint);
+        if ($isNothing(constraint)) {
+            binding = invariant ? new BindingMatchNone : new BindingMatchEverything;
+        } else if ($isProtocol(constraint)) {
+            binding = invariant ? new BindingMatchInvariant : new BindingMatchProtocol;
+        } else if ($isClass(constraint)) {
+            binding = invariant ? new BindingMatchInvariant : new BindingMatchClass;
+        } else if ($isString(constraint)) {
+            binding = new BindingMatchString;
+        } else if (constraint instanceof RegExp) {
+            binding = invariant ? new BindingMatchNone : new BindingMatchRegExp;
+        } else if ($isFunction(constraint)) {
+            binding = new BindingMatchCustom(constraint);
+        } else {
+            binding = new BindingMatchNone;
+        }
+        binding.constraint = constraint;
+        binding.handler    = handler;
+        if (removed) {
+            binding.removed = removed;
+        }
+        return binding;
     }
-}
-Binding.prototype.equals = function (other) {
-    return this.constraint === other.constraint
-        && (this.handler === other.handler ||
-           (this.handler.key && other.handler.key &&
-            this.handler.key === other.handler.key));
-}
-Binding.prototype.toString = function () {
-    return `Binding | ${this.constraint}`;
-}
+});
+
+const BindingMatchNone = Binding.extend({
+    match() { return false; }
+});
+
+const BindingMatchInvariant = Binding.extend({
+    match(match) {
+        return this.constraint === match;
+    }
+});
+
+const BindingMatchEverything = Binding.extend({
+    match(match, variance) {
+        return variance !== Variance.Invariant;
+    }
+});
+
+const BindingMatchProtocol = Binding.extend({
+    match(match, variance) {
+        const constraint = this.constraint;
+        if (constraint === match) {
+            return true;
+        } else if (variance === Variance.Covariant) {
+            return $isProtocol(match) && match.isAdoptedBy(constraint);
+        } else if (variance === Variance.Contravariant) {
+            return !$isString(match) && constraint.isAdoptedBy(match);
+        }
+        return false;
+    }
+});
+
+const BindingMatchClass = Binding.extend({
+    match(match, variance) {
+        const constraint = this.constraint;
+        if (constraint === match) return true;
+        if (variance === Variance.Contravariant) {
+            return match.prototype instanceof constraint;
+        }
+        if (variance === Variance.Covariant) {
+            return match.prototype &&
+                (constraint.prototype instanceof match
+                || ($isProtocol(match) && match.isAdoptedBy(constraint)));
+        }
+        return false;
+    }
+})
+
+const BindingMatchString = Binding.extend({
+    match(match, variance) {
+        if (!$isString(match)) return false;
+        return variance === Variance.Invariant
+             ? this.constraint == match
+             : this.constraint.toLowerCase() == match.toLowerCase();   
+    }
+});
+
+const BindingMatchRegExp = Binding.extend({
+    match(match, variance) {
+        return (variance !== Variance.Invariant) && this.constraint.test(match);
+    }
+});
+
+const BindingMatchCustom = Binding.extend({
+    constructor(match) {
+        this.match = match;
+    },
+
+    copy() {
+        const binding = new BindingMatchCustom(this.match);
+        binding.constraint = this.constraint;
+        binding.handler    = this.handler;
+        return binding;
+    },
+});
 
 function createIndex(constraint) {
-    if (!constraint) return;
-    if ($isString(constraint)) {
-        return constraint;
-    }
+    if ($isNothing(constraint)) return;
+    if ($isString(constraint)) return constraint;
     if ($isFunction(constraint)) {
         return assignID(constraint);
     }
-}
-
-function matchInvariant(match) {
-    return this.constraint === match;
-}
-
-function matchEverything(match, variance) {
-    return variance !== Variance.Invariant;
-}
-
-function matchProtocol(match, variance) {
-    const constraint = this.constraint;
-    if (constraint === match) {
-        return true;
-    } else if (variance === Variance.Covariant) {
-        return $isProtocol(match) && match.isAdoptedBy(constraint);
-    } else if (variance === Variance.Contravariant) {
-        return !$isString(match) && constraint.isAdoptedBy(match);
-    }
-    return false;
-}
-
-function matchClass(match, variance) {
-    const constraint = this.constraint;
-    if (constraint === match) { return true; }
-    if (variance === Variance.Contravariant) {
-        return match.prototype instanceof constraint;
-    }
-    if (variance === Variance.Covariant) {
-        return match.prototype &&
-            (constraint.prototype instanceof match
-             || ($isProtocol(match) && match.isAdoptedBy(constraint)));
-    }
-    return false;
-}
-
-function matchString(match, variance) {
-    if (!$isString(match)) return false;
-    return variance === Variance.Invariant
-         ? this.constraint == match
-         : this.constraint.toLowerCase() == match.toLowerCase();
-}
-
-function matchRegExp(match, variance) {
-    return (variance !== Variance.Invariant) && this.constraint.test(match);
 }
 
 export default HandlerDescriptor;
