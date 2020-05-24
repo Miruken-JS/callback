@@ -14,6 +14,7 @@ import {
 import CascadeHandler from "../src/cascade-handler";
 import CompositeHandler from "../src/composite-handler";
 import StaticHandler from "../src/static-handler";
+import InferenceHandler from "../src/inference-handler";
 import HandleMethod from "../src/handle-method";
 import Batching from "../src/batch";
 import Options from "../src/options";
@@ -28,7 +29,7 @@ import {
 } from "../src/handler-descriptor";
 
 import {
-    RejectedError, TimeoutError
+    RejectedError, TimeoutError, NotHandledError
 } from "../src/errors";
 
 import "../src/handler-helper";
@@ -295,7 +296,8 @@ describe("Policies", () => {
                       }
                   }),
                   countMoney = new CountMoney();
-            expect(StaticHandler.handle(countMoney)).to.be.true;
+            const handler = new StaticHandler([Cashier]);
+            expect(handler.handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000);
         });
 
@@ -907,6 +909,57 @@ describe("Handler", () => {
             expect(inventory.handle(cashier)).to.be.false;
             expect(inventory.handle(blackjack)).to.be.false;
         });
+
+        it("should infer callbacks", () => {
+            const countMoney = new CountMoney(),
+                  inventory  = new (Handler.extend({
+                      @provides(Cashier)
+                      cashier() { return new Cashier(750); }
+                  })),
+                  handler    = new Casino("Paris")
+                    .addHandlers(inventory, new InferenceHandler([Cashier]));
+            expect(handler.handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(750);
+        });
+
+        it("should infer promise callbacks", done => {
+            const countMoney = new CountMoney(),
+                  inventory  = new (Handler.extend({
+                      @provides(Cashier)
+                      cashier() { 
+                          return Promise.resolve(new Cashier(750));
+                      }
+                  })),
+                  handler    = new Casino("Paris")
+                    .addHandlers(inventory, new InferenceHandler([Cashier]));
+            Promise.resolve(handler.command(countMoney)).then(result => {
+                expect(countMoney.total).to.equal(750);
+                done();
+            });
+        });
+
+        it("should fail to infer callbacks", () => {
+            const countMoney = new CountMoney(),
+                  handler    = new InferenceHandler([Cashier]);
+            expect(handler.handle(countMoney)).to.be.false;
+        });
+
+        it("should fail to infer promise callbacks", done => {
+            const countMoney = new CountMoney(),
+                  inventory  = new (Handler.extend({
+                      @provides(Cashier)
+                      cashier() { 
+                          return Promise.reject(new Error("Cashier is sick"));
+                      }
+                  })),
+                  handler    = new Casino("Paris")
+                    .addHandlers(inventory, new InferenceHandler([Cashier]));
+            Promise.resolve(handler.command(countMoney)).catch(error => {
+                expect(error).to.be.instanceOf(NotHandledError);
+                expect(error.callback).to.equal(countMoney);
+                done();
+            });
+        });        
     })
 
     describe("#command", () => {
@@ -1072,18 +1125,20 @@ describe("Handler", () => {
                       @provides
                       constructor() {}
                   }),          
-                  car    = StaticHandler.resolve(Car);  
+                  handler = new StaticHandler([Ferarri]),
+                  car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);               
         });
 
         // CFN: FIX ME
-        it("should resolve using class constructor", () => {
+        it.skip("should resolve using class constructor", () => {
             const Car = Protocol.extend();
             @provides
             @conformsTo(Car)
-            class Ferarri {};       
-            const car = StaticHandler.resolve(Car);  
-            //expect(car).to.be.instanceOf(Ferarri);      
+            class Ferarri {};
+            const handler = new StaticHandler([Ferarri]),  
+                  car     = handler.resolve(Car);  
+            expect(car).to.be.instanceOf(Ferarri);      
         });
 
         it("should resolve by string literal", () => {
@@ -1447,7 +1502,7 @@ describe("Handler", () => {
             const cashier    = new Cashier(1000000.00),
                   casino     = new Casino("Belagio").addHandlers(cashier),
                   countMoney = new CountMoney();
-            expect(casino.aspect(True, inf => inf.callback.record(-1))
+            expect(casino.aspect(True, cb => cb.record(-1))
                    .handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(999999.00);
         });
@@ -2127,7 +2182,7 @@ describe("Handler", () => {
             Promise.resolve(casino.$timeout(50, BankError)
                             .command(wireMoney)).catch(err => {
                 expect(err).to.be.instanceOf(BankError);
-                expect(err.callback.callback.callback).to.equal(wireMoney);
+                expect(err.callback.callback).to.equal(wireMoney);
                 done();
             });
         });

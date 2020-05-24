@@ -6,7 +6,6 @@ import {
 export const Options = Base.extend({
     get canBatch() { return false },
     
-    inferCallback() { return this; },
     /**
      * Merges this options data into `options`.
      * @method mergeInto

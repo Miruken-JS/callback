@@ -23,7 +23,6 @@ export const Resolving = Inquiry.extend({
     get callback()  { return _(this).callback; },
     get succeeded() { return _(this).succeeded; },
 
-    inferCallback() { return this; },
     guardDispatch(handler, binding) {
         const outer = this.base(handler, binding);
         if (outer) {

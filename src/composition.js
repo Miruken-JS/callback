@@ -1,6 +1,5 @@
 import { $isNothing } from "miruken-core";
 import Trampoline from "./trampoline";
-import Inference from "./inference"
 
 /**
  * Container for composition.
@@ -13,12 +12,6 @@ export const Composition = Trampoline.extend({
     get canBatch() {
         const callback = this.callback;
         return $isNothing(callback) || callback.canBatch !== false;
-    },
-    inferCallback() {
-        const callback = this.callback;
-        if ($isNothing(callback)) return this;
-        const infer = Inference.get(callback);
-        return infer === callback ? this : new Composition(infer);
     }
 }, {
     isComposed(callback, type) {

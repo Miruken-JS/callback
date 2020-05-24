@@ -92,8 +92,7 @@ export const HandleResult = Enum(HandleResult => ({
 
 function mapResult(block, handleResult) {
     const result = block.call(handleResult);
-    return result instanceof HandleResult
-         ? result
+    return result instanceof HandleResult ? result
          : (result ? HandleResult.Handled : HandleResult.NotHandled);
 }
 

@@ -71,7 +71,6 @@ export const CallbackSemantics = Composition.extend({
     isSpecified(options) {
         return _(this).specified.hasFlag(options);
     },
-    inferCallback() { return this; }, 
     mergeInto(semantics) {
         const items = CallbackOptions.items;
         for (let i = 0; i < items.length; ++i) {

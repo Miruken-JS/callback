@@ -64,8 +64,7 @@ export const Batch = CompositeHandler.extend(BatchingComplete, {
 });
 
 export const NoBatch = Trampoline.extend({
-    get canBatch() { return false },
-    inferCallback() { return this; }
+    get canBatch() { return false }
 });
 
 Handler.implement({

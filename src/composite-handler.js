@@ -61,10 +61,10 @@ export const CompositeHandler = Handler.extend({
     },
     handleCallback(callback, greedy, composer) {
         let handled = this.base(callback, greedy, composer);
-        if (handled && !greedy) { return true; }
+        if (handled && !greedy) return true;
         for (const handler of _(this).handlers) {
-            if (handler.handleCallback(callback, greedy, composer)) {
-                if (!greedy) { return true; }
+            if (handler.handle(callback, greedy, composer)) {
+                if (!greedy) return true;
                 handled = true;
             }
         }

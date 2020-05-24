@@ -70,7 +70,7 @@ export const CallbackPolicy = Base.extend({
     },
 
     dispatch(handler, callback, constraint, composer, greedy, results) {
-        const descriptor = HandlerDescriptor.get(handler);
+        const descriptor = HandlerDescriptor.get(handler, true);
         return descriptor != null && descriptor.dispatch(
             this, handler, callback, constraint, composer, greedy, results);
     },
@@ -267,9 +267,7 @@ function registerHandlers(name, policy, allowGets, filter) {
     };
 }
 
-function instantiate() {
-    return new this();
-}
+function instantiate() { return new this(); }
 
 /**
  * Policy for handling callbacks contravariantly.

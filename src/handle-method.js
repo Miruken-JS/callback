@@ -65,14 +65,14 @@ export const HandleMethod = Base.extend(CallbackControl, {
      * @returns {boolean} true if the method was accepted.
      */
     invokeOn(target, composer) {
-        if (!this.isAcceptableTarget(target)) { return false; }
+        if (!this.isAcceptableTarget(target)) return false;
         
         let method, result;
         const { methodName, methodType, args } = this;
 
         if (methodType === MethodType.Invoke) {
             method = target[methodName];
-            if (!$isFunction(method)) { return false; }
+            if (!$isFunction(method)) return false;
         }
 
         try {
@@ -105,7 +105,7 @@ export const HandleMethod = Base.extend(CallbackControl, {
         }
     },
     isAcceptableTarget(target) {
-        if (!target) { return false; }
+        if (!target) return false;
         if (!this.protocol) { return true; }
         return this.semantics.hasOption(CallbackOptions.Strict)
                 ? this.protocol.isToplevel(target)
@@ -148,7 +148,6 @@ const HandleMethodInference = Trampoline.extend({
         return this.callback.callbackResult;
     },
     
-    inferCallback() { return this; },
     dispatch(handler, greedy, composer) {
         return this.base(handler, greedy, composer) ||
                _(this).resolving.dispatch(handler, greedy, composer);          

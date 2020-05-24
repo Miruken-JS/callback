@@ -31,10 +31,10 @@ export const CascadeHandler = Handler.extend({
     handleCallback(callback, greedy, composer) {
         let handled = this.base(callback, greedy, composer);
         return !!(greedy
-            ? handled | (this.handler.handleCallback(callback, true, composer)
-               | this.cascadeToHandler.handleCallback(callback, true, composer))
-            : handled || (this.handler.handleCallback(callback, false, composer)
-               || this.cascadeToHandler.handleCallback(callback, false, composer)));
+            ? handled | (this.handler.handle(callback, true, composer)
+               | this.cascadeToHandler.handle(callback, true, composer))
+            : handled || (this.handler.handle(callback, false, composer)
+               || this.cascadeToHandler.handle(callback, false, composer)));
     }
 });
 

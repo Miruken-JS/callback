@@ -3,7 +3,6 @@ import {
 } from "miruken-core";
 
 import Composition from "./composition";
-import Inference from "./inference";
 import { CallbackPolicy } from "./callback-policy";
 
 export let $composer;
@@ -31,8 +30,7 @@ export const Handler = Base.extend({
         if ($isNothing(composer)) {
             composer = compositionScope(this);
         }
-        const inference = Inference.get(callback);
-        return !!this.handleCallback(inference, !!greedy, composer);
+        return !!this.handleCallback(callback, !!greedy, composer);
     },
     /**
      * Handles the callback with all arguments populated.

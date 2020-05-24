@@ -5,8 +5,8 @@ import {
     createKeyChain
 } from "miruken-core";
 
+import Binding from "./binding";
 import CallbackControl from "./callback-control";
-import { Binding } from "./handler-descriptor";
 import { provides } from "./callback-policy";
 
 const _ = createKeyChain();
