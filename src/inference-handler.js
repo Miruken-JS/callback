@@ -38,13 +38,12 @@ export const InferenceHandler = Handler.extend({
             return $unhandled;
         } else if (results) {
             const result = resolving.callbackResult;
-            if ($isPromise(result)) {
-                results(result.then(() => {
-                    if (!resolving.succeeded) {
-                        throw new NotHandledError(callback);
-                    }
-                }));
-            }
+            if (!$isPromise(result)) return;
+            results(result.then(() => {
+                if (!resolving.succeeded) {
+                    throw new NotHandledError(callback);
+                }
+            }));
         }
     }
 });

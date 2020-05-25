@@ -1130,6 +1130,16 @@ describe("Handler", () => {
             expect(car).to.be.instanceOf(Ferarri);               
         });
 
+        it("should reject provides with arguments on base2 constructor", () => {
+            expect(() => {
+                const Car     = Protocol.extend(),
+                      Ferarri = Base.extend(Car, {
+                          @provides(Car)
+                          constructor() {}
+                      });  
+            }).to.throw(SyntaxError, "@provides expects no arguments if applied to a constructor.");     
+        });
+
         // CFN: FIX ME
         it.skip("should resolve using class constructor", () => {
             const Car = Protocol.extend();
@@ -1331,6 +1341,68 @@ describe("Handler", () => {
             expect(inventory.resolve(Casino)).to.equal(1);
             expect(inventory.resolve(PitBoss)).to.equal(0);
         });
+
+        it("should infer resolve", () => {
+            const cashier = new Cashier(1000000.00),
+                  Inventory = Handler.extend({
+                      @provides
+                      constructor() {},
+
+                      @provides(Cashier)
+                      cashier() { return cashier; }
+                  }),
+                  handler = new StaticHandler([Inventory])
+                     .next(new InferenceHandler([Inventory]));
+            expect(handler.resolve(Cashier)).to.equal(cashier);
+        });
+
+        it("should infer promise resolve", done => {
+            const cashier = new Cashier(1000000.00),
+                  Inventory = Handler.extend({
+                      @provides
+                      constructor() {},
+
+                      @provides(Cashier)
+                      cashier() { return Promise.resolve(cashier); }
+                  }),
+                  handler = new StaticHandler([Inventory])
+                     .next(new InferenceHandler([Inventory]));
+            Promise.resolve(handler.resolve(Cashier)).then(result => {
+                expect(result).to.equal(cashier);
+                done();
+            });
+        });
+
+        it("should fail infer resolve", () => {
+            const Inventory = Handler.extend({
+                      @provides
+                      constructor() {},
+
+                      @provides(Cashier)
+                      cashier() {}
+                  }),
+                  handler = new StaticHandler([Inventory])
+                    .next(new InferenceHandler([Inventory]));
+            expect(handler.resolve(Cashier)).to.be.undefined;   
+        });
+
+        it("should fail infer promise resolve", done => {
+            const Inventory = Handler.extend({
+                      @provides
+                      constructor() {},
+
+                      @provides(Cashier)
+                      cashier() { 
+                          return Promise.reject("Cashier is sick");
+                      }
+                  }),
+                  handler = new StaticHandler([Inventory])
+                     .next(new InferenceHandler([Inventory]));
+            Promise.resolve(handler.resolve(Cashier)).then(result => {
+                expect(result).to.be.undefined;  
+                done();
+            });
+        });    
     });
 
     describe("#resolveAll", () => {
@@ -1671,13 +1743,13 @@ describe("Handler", () => {
         });
 
         it("should reject register if not an Options type", () => {
-          expect(() => {
+            expect(() => {
                 Handler.registerOptions(11, "foo");
             }).to.throw(TypeError, "Options type '11' does not extend Options.");
         });
 
         it("should reject get if not an Options type", () => {
-          expect(() => {
+            expect(() => {
                 (new Handler).getOptions("abc");
             }).to.throw(TypeError, "Options type 'abc' does not extend Options.");
         });

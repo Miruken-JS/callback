@@ -19,7 +19,7 @@ export const StaticHandler = Handler.extend({
                         const typeBinding = binding.copy(null, binding.handler.bind(type));
                         descriptor.addBinding(policy, typeBinding);
                     }
-                 }
+                }
             }
         }
     }

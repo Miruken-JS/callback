@@ -224,7 +224,10 @@ function registerHandlers(name, policy, allowGets, filter) {
             policy.addHandler(target, target, instantiate);
             return;
         }
-        if (key === "constructor") {    
+        if (key === "constructor") {
+            if (constraints.length > 0) {
+                 throw new SyntaxError(`@${name} expects no arguments if applied to a constructor.`);
+            }
             policy.addHandler(target, "#constructor", instantiate);
             return;
         }
