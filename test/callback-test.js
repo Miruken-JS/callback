@@ -2,9 +2,8 @@ import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType,
     ResolvingProtocol, assignID, design,
-    designWithReturn, conformsTo, copy,
-    $isPromise, $eq, $instant, $using,
-    $flatten, createKeyChain
+    returns, conformsTo, copy, $isPromise, $eq,
+    $instant, $using, $flatten, createKeyChain
 } from "miruken-core";
 
 import {
@@ -330,8 +329,7 @@ describe("Policies", () => {
             const cashier   = new Cashier(1000000.00),
                   inventory = new (Handler.extend({
                       @provides
-                      @designWithReturn(Cashier)
-                      cashier() { return cashier; }
+                      @returns(Cashier) cashier() { return cashier; }
                   }));
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });

@@ -1,8 +1,8 @@
 import { 
-    Base, Undefined, Variance, decorate,
-    isDescriptor, design, designWithReturn,
-    $isNothing, $isFunction, $classOf,
-    $lift, $contents, createKey
+    Base, Undefined, Variance, Argument,
+    decorate, isDescriptor, design, $isNothing,
+    $isFunction, $classOf, $lift, $contents,
+    createKey
 } from "miruken-core";
 
 import HandlerDescriptor from "./handler-descriptor";
@@ -36,7 +36,7 @@ export const CallbackPolicy = Base.extend({
 
     /**
      * Registers the handler for the specified constraint.
-     * @method acceptResult
+     * @method addHandler
      * @param   {Any}       owner       -  instance of class handler.
      * @param   {Any}       constraint  -  the constraint to handle.
      * @param   {Function}  handler     -  the handling function.
@@ -68,15 +68,25 @@ export const CallbackPolicy = Base.extend({
         }
         return addHandler.call(this, owner, constraint, handler, removed);
     },
-
+    /**
+     * Removes all handlers for the specified owner.
+     * @method removeHandlers
+     * @param   {Any} owner  -  handler owner.
+     */
+    removeHandlers(owner) {
+        const descriptor = HandlerDescriptor.get(owner);
+        if (descriptor) {
+            descriptor.removeBindings(this);
+        }
+    },
     dispatch(handler, callback, constraint, composer, greedy, results) {
         const descriptor = HandlerDescriptor.get(handler, true);
-        return descriptor != null && descriptor.dispatch(
+        return descriptor.dispatch(
             this, handler, callback, constraint, composer, greedy, results);
     },
 
     /**
-     * Defines if the callbacl result is valid for the variance.
+     * Determines if the callback result is valid for the variance.
      * @method acceptResult
      * @param   {Any}    result  -  the callback result
      * @return  {Function}  returns true if the result satisfies the variance.
@@ -86,8 +96,8 @@ export const CallbackPolicy = Base.extend({
     },
 
     /**
-     * Defines if the callbacl result is valid for the variance.
-     * @method acceptResult
+     * Defines the relative ordering of bindings.
+     * @method compareBinding
      * @param   {Binding}    binding       -  the first binding
      * @param   {Binding}    otherBinding  -  the other binding to compare with.
      * @return  {Function}  0, -1, 1 according to standard comparisons.
@@ -242,15 +252,16 @@ function registerHandlers(name, policy, allowGets, filter) {
             }
         }
         if (constraints.length == 0) {
-            if (policy.variance === Variance.Contravariant) {
-                const signature = design.get(target, key);
-                constraints = signature ? signature[0] : null;
-            } else if (policy.variance === Variance.Covariant ||
-                       policy.variance === Variance.Invariant) {
-                const signature = designWithReturn.get(target, key);
-                constraints = signature ? signature[0] : null;
-            } else {
-                constraints = null;
+            constraints = null;
+            const signature = design.get(target, key);
+            if (signature) {
+                if (policy.variance === Variance.Contravariant) {
+                    const args = signature.args;
+                    constraints = args && args.length > 0 ? args[0].type : null;
+                } else if (policy.variance === Variance.Covariant ||
+                           policy.variance === Variance.Invariant) {
+                    constraints = signature.returnType || signature.propertyType;
+                } 
             }
         }
         function lateBinding() {

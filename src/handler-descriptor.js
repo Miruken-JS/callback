@@ -1,8 +1,9 @@
 import { 
     Base, Abstract, Variance, IndexedList,
-    Metadata, $isNothing, $eq, $contents,
-    $isFunction, $isString, $classOf,
-    $isObject, assignID, createKey
+    Metadata, design, $isNothing, $eq,
+    $contents, $isFunction, $isString,
+    $classOf, $isObject, assignID,
+    createKey
 } from "miruken-core";
 
 import { CallbackPolicy, $unhandled } from "./callback-policy";
@@ -185,8 +186,8 @@ function dispatch(policy, target, callback, constraint, index,
                     if (!guard) continue;
                 }
                 try {
-                    const result = binding.handler.call(
-                        target, callback, { composer, constraint, binding, results });
+                    const context = { composer, constraint, binding, results },
+                          result  = binding.handler.call(target, callback, context);
                     if (policy.acceptResult(result)) {
                         if (!results || results(result, composer) !== false) {
                             if (!all) return true;
