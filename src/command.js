@@ -35,7 +35,7 @@ export const Command = Base.extend(CallbackControl, {
         return this.callback.canBatch !== false;
     },           
     get callbackResult() {
-        const { result, results, promises} = _(this);
+        let { result, results, promises} = _(this);
         if (result === undefined) {
             if (promises.length == 0) {
                 _(this).result = result = this.isMany ? results : results[0];

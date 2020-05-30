@@ -117,7 +117,7 @@ const Accountable = Base.extend({
         _(this).liabilities = _(this).liabilities + amount;
     },
     transfer(amount, receiver) {
-        const { assets, liabilties } = _(this);
+        let { assets, liabilties } = _(this);
         assets -= amount;
         if (assets < 0) {
             _(this).liabilties = (liabilties -= assets);
@@ -451,7 +451,7 @@ describe("Policies", () => {
         describe("#index", () => {
             it("should index class constraints using assignID", () => {
                 const handler = new Handler,
-                    index   = assignID(Activity);
+                    index     = assignID(Activity);
                 handles.addHandler(handler, Activity, Undefined);
                 const descriptor = HandlerDescriptor.get(handler),
                     bindings   = descriptor.getBindings(handles.policy); 
@@ -1932,7 +1932,7 @@ describe("InvocationHandler", () => {
                 game() { return Promise.delay(10).then(() => $unhandled); }
               }));
             Game(handler.$bestEffort()).open(5).then(id => {
-                expect(id).to.be.undefiend;
+                expect(id).to.be.undefined;
                 done();
             });            
         });

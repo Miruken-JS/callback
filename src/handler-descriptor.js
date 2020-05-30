@@ -6,7 +6,6 @@ import {
     createKey
 } from "miruken-core";
 
-import { CallbackPolicy, $unhandled } from "./callback-policy";
 import Binding from "./binding";
 
 const _ = createKey(),
@@ -54,7 +53,7 @@ export const HandlerDescriptor = Base.extend({
     dispatch(policy, handler, callback, constraint, composer, greedy, results) {
         requireValidPolicy(policy);
 
-        const variance = policy.variance;
+        let variance = policy.variance;
         constraint = constraint || callback;
          
         if (constraint) {
@@ -210,9 +209,6 @@ function dispatch(policy, target, callback, constraint, index,
 function requireValidPolicy(policy) {
     if ($isNothing(policy)) {
         throw new Error("The policy argument is required.")
-    }
-    if (!(policy instanceof CallbackPolicy)) {
-        throw new TypeError("The policy argument is not a valid CallbackPolicy.");
     }
 }
 
