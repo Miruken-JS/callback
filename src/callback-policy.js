@@ -1,6 +1,6 @@
 import { 
-    Base, Undefined, Variance, Argument,
-    decorate, isDescriptor, design, $isNothing,
+    Base, Undefined, Variance, decorate,
+    isDescriptor, design, $isNothing,
     $isFunction, $classOf, $lift, $contents,
     createKey
 } from "miruken-core";
@@ -260,7 +260,10 @@ function registerHandlers(name, policy, allowGets, filter) {
                     constraints = args && args.length > 0 ? args[0].type : null;
                 } else if (policy.variance === Variance.Covariant ||
                            policy.variance === Variance.Invariant) {
-                    constraints = signature.returnType || signature.propertyType;
+                    const typeInfo = signature.returnType || signature.propertyType;
+                    if (typeInfo) {
+                        constraints = typeInfo.type;
+                    }
                 } 
             }
         }

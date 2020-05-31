@@ -2,8 +2,9 @@ import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType,
     ResolvingProtocol, assignID, design,
-    returns, conformsTo, copy, $isPromise, $eq,
-    $instant, $using, $flatten, createKeyChain
+    returns, conformsTo, copy, $isPromise,
+    $eq, $optional, $instant, $lazy, $using,
+    $flatten, createKeyChain
 } from "miruken-core";
 
 import {
@@ -125,7 +126,9 @@ const Accountable = Base.extend({
         } else {
             _(this).assets = assets;
         }
-        receiver.addAssets(amount);
+        if (receiver) {
+            receiver.addAssets(amount);
+        }
         return Promise.delay(100);
     },
 
@@ -138,6 +141,11 @@ const Accountable = Base.extend({
 const Cashier = Accountable.extend({
     @handles(WireMoney)
     wireMoney(wireMoney) {
+        const amount = wireMoney.requested;
+        if (amount > this.assets) {
+            throw Error(`Cashier has insufficient funds. $${this.assets.toFixed(2)} < $${amount.toFixed(2)}`);
+        }
+        this.transfer(amount);
         wireMoney.received = wireMoney.requested;
         return Promise.resolve(wireMoney);        
     },
@@ -177,6 +185,7 @@ const Casino = CompositeHandler.extend({
     drinkServer() {
         return Promise.delay(100).then(() => new DrinkServer());
     },
+
     toString() { return "Casino " + this.name; },
 });
 
@@ -908,6 +917,149 @@ describe("Handler", () => {
             expect(inventory.handle(blackjack)).to.be.false;
         });
 
+        it("should handle callbacks with dependencies", () => {
+            const Bank = Accountable.extend({
+                      @provides(Cashier)
+                      cashier() { return new Cashier(); },
+
+                      @handles
+                      @design(WireMoney, Cashier)
+                      wireMoney(wireMoney, cashier) {
+                          this.transfer(this.balance, cashier);
+                          cashier.wireMoney(wireMoney);
+                          cashier.transfer(cashier.balance, this);
+                      }
+                  }),
+                  bank = new Bank(10000, 3500);
+            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+            expect(bank.assets).to.equal(9925);
+            expect(bank.liabilities).to.equal(3500);
+            expect(bank.balance).to.equal(6425);
+        });
+
+        it("should handle callbacks with promise dependencies", done => {
+            const Bank = Accountable.extend({
+                      @provides(Cashier)
+                      cashier() { 
+                          return Promise.resolve(new Cashier());
+                      },
+
+                      @handles
+                      @design(WireMoney, Cashier)
+                      wireMoney(wireMoney, cashier) {
+                          this.transfer(this.balance, cashier);
+                          cashier.wireMoney(wireMoney);
+                          cashier.transfer(cashier.balance, this);
+                      }
+                  }),
+                  bank = new Bank(10000, 3500);
+            Handler(bank).command(new WireMoney(75)).then(() => {
+                expect(bank.assets).to.equal(9925);
+                expect(bank.liabilities).to.equal(3500);
+                expect(bank.balance).to.equal(6425);
+                done();
+            });
+        });
+
+        it("should handle callbacks with array dependencies", () => {
+            const Bank = Accountable.extend({
+                      @provides(Cashier)
+                      cashier() { 
+                          return [new Cashier(1000), new Cashier()];
+                      },
+
+                      @handles
+                      @design(WireMoney, [Cashier])
+                      wireMoney(wireMoney, cashiers) {
+                          expect(cashiers.length).to.equal(2);
+                          const cashier = cashiers[0];
+                          this.transfer(this.balance, cashier);
+                          cashier.wireMoney(wireMoney);
+                          cashier.transfer(cashier.balance, this);
+                      }
+                  }),
+                  bank = new Bank(10000, 3500);
+            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+            expect(bank.assets).to.equal(10925);
+            expect(bank.liabilities).to.equal(3500);
+            expect(bank.balance).to.equal(7425);
+        });
+
+        it("should handle callbacks with lazy dependencies", () => {
+            const Bank = Accountable.extend({
+                      @provides(Cashier)
+                      cashier() { return new Cashier(); },
+
+                      @handles
+                      @design(WireMoney, $lazy(Cashier))
+                      wireMoney(wireMoney, getCashier) {
+                          const cashier = getCashier();
+                          this.transfer(this.balance, cashier);
+                          cashier.wireMoney(wireMoney);
+                          cashier.transfer(cashier.balance, this);
+                      }
+                  }),
+                  bank = new Bank(10000, 3500);
+            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+            expect(bank.assets).to.equal(9925);
+            expect(bank.liabilities).to.equal(3500);
+            expect(bank.balance).to.equal(6425);
+        });
+
+        it("should handle optional callback dependencies", () => {
+            const Bank = Accountable.extend({
+                      @handles
+                      @design(WireMoney, $optional(Cashier))
+                      wireMoney(wireMoney, cashier) {
+                          expect(cashier).to.be.undefined;
+                      }
+                  }),
+                  bank = new Bank(10000, 3500);
+            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+        });
+
+        it("should fail if dependencies unresolved", () => {
+            const Bank = Accountable.extend({
+                      @handles
+                      @design(WireMoney, Cashier)
+                      wireMoney(wireMoney, cashier) { }
+                  }),
+                  bank = new Bank(10000, 3500);
+            expect(Handler(bank).handle(new WireMoney(75))).to.be.false;
+        });
+
+        it("should fail promise dependency unresolved", done => {
+            const Bank = Accountable.extend({
+                      @provides(Cashier)
+                      cashier() { return Promise.resolve(); },
+
+                      @handles
+                      @design(WireMoney, Cashier)
+                      wireMoney(wireMoney, cashier) { }
+                  }),
+                  bank = new Bank(10000, 3500);
+            Handler(bank).command(new WireMoney(75)).catch(err => {
+                done();
+            });
+        });
+
+        it("should fail rejected promise dependency", done => {
+            const Bank = Accountable.extend({
+                      @provides(Cashier)
+                      cashier() { 
+                          return Promise.reject(new Error("This is bad!!"));
+                      },
+
+                      @handles
+                      @design(WireMoney, Cashier)
+                      wireMoney(wireMoney, cashier) { }
+                  }),
+                  bank = new Bank(10000, 3500);
+            Handler(bank).command(new WireMoney(75)).catch(err => {
+                done();
+            });
+        });
+
         it("should infer callbacks", () => {
             const countMoney = new CountMoney(),
                   inventory  = new (Handler.extend({
@@ -1138,10 +1290,9 @@ describe("Handler", () => {
             }).to.throw(SyntaxError, "@provides expects no arguments if applied to a constructor.");     
         });
 
-        // CFN: FIX ME
-        it.skip("should resolve using class constructor", () => {
+        it("should resolve using class constructor", () => {
             const Car = Protocol.extend();
-            @provides
+            @provides()
             @conformsTo(Car)
             class Ferarri {};
             const handler = new StaticHandler([Ferarri]),  

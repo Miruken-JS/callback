@@ -9,7 +9,7 @@ const _ = createKeyChain();
  * See [Composite Pattern](http://en.wikipedia.org/wiki/Composite_pattern)
  * @class CompositeHandler
  * @constructor
- * @param  {Arguments}  arguments  -  callback handlers
+ * @param  {Any}  [...handlers]  -  callback handlers
  * @extends Handler
  */
 export const CompositeHandler = Handler.extend({

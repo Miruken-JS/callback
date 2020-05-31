@@ -1,12 +1,14 @@
 import { 
     Base, Abstract, Variance, IndexedList,
-    Metadata, design, $isNothing, $eq,
-    $contents, $isFunction, $isString,
-    $classOf, $isObject, assignID,
-    createKey
+    Metadata, TypeFlags, design, $isNothing,
+    $eq, $isFunction, $isString, $isPromise,
+    $classOf, $isObject, $optional, $contents,
+    assignID, createKey
 } from "miruken-core";
 
 import Binding from "./binding";
+import Inquiry from "./inquiry";
+import KeyResolver from "./key-resolver";
 
 const _ = createKey(),
       descriptorMetadataKey = Symbol("descriptor-metadata");
@@ -74,11 +76,9 @@ export const HandlerDescriptor = Base.extend({
 
         let dispatched = false;
         for (let descriptor of this.getDescriptorChain(true)) {
-            const bindings = descriptor.getBindings(policy);
-            if (bindings == null) continue;
-            dispatched = dispatch(policy, handler, callback, constraint,
-                                  index, variance, bindings, composer,
-                                  greedy, results)
+            dispatched = dispatch.call(descriptor, policy, handler, callback,
+                                       constraint, index, variance, composer,
+                                       greedy, results)
                       || dispatched;
             if (dispatched && !greedy) return true;
         }
@@ -173,8 +173,10 @@ function addBinding(policy, binding) {
 }
 
 function dispatch(policy, target, callback, constraint, index,
-                  variance, bindings, composer, all, results) {
+                  variance, composer, all, results) {
     let dispatched  = false;
+    const bindings = this.getBindings(policy);
+    if (bindings == null) return false;;
     const invariant = (variance === Variance.Invariant);
     if (!invariant || index) {
         for (let binding of bindings.fromIndex(index)) {
@@ -185,8 +187,13 @@ function dispatch(policy, target, callback, constraint, index,
                     if (!guard) continue;
                 }
                 try {
+                    const handler = binding.handler,
+                          args    = resolveArgs.call(this, callback, target, handler, composer);
+                    if ($isNothing(args)) continue;
                     const context = { composer, constraint, binding, results },
-                          result  = binding.handler.call(target, callback, context);
+                          result  = $isPromise(args)
+                                  ? args.then(a => handler.call(target, ...a, context))
+                                  : handler.call(target, ...args, context);
                     if (policy.acceptResult(result)) {
                         if (!results || results(result, composer) !== false) {
                             if (!all) return true;
@@ -204,6 +211,49 @@ function dispatch(policy, target, callback, constraint, index,
         }
     }
     return dispatched;
+}
+
+function resolveArgs(callback, target, handler, composer) {
+    const resolved = [callback]
+    if ($isNothing(handler.key)) return resolved;
+    const signature = design.getOwn(this.owner, handler.key);
+    if ($isNothing(signature)) return resolved;
+    const { args } = signature;
+    if ($isNothing(args) || args.length <= 1) return resolved;
+
+    const parent   = callback instanceof Inquiry ? callback : null,
+          promises = [];
+
+    for (let i = 1; i < args.length; ++i) {     
+        const arg = args[i];
+        if ($isNothing(arg)) continue;
+        
+        const many     = arg.flags.hasFlag(TypeFlags.Array),
+              inquiry  = new Inquiry(arg.type, many, parent),
+              resolver = KeyResolver;
+
+        if ("validateKey" in resolver) {
+            resolver.validateKey(inquiry.key, arg);
+        }
+        
+        const dep = resolver.resolveKey(inquiry, arg, composer);
+        if ($isNothing(dep)) return null;
+        if ($optional.test(dep)) {
+            resolved[i] = $contents(dep);
+        } else if ($isPromise(dep)) {
+            promises.push(dep.then(result => resolved[i] = result));
+        } else {
+            resolved[i] = dep;
+        }
+    }
+
+    if (promises.length === 0) {
+        return resolved;
+    }
+    if (promises.length === 1) {
+        return promises[0].then(() => resolved);
+    }
+    return Promise.all(promises).then(() => resolved);
 }
 
 function requireValidPolicy(policy) {

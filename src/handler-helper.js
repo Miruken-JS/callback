@@ -90,7 +90,15 @@ Handler.implement({
      * @async
      */                                
     resolve(key) {
-        const inquiry = (key instanceof Inquiry) ? key : new Inquiry(key);
+        let inquiry;
+        if (key instanceof Inquiry) {
+            if (key.isMany) {
+                throw new Error("Requested Inquiry expects multiple results.")
+            }
+            inquiry = key;
+        } else {
+            inquiry = new Inquiry(key);
+        }
         if (this.handle(inquiry, false)) {
             return inquiry.callbackResult;
         }
@@ -104,7 +112,15 @@ Handler.implement({
      * @async
      */                                        
     resolveAll(key) {
-        const inquiry = (key instanceof Inquiry) ? key : new Inquiry(key, true);
+        let inquiry;
+        if (key instanceof Inquiry) {
+            if (!key.isMany) {
+                throw new Error("Requested Inquiry expects a single result.")
+            }
+            inquiry = key;
+        } else {
+            inquiry = new Inquiry(key, true);
+        }
         return this.handle(inquiry, true) ? inquiry.callbackResult : [];
     },    
     /**
@@ -115,7 +131,15 @@ Handler.implement({
      * @for Handler
      */                                        
     lookup(key) {
-        const lookup = (key instanceof Lookup) ? key : new Lookup(key);
+        let lookup;
+        if (key instanceof Lookup) {
+            if (key.isMany) {
+                throw new Error("Requested Lookup expects multiple results.")
+            }
+            lookup = key;
+        } else {
+            lookup = new Lookup(key);
+        }        
         if (this.handle(lookup, false)) {
             return lookup.callbackResult;
         }
@@ -128,10 +152,16 @@ Handler.implement({
      * @for Handler
      */                                                
     lookupAll(key) {
-        const lookup = (key instanceof Lookup) ? key : new Lookup(key, true);
-        return this.handle(lookup, true)
-            ? lookup.callbackResult
-            : [];
+        let lookup;
+        if (key instanceof Lookup) {
+            if (!key.isMany) {
+                throw new Error("Requested Lookup expects a single result.")
+            }
+            lookup = key;
+        } else {
+            lookup = new Lookup(key, true);
+        }        
+        return this.handle(lookup, true) ? lookup.callbackResult : [];
     },
     /**
      * Decorates the handler.
@@ -220,7 +250,7 @@ Handler.implement({
     /**
      * Builds a handler chain.
      * @method next
-     * @param   {Arguments}  arguments  -  handler chain members
+     * @param   {Any}  [...handlers]  -  handler chain members
      * @returns {Handler}  chaining callback handler.
      * @for Handler
      */                                                                                
