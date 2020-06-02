@@ -7,10 +7,7 @@ import {
     $flatten, createKeyChain
 } from "miruken-core";
 
-import {
-     Handler, HandlerAdapter, $composer
- } from "../src/handler";
-
+import { Handler, $composer } from "../src/handler";
 import CascadeHandler from "../src/cascade-handler";
 import CompositeHandler from "../src/composite-handler";
 import StaticHandler from "../src/static-handler";
@@ -21,7 +18,7 @@ import Options from "../src/options";
 
 import {
     CallbackPolicy, handles, provides,
-    looksup, $unhandled
+    looksup, creates, $unhandled
 } from "../src/callback-policy";
 
 import { 
@@ -31,6 +28,8 @@ import {
 import {
     RejectedError, TimeoutError, NotHandledError
 } from "../src/errors";
+
+import { $proxy } from "../src/proxy-resolver";
 
 import "../src/handler-helper";
 import "../src/handler-options"
@@ -47,7 +46,7 @@ const Guest = Base.extend({
 });
 
 const Dealer = Base.extend({
-    shuffle (cards) {
+    shuffle(cards) {
         return cards.sort(() => 0.5 - Math.random());
     }
 });
@@ -1018,6 +1017,33 @@ describe("Handler", () => {
             expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
         });
 
+        it("should handle callbacks with proxy dependencies", () => {
+            const Supervisor = Protocol.extend({
+                      approve(transaction) {}
+                  }),
+                  BankManager = Base.extend(Supervisor, {
+                      approve(transaction) {
+                          if (transaction instanceof WireMoney) {
+                              return transaction.requested < 5000;
+                          }
+                          return false;
+                      }
+                  }),
+                  Bank = Accountable.extend({
+                      @handles
+                      @design(WireMoney, $proxy(Supervisor))
+                      wireMoney(wireMoney, supervisor) {
+                          supervisor.approve(wireMoney);
+                          this.transfer(wireMoney.requested);
+                      }
+                  }),
+                  bank    = new Bank(10000),
+                  handler = Handler(bank).next(new BankManager());
+            expect(handler.handle(new WireMoney(1000))).to.be.true;
+            expect(bank.assets).to.equal(9000);
+            expect(bank.balance).to.equal(9000);
+        });
+
         it("should fail if dependencies unresolved", () => {
             const Bank = Accountable.extend({
                       @handles
@@ -1713,7 +1739,7 @@ describe("Handler", () => {
 
         it("should ignore invocation", () => {
             const guest = new Guest(21),
-                  level = HandlerAdapter(new Level1Security);
+                  level = Handler(new Level1Security);
             expect(() => {
                 Security(level.aspect(False)).admit(guest);
             }).to.throw(RejectedError);
@@ -1731,7 +1757,7 @@ describe("Handler", () => {
         it("should invoke with side-effect", () => {
             let count = 0,
                 guest = new Guest(21),
-                level = HandlerAdapter(new Level1Security);
+                level = Handler(new Level1Security);
             expect(Security(level.aspect(True, () => { ++count; }))
                             .admit(guest)).to.be.true;
             expect(count).to.equal(1);
@@ -1751,7 +1777,7 @@ describe("Handler", () => {
         });
 
         it("should ignore async invocation", done => {
-            const level2 = HandlerAdapter(new Level2Security);
+            const level2 = Handler(new Level2Security);
             Security(level2.aspect(() => {
                 return Promise.resolve(false);
             })).scan().then(scanned => {
@@ -1774,7 +1800,7 @@ describe("Handler", () => {
         });
 
         it("should invoke async with side-effect", done => {
-            const level2 = HandlerAdapter(new Level2Security);
+            const level2 = Handler(new Level2Security);
             Security(level2.aspect(True, () => done())).scan().then(scanned => {
                 expect(scanned).to.be.true;
             });
@@ -1804,7 +1830,7 @@ describe("Handler", () => {
         });
 
         it("should fail async invoke on rejection in before", done => {
-            const level2 = HandlerAdapter(new Level2Security);
+            const level2 = Handler(new Level2Security);
             Security(level2.aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
@@ -1812,6 +1838,16 @@ describe("Handler", () => {
                 expect(error).to.be.instanceOf(Error);
                 expect(error.message).to.equal("Something bad");
             });
+        });
+    });
+
+    describe("#create", () => {
+        it("should create instances", () => {
+            const inventory = new (Handler.extend({
+                      @creates(Cashier)
+                      cashier() { return new Cashier(); }
+                  }));
+            expect(inventory.create(Cashier)).to.be.instanceOf(Cashier);
         });
     });
 
@@ -1838,7 +1874,7 @@ describe("Handler", () => {
                   baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  security = HandlerAdapter(level1).next(level2);
+                  security = Handler(level1).next(level2);
             expect(Security(security).admit(guest)).to.be.false;
             Security(security).trackActivity(baccarat);
         });
@@ -1924,13 +1960,13 @@ describe("InvocationHandler", () => {
         it("should handle invocations", () => {
             const guest1 = new Guest(17),
                   guest2 = new Guest(21),
-                  level1 = HandlerAdapter(new Level1Security());
+                  level1 = Handler(new Level1Security());
             expect(Security(level1).admit(guest1)).to.be.false;
             expect(Security(level1).admit(guest2)).to.be.true;
         });
         
         it("should handle async invocations", done => {
-            const level2 = HandlerAdapter(new Level2Security());
+            const level2 = Handler(new Level2Security());
             Security(level2).scan().then(() => {
                 done();
             });

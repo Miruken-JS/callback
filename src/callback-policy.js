@@ -279,7 +279,7 @@ function registerHandlers(name, policy, allowGets, filter) {
                  ? $unhandled
                  : lateBinding.apply(this, arguments);
             } : lateBinding;
-        handler.key = key;
+        handler.key = key;  // Used to resolve design metadata
         policy.addHandler(target, constraints, handler);
     };
 }
@@ -303,3 +303,9 @@ export const provides = CovariantPolicy.createDecorator("provides", true);
  * @property {Function} looksup
  */                
 export const looksup = InvariantPolicy.createDecorator("looksup", true);
+
+/**
+ * Policy for creating instnces covariantly.
+ * @property {Function} provides
+ */        
+export const creates = CovariantPolicy.createDecorator("creates");

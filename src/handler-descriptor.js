@@ -230,7 +230,7 @@ function resolveArgs(callback, target, handler, composer) {
         
         const many     = arg.flags.hasFlag(TypeFlags.Array),
               inquiry  = new Inquiry(arg.type, many, parent),
-              resolver = KeyResolver;
+              resolver = arg.keyResolver || KeyResolver;
 
         if ("validateKey" in resolver) {
             resolver.validateKey(inquiry.key, arg);

@@ -6,6 +6,7 @@ import {
 import Command from "./command";
 import Lookup from "./lookup";
 import Inquiry from "./inquiry";
+import Creation from "./creation";
 
 import {
     handles, provides, looksup
@@ -52,12 +53,11 @@ Handler.providing = function (provider, constraint) {
 
 Handler.implement({   
     /**
-     * Asynchronusly handles the callback.
+     * Handles the callback.
      * @method command
      * @param   {Object}  callback  -  callback
-     * @returns {Promise} promise to handled callback.
+     * @returns {Any} optional result
      * @for Handler
-     * @async
      */                        
     command(callback) {
         const command = new Command(callback);
@@ -67,12 +67,11 @@ Handler.implement({
         return command.callbackResult;            
     },
     /**
-     * Asynchronusly handles the callback greedily.
+     * Handles the callback greedily.
      * @method commandAll
      * @param   {Object}  callback  -  callback
-     * @returns {Promise} promise to handled callback.
+     * @returns {Any} optional results.
      * @for Handler
-     * @async
      */                                
     commandAll(callback) {
         const command = new Command(callback, true);
@@ -163,6 +162,34 @@ Handler.implement({
         }        
         return this.handle(lookup, true) ? lookup.callbackResult : [];
     },
+    /**
+     * Creates an instance of the `type`.
+     * @method command
+     * @param   {Function}  type  -  type
+     * @returns {Any} instance of the type.
+     * @for Handler
+     */                        
+    create(type) {
+        const creation = new Creation(type);
+        if (!this.handle(creation, false)) {
+            throw new NotHandledError(creation);
+        }
+        return creation.callbackResult;            
+    },
+    /**
+     * Creates instances of the `type`.
+     * @method createAll
+     * @param   {Function}  type  -  type
+     * @returns {Any} instances of the type.
+     * @for Handler
+     */                                
+    createAll(type) {
+        const creation = new Creation(type, true);
+        if (!this.handle(creation, true)) {
+            throw new NotHandledError(creation);
+        }
+        return creation.callbackResult;
+    },      
     /**
      * Decorates the handler.
      * @method decorate
