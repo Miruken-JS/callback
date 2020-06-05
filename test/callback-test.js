@@ -423,7 +423,7 @@ describe("Policies", () => {
             let handler        = new Handler,
                 handlerRemoved = false,
                 unregister     = handles.addHandler(
-                    handler, True, Undefined, () => {
+                    handler, True, Undefined, null, () => {
                     handlerRemoved = true;
                 });
             unregister();
@@ -512,8 +512,8 @@ describe("Policies", () => {
                 let handler     = new Handler,
                     removeCount = 0,
                     removed     = () => { ++removeCount; };
-                handles.addHandler(handler, Accountable, Undefined, removed);
-                handles.addHandler(handler, Activity, Undefined, removed);
+                handles.addHandler(handler, Accountable, Undefined, null, removed);
+                handles.addHandler(handler, Activity, Undefined, null, removed);
                 const descriptor = HandlerDescriptor.get(handler);
                 descriptor.removeBindings(handles.policy);
                 expect(removeCount).to.equal(2);
@@ -524,8 +524,8 @@ describe("Policies", () => {
                 let handler     = new Handler,
                     removeCount = 0,
                     removed     = () => { ++removeCount; };
-                provides.addHandler(handler, Activity, Undefined, removed);
-                provides.addHandler(handler, Accountable, Undefined, removed);
+                provides.addHandler(handler, Activity, Undefined, null, removed);
+                provides.addHandler(handler, Accountable, Undefined, null, removed);
                 const descriptor = HandlerDescriptor.get(handler);
                 descriptor.removeBindings(provides.policy);
                 expect(removeCount).to.equal(2);
@@ -936,6 +936,22 @@ describe("Handler", () => {
             expect(bank.balance).to.equal(6425);
         });
 
+        it("should handle callbacks with dependencies static", () => {
+            const Safe = Base.extend(null, {
+                      @provides(Cashier)
+                      cashier() { return new Cashier(2000); },
+
+                      @handles
+                      @design(CountMoney, Cashier)
+                      countMoney(countMoney, cashier) {
+                          countMoney.record(cashier.balance);
+                      }
+                  }),
+                  countMoney = new CountMoney();
+            expect(Handler(Safe).handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(2000);
+        });
+
         it("should handle callbacks with promise dependencies", done => {
             const Bank = Accountable.extend({
                       @provides(Cashier)
@@ -1295,7 +1311,7 @@ describe("Handler", () => {
             expect(cardGames.resolve($instant(Game))).to.be.undefined;
         });
 
-        it("should resolve using base2 constructor", () => {
+        it("should resolve base2 constructor", () => {
             const Car     = Protocol.extend(),
                   Ferarri = Base.extend(Car, {
                       @provides
@@ -1304,6 +1320,22 @@ describe("Handler", () => {
                   handler = new StaticHandler([Ferarri]),
                   car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);               
+        });
+
+        it("should resolve base2 constructor with dependencies", () => {
+            const Car     = Protocol.extend(),
+                  Engine  = Protocol.extend(),
+                  V12     = Base.extend(Engine, provides()),
+                  Ferarri = Base.extend(Car, {
+                      @design(Engine)
+                      @provides constructor(engine) {
+                          this.engine = engine;
+                      }
+                  }),          
+                  handler = new StaticHandler([Ferarri, V12]),
+                  car     = handler.resolve(Car);  
+            expect(car).to.be.instanceOf(Ferarri);
+            expect(car.engine).to.be.instanceOf(V12);             
         });
 
         it("should reject provides with arguments on base2 constructor", () => {
@@ -1316,11 +1348,12 @@ describe("Handler", () => {
             }).to.throw(SyntaxError, "@provides expects no arguments if applied to a constructor.");     
         });
 
-        it("should resolve using class constructor", () => {
+        it("should resolve class constructor", () => {
             const Car = Protocol.extend();
-            @provides()
             @conformsTo(Car)
-            class Ferarri {};
+            @provides() class Ferarri {  
+                constructor() {}
+            };
             const handler = new StaticHandler([Ferarri]),  
                   car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);      

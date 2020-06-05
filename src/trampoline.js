@@ -32,8 +32,11 @@ export const Trampoline = Base.extend(CallbackControl, {
 
     guardDispatch(handler, binding) {
         const callback = this.callback;
-        if (callback && $isFunction(callback.guardDispatch)) {
-            callback.guardDispatch(handler, binding);
+        if (callback) {
+            const guardDispatch = callback.guardDispatch;
+            if ($isFunction(guardDispatch)) {
+                guardDispatch.call(callback, handler, binding);
+            }
         }        
     },
     dispatch(handler, greedy, composer) {

@@ -17,6 +17,7 @@ export const StaticHandler = Handler.extend({
                 for (let [policy, bindings] of typeDescriptor.bindings) {
                     for (let binding of bindings) {
                         const typeBinding = binding.copy(null, binding.handler.bind(type));
+                        typeBinding.owner = binding.owner || type;
                         descriptor.addBinding(policy, typeBinding);
                     }
                 }

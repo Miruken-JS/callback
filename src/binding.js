@@ -1,16 +1,19 @@
 import { 
-    Base, Variance, $isNothing, $eq,
+    Variance, $isNothing, $eq,
     $contents, $isFunction, $isString,
     $isProtocol, $isClass, $classOf
 } from "miruken-core";
 
-export const Binding = Base.extend({
-    constructor(constraint, handler, removed) {
+import FilteredObject from "./filters/filtered-object";
+
+export const Binding = FilteredObject.extend({
+    constructor(constraint, handler, key, removed) {
         if ($classOf(this) === Binding) {
              throw new Error("Binding cannot be instantiated.  Use Binding.create().");
         }
         this.constraint = constraint;
         this.handler    = handler;
+        this.key        = key;
         if (removed) {
             this.removed = removed;
         }
@@ -19,16 +22,18 @@ export const Binding = Base.extend({
     equals(other) {
         return this.constraint === other.constraint
             && (this.handler === other.handler ||
-               (this.handler.key && other.handler.key &&
-                this.handler.key === other.handler.key));
+               (this.key && other.key && this.key === other.key));
     },
     copy(constraint, handler) {
-        return new ($classOf(this))(
+        const binding = new ($classOf(this))(
             constraint || this.constraint,
             handler    || this.handler);
+        binding.key = this.key;
+        binding.addFilters(this.filters);
+        return binding;
     }
 }, {
-    create(constraint, handler, removed) {
+    create(constraint, handler, key, removed) {
         let bindingType;
         const invariant = $eq.test(constraint);
         constraint = $contents(constraint);
@@ -47,7 +52,7 @@ export const Binding = Base.extend({
         } else {
             bindingType = BindingNone;
         }
-        return new bindingType(constraint, handler, removed);
+        return new bindingType(constraint, handler, key, removed);
     }
 });
 

@@ -9,11 +9,12 @@ import {
 import Binding from "./binding";
 import Inquiry from "./inquiry";
 import KeyResolver from "./key-resolver";
+import FilteredObject from "./filters/filtered-object";
 
 const _ = createKey(),
       descriptorMetadataKey = Symbol("descriptor-metadata");
 
-export const HandlerDescriptor = Base.extend({
+export const HandlerDescriptor = FilteredObject.extend({
     constructor(owner) {
         if ($isNothing(owner)) {
             throw new Error("The owner argument is required.");
@@ -30,10 +31,10 @@ export const HandlerDescriptor = Base.extend({
         requireValidPolicy(policy);
         return _(this).bindings.get(policy);
     },
-    addBinding(policy, constraint, handler, removed) {
+    addBinding(policy, constraint, handler, key, removed) {
         requireValidPolicy(policy);
         const binding = constraint instanceof Binding ? constraint
-                      : Binding.create(constraint, handler, removed);
+                      : Binding.create(constraint, handler, key, removed);
         return addBinding.call(this, policy, binding);
     },
     removeBindings(policy) {
@@ -98,16 +99,18 @@ export const HandlerDescriptor = Base.extend({
      * the correct classes or prototypes.
      */
 
-    copyMetadata(sourceDescriptor, target, source, sourceKey) {
+    copyMetadata(target, source, sourceKey) {
         if (sourceKey) return;
         const targetDescriptor = HandlerDescriptor.get(target, true);
-         for (let [policy, bindings] of sourceDescriptor.bindings) {
+         for (let [policy, bindings] of this.bindings) {
             for (let binding of bindings) {
                 // Base2 classes can have constructor decorators.
                 if (binding.constraint == "#constructor") {
                     const clazz           = $classOf(target),
                           classDescriptor = HandlerDescriptor.get(clazz, true),
-                          constructor     = Binding.create(clazz, binding.handler.bind(clazz));
+                          constructor     = Binding.create(
+                              clazz, binding.handler.bind(clazz), "constructor");
+                    constructor.owner = target;
                     addBinding.call(classDescriptor, policy, constructor);
                 } else {
                     addBinding.call(targetDescriptor, policy, binding.copy());
@@ -182,15 +185,16 @@ function dispatch(policy, target, callback, constraint, index,
         for (let binding of bindings.fromIndex(index)) {
             if (binding.match(constraint, variance)) {
                 let guard;
-                if ($isFunction(callback.guardDispatch)) {
-                    guard = callback.guardDispatch(target, binding);
+                const guardDispatch = callback.guardDispatch;
+                if ($isFunction(guardDispatch)) {
+                    guard = guardDispatch.call(callback, target, binding);
                     if (!guard) continue;
                 }
                 try {
-                    const handler = binding.handler,
-                          args    = resolveArgs.call(this, callback, target, handler, composer);
+                    const args = resolveArgs.call(this, callback, target, binding, composer);
                     if ($isNothing(args)) continue;
                     const context = { composer, constraint, binding, results },
+                          handler = binding.handler,
                           result  = $isPromise(args)
                                   ? args.then(a => handler.call(target, ...a, context))
                                   : handler.call(target, ...args, context);
@@ -213,27 +217,42 @@ function dispatch(policy, target, callback, constraint, index,
     return dispatched;
 }
 
-function resolveArgs(callback, target, handler, composer) {
-    const resolved = [callback]
-    if ($isNothing(handler.key)) return resolved;
-    const signature = design.getOwn(this.owner, handler.key);
-    if ($isNothing(signature)) return resolved;
+function resolveArgs(callback, target, binding, composer) {
+    const key = binding.key;
+    if ($isNothing(key)) return [callback];
+    const owner     = binding.owner || this.owner,
+          signature = design.getOwn(owner, key);
+    if ($isNothing(signature)) return [callback];
     const { args } = signature;
-    if ($isNothing(args) || args.length <= 1) return resolved;
+    if ($isNothing(args) || args.length === 0) {
+        return [callback];
+    }
 
     const parent   = callback instanceof Inquiry ? callback : null,
+          resolved = [],
           promises = [];
 
-    for (let i = 1; i < args.length; ++i) {     
+    for (let i = 0; i < args.length; ++i) {     
         const arg = args[i];
-        if ($isNothing(arg)) continue;
-        
+        if ($isNothing(arg)) {
+            if (i === 0) {
+                resolved[0] = callback;
+            }
+            continue;
+        }
+
+        if (i === 0 && arg.validate(callback)) {
+            resolved[0] = callback;
+            continue;
+        }
+
         const many     = arg.flags.hasFlag(TypeFlags.Array),
               inquiry  = new Inquiry(arg.type, many, parent),
               resolver = arg.keyResolver || KeyResolver;
 
-        if ("validateKey" in resolver) {
-            resolver.validateKey(inquiry.key, arg);
+        const validateKey = resolver.validateKey;
+        if ($isFunction(validateKey)) {
+            validateKey.call(resolver, inquiry.key, arg);
         }
         
         const dep = resolver.resolveKey(inquiry, arg, composer);

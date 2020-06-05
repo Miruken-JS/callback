@@ -1,6 +1,5 @@
 import { 
-    Base, TypeInfo, $isProtocol,
-    $createQualifier
+    Base, TypeInfo, TypeFlags, $createQualifier
 } from "miruken-core";
 
 import { KeyResolving } from "./key-resolving";
@@ -9,7 +8,7 @@ export const $proxy = $createQualifier();
 
 export const ProxyResolver = Base.extend(KeyResolving, {
     validateKey(key, typeInfo) {
-        if (!$isProtocol(typeInfo.type)) {
+        if (!typeInfo.flags.hasFlag(TypeFlags.Protocol)) {
             throw new TypeError("Proxied parameters must be protocols.");
         }
     },
@@ -20,10 +19,8 @@ export const ProxyResolver = Base.extend(KeyResolving, {
 
 const proxyResolver = new ProxyResolver();
 
-TypeInfo.addParser((spec, typeInfo) => {
-    if ($proxy.test(spec)) {
-        typeInfo.keyResolver = proxyResolver;
-    }
+TypeInfo.registerQualifier($proxy, typeInfo => {
+    typeInfo.keyResolver = proxyResolver;
 });
 
 export default $proxy;

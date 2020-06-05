@@ -25,12 +25,18 @@ export const Options = Base.extend({
                 const optionsValue = options[key];
                 if (optionsValue === undefined || !options.hasOwnProperty(key)) {
                     options[key] = _copyOptionsValue(keyValue);
-                } else if ($isFunction(keyValue.mergeInto)) {
-                    keyValue.mergeInto(optionsValue);
+                } else {
+                    this.mergeKeyInto(options, key, keyValue, optionsValue);
                 }
             }
         });
         return true;
+    },
+    mergeKeyInto(options, key, keyValue, optionsValue) {
+        const mergeInto = keyValue.mergeInto;
+        if ($isFunction(mergeInto)) {
+            mergeInto.call(keyValue, optionsValue);
+        }
     },
     copy() {
         var options = Reflect.construct(this.constructor, emptyArray);

@@ -1,11 +1,12 @@
 import { 
-    Base, Undefined, Variance, decorate,
+    Undefined, Variance, decorate,
     isDescriptor, design, $isNothing,
-    $isFunction, $classOf, $lift, $contents,
-    createKey
+    $isFunction, $classOf, $lift,
+    $contents, createKey
 } from "miruken-core";
 
 import HandlerDescriptor from "./handler-descriptor";
+import FilteredObject from "./filters/filtered-object";
 
 const _ = createKey();
 
@@ -16,7 +17,7 @@ export function $unhandled(result) {
     return result === $unhandled;
 }
 
-export const CallbackPolicy = Base.extend({
+export const CallbackPolicy = FilteredObject.extend({
     /**
     * Constructs a callback policy.
     * @method create
@@ -40,10 +41,11 @@ export const CallbackPolicy = Base.extend({
      * @param   {Any}       owner       -  instance of class handler.
      * @param   {Any}       constraint  -  the constraint to handle.
      * @param   {Function}  handler     -  the handling function.
+     * @param   {String}    [key]       -  optional handler key.
      * @param   {Function}  [removed]   -  optional function called on removal.
      * @return  {Function}  returns true if the result satisfies the variance.
      */
-    addHandler(owner, constraint, handler, removed) {
+    addHandler(owner, constraint, handler, key, removed) {
         if ($isNothing(owner)) {
             throw new Error("The owner argument is required");
         } else if ($isNothing(handler)) {
@@ -58,7 +60,7 @@ export const CallbackPolicy = Base.extend({
                 constraint = constraint[0];
             } else {
                 return constraint.reduce((result, c) => {
-                    const undefine = addHandler.call(this, owner, c, handler, removed);
+                    const undefine = addHandler.call(this, owner, c, handler, key, removed);
                     return notifyRemoved => {
                         result(notifyRemoved);
                         undefine(notifyRemoved);
@@ -66,7 +68,7 @@ export const CallbackPolicy = Base.extend({
                 }, Undefined);
             }
         }
-        return addHandler.call(this, owner, constraint, handler, removed);
+        return addHandler.call(this, owner, constraint, handler, key, removed);
     },
     /**
      * Removes all handlers for the specified owner.
@@ -186,7 +188,7 @@ export const InvariantPolicy = CallbackPolicy.extend({
     }
 });
 
-function addHandler(owner, constraint, handler, removed) {
+function addHandler(owner, constraint, handler, key, removed) {
     if ($isNothing(owner)) {
         throw new Error("The owner argument is required.");
     } else if ($isNothing(handler)) {
@@ -203,7 +205,7 @@ function addHandler(owner, constraint, handler, removed) {
         handler = $lift($contents(handler));
     }
     const descriptor = HandlerDescriptor.get(owner, true);
-    return descriptor.addBinding(this, constraint, handler, removed);
+    return descriptor.addBinding(this, constraint, handler, key, removed);
 };
 
 function validateComparer(binding, otherBinding) {
@@ -217,7 +219,7 @@ function validateComparer(binding, otherBinding) {
 
 /**
  * Registers methods and properties as handlers.
- * @method addHandler
+ * @method registerHandlers
  * @param  {String}         name         - policy name
  * @param  {CallbackPolicy} policy       - the policy
  * @param  {Object}         [allowGets]  - true to allow property handlers
@@ -231,14 +233,14 @@ function registerHandlers(name, policy, allowGets, filter) {
         // Base2 classes can have constructor decorators, but real classes
         // can't.  Therefore, we must allow decorators on classes too.
         if (!isDescriptor(descriptor)) {
-            policy.addHandler(target, target, instantiate);
+            policy.addHandler(target, target, instantiate, "constructor");
             return;
         }
         if (key === "constructor") {
             if (constraints.length > 0) {
                  throw new SyntaxError(`@${name} expects no arguments if applied to a constructor.`);
             }
-            policy.addHandler(target, "#constructor", instantiate);
+            policy.addHandler(target, "#constructor", instantiate, key);
             return;
         }
         const { get, value } = descriptor;
@@ -279,12 +281,13 @@ function registerHandlers(name, policy, allowGets, filter) {
                  ? $unhandled
                  : lateBinding.apply(this, arguments);
             } : lateBinding;
-        handler.key = key;  // Used to resolve design metadata
-        policy.addHandler(target, constraints, handler);
+        policy.addHandler(target, constraints, handler, key);
     };
 }
 
-function instantiate() { return new this(); }
+function instantiate() {
+    return Reflect.construct(this, arguments);
+}
 
 /**
  * Policy for handling callbacks contravariantly.

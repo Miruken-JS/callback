@@ -26,9 +26,10 @@ export const Resolving = Inquiry.extend({
     guardDispatch(handler, binding) {
         const outer = this.base(handler, binding);
         if (outer) {
-            const callback = _(this).callback;
-            if ($isFunction(callback.guardDispatch)) {
-                const inner = callback.guardDispatch(handler, binding);
+            const callback      = _(this).callback,
+                  guardDispatch = callback.guardDispatch;
+            if ($isFunction(guardDispatch)) {
+                const inner = guardDispatch.call(callback, handler, binding);
                 if (!inner) {
                     if ($isFunction(outer)) {
                         outer.call(this);
