@@ -15,15 +15,14 @@ import InferenceHandler from "../src/inference-handler";
 import HandleMethod from "../src/handle-method";
 import Batching from "../src/batch";
 import Options from "../src/options";
+import Binding from "../src/binding";
 
 import {
     CallbackPolicy, handles, provides,
     looksup, creates, $unhandled
 } from "../src/callback-policy";
 
-import { 
-    HandlerDescriptor, Binding
-} from "../src/handler-descriptor";
+import { HandlerDescriptor } from "../src/handler-descriptor";
 
 import {
     RejectedError, TimeoutError, NotHandledError
@@ -39,26 +38,25 @@ import { expect } from "chai";
 
 const _ = createKeyChain();
 
-const Guest = Base.extend({
+class Guest {
     constructor(age) {
         this.age = age;
     }
-});
+}
 
-const Dealer = Base.extend({
+class Dealer {
     shuffle(cards) {
         return cards.sort(() => 0.5 - Math.random());
     }
-});
+}
 
-const PitBoss = Base.extend({
+class PitBoss {
     constructor(name) {
         this.name = name;
     }
-});
+}
 
-const DrinkServer = Base.extend({
-});
+class DrinkServer {}
 
 const Game = Protocol.extend({
     open(numPlayers) {}
@@ -70,52 +68,57 @@ const Security = Protocol.extend({
     scan() {}
 });
 
-const Level1Security = Base.extend(Security, {
+@conformsTo(Security)
+class Level1Security {
     admit(guest) {
         return guest.age >= 21;
     }
-});
+}
 
-const Level2Security = Base.extend(Security, {
+@conformsTo(Security)
+class Level2Security {
     trackActivity(activity) {
         console.log(`Tracking '${activity.name}'`);
-    },
+    }
+
     scan() {
         return Promise.delay(2).then(True);
     }
-});
+}
 
-const WireMoney = Base.extend({
+class WireMoney {
     constructor(requested) {
         this.requested = requested;
     }
-});
+}
 
-const CountMoney = Base.extend({
+class CountMoney {
     constructor() {
         _(this).total = 0.0;
-    },
+    }
 
-    get total() { return _(this).total; },
+    get total() { return _(this).total; }
     record(amount) { _(this).total += amount; }
-});
+}
 
-const Accountable = Base.extend({
+class Accountable {
     constructor(assets, liabilities) {
         _(this).assets      = Number(assets || 0);
         _(this).liabilities = Number(liabilities || 0);
-    },
+    }
 
-    get assets()      { return _(this).assets; },
-    get liabilities() { return _(this).liabilities; },
-    get balance()     { return this.assets - this.liabilities; },
+    get assets()      { return _(this).assets; }
+    get liabilities() { return _(this).liabilities; }
+    get balance()     { return this.assets - this.liabilities; }
     
     addAssets(amount) {
         _(this).assets = _(this).assets + amount;
-    },
+    }
+
     addLiabilities(amount) {
         _(this).liabilities = _(this).liabilities + amount;
-    },
+    }
+
     transfer(amount, receiver) {
         let { assets, liabilties } = _(this);
         assets -= amount;
@@ -129,15 +132,15 @@ const Accountable = Base.extend({
             receiver.addAssets(amount);
         }
         return Promise.delay(100);
-    },
+    }
 
     @handles(CountMoney)
     countMoney(countMoney, { composer }) {
         countMoney.record(this.balance);        
     }
-});
+}
 
-const Cashier = Accountable.extend({
+class Cashier extends Accountable {
     @handles(WireMoney)
     wireMoney(wireMoney) {
         const amount = wireMoney.requested;
@@ -147,46 +150,51 @@ const Cashier = Accountable.extend({
         this.transfer(amount);
         wireMoney.received = wireMoney.requested;
         return Promise.resolve(wireMoney);        
-    },
+    }
+
     toString() { return "Cashier $" + this.balance; }
-});
+}
 
-const Activity = Accountable.extend({
+class Activity extends Accountable {
     constructor(name) {
-        this.base();
+        super();
         this.name = name;
-    },
-    toString() { return "Activity " + this.name; }
-});
+    }
 
-const CardTable = Activity.extend(Game, {
+    toString() { return "Activity " + this.name; }
+}
+
+@conformsTo(Game)
+class CardTable extends Activity {
     constructor(name, minPlayers, maxPlayers) {
-        this.base(name);
+        super(name);
         _(this).minPlayers = minPlayers;
         _(this).maxPlayers = maxPlayers;
-    },
+    }
 
     open(numPlayers) {
         const { minPlayers, maxPlayers } = _(this);
         if (minPlayers > numPlayers || numPlayers > maxPlayers)
             return $unhandled;
     }    
-});
+}
 
-const Casino = CompositeHandler.extend({
+class Casino extends CompositeHandler {
     constructor(name) {
-        this.base();
+        super();
         this.name = name;
-    },
+    }
+
     @provides(PitBoss)
-    pitBoss() { return new PitBoss("Freddy"); },
+    pitBoss() { return new PitBoss("Freddy"); }
+
     @provides(DrinkServer)
     drinkServer() {
         return Promise.delay(100).then(() => new DrinkServer());
-    },
+    }
 
-    toString() { return "Casino " + this.name; },
-});
+    toString() { return "Casino " + this.name; }
+}
 
 
 describe("HandleMethod", () => {
@@ -262,12 +270,12 @@ describe("HandleMethod", () => {
 describe("Policies", () => {
     describe("CallbackPolicy", () => {
         it("should define callbacks on base2 classes", () => {
-            const Cashier = Handler.extend({
+            const Cashier = class extends Handler {
                       @handles(CountMoney)
                       countMoney(countMoney, { composer }) {
                           countMoney.record(200);
                       }
-                  }),
+                  },
                   countMoney = new CountMoney(),
                   wireMoney  = new WireMoney(75),
                   cashier    = new Cashier();
@@ -291,17 +299,17 @@ describe("Policies", () => {
                 }
             }
             const countMoney = new CountMoney();
-            expect(Handler(new Cashier()).handle(countMoney)).to.be.true;
+            expect(Handler.for(new Cashier()).handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(10);
         });
 
         it("should define callbacks on base2 static members", () => {
-            const Cashier = Base.extend(null, {
+            const Cashier = class {
                       @handles(CountMoney)
-                      countMoney(countMoney, { composer }) {
+                      static countMoney(countMoney, { composer }) {
                           countMoney.record(1000);
                       }
-                  }),
+                  },
                   countMoney = new CountMoney();
             const handler = new StaticHandler([Cashier]);
             expect(handler.handle(countMoney)).to.be.true;
@@ -316,18 +324,18 @@ describe("Policies", () => {
                 }
             }
             const countMoney = new CountMoney();
-            expect(Handler(Cashier).handle(countMoney)).to.be.true;
+            expect(Handler.for(Cashier).handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(3500);
         });
 
         it("should fallback to the first design argument for Contravarient policies", () => {
-            const Cashier = Handler.extend({
-                      @handles
-                      @design(CountMoney)
-                      countMoney(countMoney, { composer }) {
-                          countMoney.record(150);
-                      }
-                  });
+            class Cashier extends Handler {
+                @handles
+                @design(CountMoney)
+                countMoney(countMoney, { composer }) {
+                    countMoney.record(150);
+                }
+            }
             const countMoney = new CountMoney();
             expect(new Cashier().handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(150);
@@ -335,21 +343,27 @@ describe("Policies", () => {
 
         it("should fallback to the design return type for Covariant policies", () => {
             const cashier   = new Cashier(1000000.00),
-                  inventory = new (Handler.extend({
+                  inventory = new (class extends Handler {
                       @provides
                       @returns(Cashier) cashier() { return cashier; }
-                  }));
+                  });
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
 
         it("Should fail instantiation of CallbackPolicy", () => {
             expect(() => {
                 new CallbackPolicy(Variance.Contravariant, "bam");
-            }).to.throw(Error, "CallbackPolicy cannot be instantiated.  Use CovariantPolicy, ContravariantPolicy, or InvariantPolicy.");    
+            }).to.throw(Error, "CallbackPolicy cannot be instantiated.  Use CovariantPolicy, ContravariantPolicy, or InvariantPolicy.");
         });
     });
 
     describe("Bindings", () => {
+        it("should fail instantiating a Binding", () => {
+            expect(() => {
+                new Binding();
+            }).to.throw(Error, "Binding cannot be instantiated.  Use Binding.create().");     
+        });
+
         it("should create 'handles' when first handler registered", () => {
             const handler  = new Handler();
             handles.addHandler(handler, True, True);
@@ -536,15 +550,16 @@ describe("Policies", () => {
 });
 
 describe("Options", () => {
-    const MyOptions = Options.extend({
-        ack:   false,
-        log:   false,
-        child: undefined
-    });
+    class MyOptions extends Options {
+        ack;
+        log;
+        child;
+    }
 
     describe("#copy", () => {
         it("should copy options", () => {
-            const options     = new Options({ack: true, log: true}),
+            const options     = new MyOptions()
+                .extend({ack: true, log: true}),
                   optionsCopy = options.copy();
             expect(optionsCopy).to.not.equal(options);
             expect(optionsCopy.ack).to.be.true;
@@ -553,10 +568,10 @@ describe("Options", () => {
         });
 
         it("should copy nested Options", () => {
-            const options = new Options({
+            const options = new MyOptions().extend({
                       ack:   true,
                       log:   true,
-                      child: new MyOptions({ack: true})
+                      child: new MyOptions().extend({ack: true})
                   }),
                   optionsCopy = options.copy();
             expect(optionsCopy).to.not.equal(options);
@@ -564,36 +579,36 @@ describe("Options", () => {
             expect(optionsCopy.log).to.be.true;
             expect(optionsCopy.child).to.not.equal(options.child);
             expect(optionsCopy.child.ack).to.be.true;
-            expect(optionsCopy.child.log).to.be.false;
+            expect(optionsCopy.child.log).to.be.undefined;
             expect(optionsCopy.child.child).to.be.undefined;            
         });        
     });
 
     describe("#mergeInto", () => {
         it("should merge options", () => {
-            const options1 = new Options({
+            const options1 = new MyOptions().extend({
                       ack:   true,
                       log:   true,
-                      child: new MyOptions({ack: true})                
+                      child: new MyOptions().extend({ack: true})                
                   }),
-                  options2 = new Options({log: false});
+                  options2 = new MyOptions().extend({log: false});
             options1.mergeInto(options2);
             expect(options2.ack).to.be.true;
             expect(options2.log).to.be.false;
             expect(options2.child).to.not.equal(options1.child);
             expect(options2.child.ack).to.be.true;
-            expect(options2.child.log).to.be.false;            
+            expect(options2.child.log).to.be.undefined;            
         });
 
         it("should merge nested options", () => {
-            const options1 = new Options({
+            const options1 = new MyOptions().extend({
                       ack:   true,
                       log:   true,
                       child: new MyOptions({ack: true})
                   }),
-                  options2 = new Options({
+                  options2 = new MyOptions().extend({
                       log:   false,
-                      child: new MyOptions({
+                      child: new MyOptions().extend({
                           ack: false,
                           log: true
                       })
@@ -622,7 +637,7 @@ describe("Handler", () => {
         });
 
         it("should handle callbacks", () => {
-            const cashier    = Handler(new Cashier(1000000.00)),
+            const cashier    = Handler.for(new Cashier(1000000.00)),
                   countMoney = new CountMoney();
             expect(cashier.handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000000.00);
@@ -661,11 +676,11 @@ describe("Handler", () => {
         it("should handle callbacks with extension", () => {
             const cashier    = new Cashier(1000000.00),
                   wireMoney  = new WireMoney(100),
-                  handler    = new (Handler.extend({
+                  handler    = new ((class extends Handler {
                     @handles(WireMoney)
                     wireMoney(wireMoney) {
                         wireMoney.received = wireMoney.requested + .50;       
-                    },
+                    }
                   }).implement({
                       @handles(Cashier)
                       account(cashier) {
@@ -680,34 +695,34 @@ describe("Handler", () => {
 
         it("should handle callback hierarchy", () => {
             const cashier   = new Cashier(1000000.00),
-                  inventory = new (Handler.extend({
+                  inventory = new (class extends Handler {
                       @handles(Accountable)
                       account(accountable) {
                           this.accountable = accountable;                          
                       }
-                  }));
+                  });
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
         });
 
         it("should ignore callback if $unhandled", () => {
             const cashier   = new Cashier(1000000.00),
-                  inventory = new (Handler.extend({
+                  inventory = new (class extends Handler {
                       @handles(Cashier)
                       ignore(cashier) { return $unhandled; }
-                  }));
+                  });
             expect(inventory.handle(cashier)).to.be.false;
         });
 
         it("should handle callback invariantly", () => {
             const cashier     = new Cashier(1000000.00),
                   accountable = new Accountable(1.00),
-                  inventory   = new (Handler.extend({
+                  inventory   = new (class extends Handler {
                       @handles($eq(Accountable))
                       account(accountable) {
                           this.accountable = accountable;                          
                       }
-                  }));
+                  });
             expect(inventory.handle(cashier)).to.be.false;
             expect(inventory.handle(accountable)).to.be.true;
             expect(inventory.accountable).to.equal(accountable);
@@ -721,40 +736,42 @@ describe("Handler", () => {
         it("should stop early if handle callback invariantly", () => {
             const cashier     = new Cashier(1000000.00),
                   accountable = new Accountable(1.00),
-                  inventory   = new (Handler.extend({
+                  inventory   = new (class extends Handler {
                       @handles(Accountable)
-                      ignore(accountable) {},
+                      ignore(accountable) {}
+
                       @handles
                       everything(callback) {}
-                  }));
+                  });
             expect(inventory.handle($eq(accountable))).to.be.true;
             expect(inventory.handle($eq(cashier))).to.be.false;
         });
         
         it("should handle callback protocol conformance", () => {
             const blackjack  = new CardTable("Blackjack"),
-                  inventory  = new (Handler.extend({
+                  inventory  = new (class extends Handler {
                       @handles(Game)
                       play(game) {
                           this.game = game;
                       }
-                  }));
+                  });
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.game).to.equal(blackjack);
         });
 
         it("should prefer callback hierarchy over protocol conformance", () => {
             const blackjack  = new CardTable("Blackjack"),
-                  inventory  = new (Handler.extend({
+                  inventory  = new (class extends Handler {
                       @handles(Activity)
                       activity(activity) {
                           this.activity = activity;
-                      },
+                      }
+
                       @handles(Game)
                       play(game) {
                           this.game = game;
                       }                      
-                  }));
+                  });
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.activity).to.equal(blackjack);
             expect(inventory.game).to.be.undefined;
@@ -762,17 +779,18 @@ describe("Handler", () => {
 
         it("should prefer callback hierarchy and continue with protocol conformance", () => {
             const blackjack  = new CardTable("Blackjack"),
-                  inventory  = new (Handler.extend({
+                  inventory  = new (class extends Handler {
                       @handles(Activity)
                       activity(activity) {
                           this.activity = activity;
                           return $unhandled;
-                      },
+                      }
+
                       @handles(Game)
                       play(game) {
                           this.game = game;
                       }                      
-                  }));
+                  });
             expect(inventory.handle(blackjack)).to.be.true;
             expect(inventory.activity).to.equal(blackjack);
             expect(inventory.game).to.equal(blackjack);
@@ -780,24 +798,24 @@ describe("Handler", () => {
 
         it("should handle unknown callback", () => {
             const blackjack = new CardTable("Blackjack"),
-                  inventory = new (Handler.extend({
+                  inventory = new (class extends Handler {
                       @handles
                       everything(callback) {
                           callback.check = true;
                       }
-                  }));
+                  });
             expect(inventory.handle(blackjack)).to.be.true;
             expect(blackjack.check).to.be.true;
         });
 
         it("should handle unknown callback via delegate", () => {
             const blackjack = new CardTable("Blackjack"),
-                  inventory = new (Base.extend({
+                  inventory = new (class {
                       @handles
                       everything(callback) {
                           callback.check = true;
                       }
-                  })),
+                  }),
                   casino   = new Casino("Belagio").addHandlers(inventory);
             expect(casino.handle(blackjack)).to.be.true;
             expect(blackjack.check).to.be.true;
@@ -805,18 +823,18 @@ describe("Handler", () => {
 
         it("should allow handlers to chain to base", () => {
             const blackjack = new CardTable("Blackjack"),
-                  Tagger    = Handler.extend({
+                  Tagger    = class extends Handler {
                       @handles(Activity)
                       activity(activity) {
                           activity.tagged++;
                       }
-                  }),
-                  inventory  = new (Tagger.extend({
+                  },
+                  inventory  = new (class extends Tagger {
                       activity(activity) {
                           activity.tagged++;                          
-                          this.base(activity);
+                          super.activity(activity);
                       }
-                  }));
+                  });
             blackjack.tagged = 0;
             expect(inventory.handle(blackjack)).to.be.true;
             expect(blackjack.tagged).to.equal(2);
@@ -824,23 +842,29 @@ describe("Handler", () => {
 
         it("should handle callbacks with precedence rules", () => {
             let matched   = -1,
-                Checkers  = Base.extend(Game),
-                inventory = new (Handler.extend({
+                Checkers  = @conformsTo(Game) class {},
+                inventory = new (class extends Handler {
                     @handles(c => c === PitBoss)
-                    pitBoss() { matched = 0; },
+                    pitBoss() { matched = 0; }
+
                     @handles
-                    anything() { matched = 1; },
+                    anything() { matched = 1; }
+
                     @handles(Game)
-                    game() { matched = 2; },
+                    game() { matched = 2; }
+
                     @handles(Security)
-                    security() { matched = 3; },
+                    security() { matched = 3; }
+
                     @handles(Activity)
-                    activity() { matched = 5; },
+                    activity() { matched = 5; }
+
                     @handles(Accountable)
-                    accountable() { matched = 4; },
+                    accountable() { matched = 4; }
+
                     @handles(CardTable)
                     cardTable() { matched = 6; }
-                }));
+                });
             inventory.handle(new CardTable("3 Card Poker"));
             expect(matched).to.equal(6);
             inventory.handle(new Activity("Video Poker"));
@@ -883,13 +907,13 @@ describe("Handler", () => {
         it("should handle compound keys", () => {
             const cashier   = new Cashier(1000000.00),
                   blackjack = new Activity("Blackjack"),
-                  bank      = new (Accountable.extend()),
-                  inventory = new (Handler.extend({
+                  bank      = new (class extends Accountable {}),
+                  inventory = new (class extends Handler {
                       @handles(Cashier, Activity)
                       account(accountable) {
                           this.accountable = accountable;                          
                       }
-                  }));
+                  });
             expect(inventory.handle(cashier)).to.be.true;
             expect(inventory.accountable).to.equal(cashier);
             expect(inventory.handle(blackjack)).to.be.true;
@@ -900,7 +924,7 @@ describe("Handler", () => {
         it("should unregister compound keys", () => {
             const cashier    = new Cashier(1000000.00),
                   blackjack  = new Activity("Blackjack"),
-                  bank       = new (Accountable.extend()),
+                  bank       = new (class extends Accountable {}),
                   inventory  = new Handler,
                   unregister = handles.addHandler(inventory, [Cashier, Activity],
                       function (accountable) {
@@ -917,9 +941,9 @@ describe("Handler", () => {
         });
 
         it("should handle callbacks with dependencies", () => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @provides(Cashier)
-                      cashier() { return new Cashier(); },
+                      cashier() { return new Cashier(); }
 
                       @handles
                       @design(WireMoney, Cashier)
@@ -928,36 +952,36 @@ describe("Handler", () => {
                           cashier.wireMoney(wireMoney);
                           cashier.transfer(cashier.balance, this);
                       }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+            expect(Handler.for(bank).handle(new WireMoney(75))).to.be.true;
             expect(bank.assets).to.equal(9925);
             expect(bank.liabilities).to.equal(3500);
             expect(bank.balance).to.equal(6425);
         });
 
         it("should handle callbacks with dependencies static", () => {
-            const Safe = Base.extend(null, {
+            const Safe = class {
                       @provides(Cashier)
-                      cashier() { return new Cashier(2000); },
+                      static cashier() { return new Cashier(2000); }
 
                       @handles
                       @design(CountMoney, Cashier)
-                      countMoney(countMoney, cashier) {
+                      static countMoney(countMoney, cashier) {
                           countMoney.record(cashier.balance);
                       }
-                  }),
+                  },
                   countMoney = new CountMoney();
-            expect(Handler(Safe).handle(countMoney)).to.be.true;
+            expect(Handler.for(Safe).handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(2000);
         });
 
         it("should handle callbacks with promise dependencies", done => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @provides(Cashier)
                       cashier() { 
                           return Promise.resolve(new Cashier());
-                      },
+                      }
 
                       @handles
                       @design(WireMoney, Cashier)
@@ -966,9 +990,9 @@ describe("Handler", () => {
                           cashier.wireMoney(wireMoney);
                           cashier.transfer(cashier.balance, this);
                       }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            Handler(bank).command(new WireMoney(75)).then(() => {
+            Handler.for(bank).command(new WireMoney(75)).then(() => {
                 expect(bank.assets).to.equal(9925);
                 expect(bank.liabilities).to.equal(3500);
                 expect(bank.balance).to.equal(6425);
@@ -977,11 +1001,11 @@ describe("Handler", () => {
         });
 
         it("should handle callbacks with array dependencies", () => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @provides(Cashier)
                       cashier() { 
                           return [new Cashier(1000), new Cashier()];
-                      },
+                      }
 
                       @handles
                       @design(WireMoney, [Cashier])
@@ -992,18 +1016,18 @@ describe("Handler", () => {
                           cashier.wireMoney(wireMoney);
                           cashier.transfer(cashier.balance, this);
                       }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+            expect(Handler.for(bank).handle(new WireMoney(75))).to.be.true;
             expect(bank.assets).to.equal(10925);
             expect(bank.liabilities).to.equal(3500);
             expect(bank.balance).to.equal(7425);
         });
 
         it("should handle callbacks with lazy dependencies", () => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @provides(Cashier)
-                      cashier() { return new Cashier(); },
+                      cashier() { return new Cashier(); }
 
                       @handles
                       @design(WireMoney, $lazy(Cashier))
@@ -1013,101 +1037,101 @@ describe("Handler", () => {
                           cashier.wireMoney(wireMoney);
                           cashier.transfer(cashier.balance, this);
                       }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+            expect(Handler.for(bank).handle(new WireMoney(75))).to.be.true;
             expect(bank.assets).to.equal(9925);
             expect(bank.liabilities).to.equal(3500);
             expect(bank.balance).to.equal(6425);
         });
 
         it("should handle optional callback dependencies", () => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @handles
                       @design(WireMoney, $optional(Cashier))
                       wireMoney(wireMoney, cashier) {
                           expect(cashier).to.be.undefined;
                       }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            expect(Handler(bank).handle(new WireMoney(75))).to.be.true;
+            expect(Handler.for(bank).handle(new WireMoney(75))).to.be.true;
         });
 
         it("should handle callbacks with proxy dependencies", () => {
             const Supervisor = Protocol.extend({
                       approve(transaction) {}
                   }),
-                  BankManager = Base.extend(Supervisor, {
+                  BankManager = @conformsTo(Supervisor) class {
                       approve(transaction) {
                           if (transaction instanceof WireMoney) {
                               return transaction.requested < 5000;
                           }
                           return false;
                       }
-                  }),
-                  Bank = Accountable.extend({
+                  },
+                  Bank = class extends Accountable {
                       @handles
                       @design(WireMoney, $proxy(Supervisor))
                       wireMoney(wireMoney, supervisor) {
                           supervisor.approve(wireMoney);
                           this.transfer(wireMoney.requested);
                       }
-                  }),
+                  },
                   bank    = new Bank(10000),
-                  handler = Handler(bank).next(new BankManager());
+                  handler = Handler.for(bank).next(new BankManager());
             expect(handler.handle(new WireMoney(1000))).to.be.true;
             expect(bank.assets).to.equal(9000);
             expect(bank.balance).to.equal(9000);
         });
 
         it("should fail if dependencies unresolved", () => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @handles
                       @design(WireMoney, Cashier)
                       wireMoney(wireMoney, cashier) { }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            expect(Handler(bank).handle(new WireMoney(75))).to.be.false;
+            expect(Handler.for(bank).handle(new WireMoney(75))).to.be.false;
         });
 
         it("should fail promise dependency unresolved", done => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @provides(Cashier)
-                      cashier() { return Promise.resolve(); },
+                      cashier() { return Promise.resolve(); }
 
                       @handles
                       @design(WireMoney, Cashier)
                       wireMoney(wireMoney, cashier) { }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            Handler(bank).command(new WireMoney(75)).catch(err => {
+            Handler.for(bank).command(new WireMoney(75)).catch(err => {
                 done();
             });
         });
 
         it("should fail rejected promise dependency", done => {
-            const Bank = Accountable.extend({
+            const Bank = class extends Accountable {
                       @provides(Cashier)
                       cashier() { 
                           return Promise.reject(new Error("This is bad!!"));
-                      },
+                      }
 
                       @handles
                       @design(WireMoney, Cashier)
                       wireMoney(wireMoney, cashier) { }
-                  }),
+                  },
                   bank = new Bank(10000, 3500);
-            Handler(bank).command(new WireMoney(75)).catch(err => {
+            Handler.for(bank).command(new WireMoney(75)).catch(err => {
                 done();
             });
         });
 
         it("should infer callbacks", () => {
             const countMoney = new CountMoney(),
-                  inventory  = new (Handler.extend({
+                  inventory  = new (class extends Handler {
                       @provides(Cashier)
                       cashier() { return new Cashier(750); }
-                  })),
+                  }),
                   handler    = new Casino("Paris")
                     .addHandlers(inventory, new InferenceHandler([Cashier]));
             expect(handler.handle(countMoney)).to.be.true;
@@ -1116,12 +1140,12 @@ describe("Handler", () => {
 
         it("should infer promise callbacks", done => {
             const countMoney = new CountMoney(),
-                  inventory  = new (Handler.extend({
+                  inventory  = new (class extends Handler {
                       @provides(Cashier)
                       cashier() { 
                           return Promise.resolve(new Cashier(750));
                       }
-                  })),
+                  }),
                   handler    = new Casino("Paris")
                     .addHandlers(inventory, new InferenceHandler([Cashier]));
             Promise.resolve(handler.command(countMoney)).then(result => {
@@ -1138,12 +1162,12 @@ describe("Handler", () => {
 
         it("should fail to infer promise callbacks", done => {
             const countMoney = new CountMoney(),
-                  inventory  = new (Handler.extend({
+                  inventory  = new (class extends Handler {
                       @provides(Cashier)
                       cashier() { 
                           return Promise.reject(new Error("Cashier is sick"));
                       }
-                  })),
+                  }),
                   handler    = new Casino("Paris")
                     .addHandlers(inventory, new InferenceHandler([Cashier]));
             Promise.resolve(handler.command(countMoney)).catch(error => {
@@ -1167,13 +1191,13 @@ describe("Handler", () => {
         });
 
         it("should handle objects eventually with promise", done => {
-            const bank = (new (Handler.extend({
+            const bank = new (class extends Handler {
                         @handles(WireMoney)
                         wireMoney(wireMoney) {
                             wireMoney.received = 50000;
                             return Promise.delay(100).then(() => wireMoney);
                         }
-                  }))),
+                  }),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.command(wireMoney)).then(result => {
@@ -1197,10 +1221,10 @@ describe("Handler", () => {
     describe("#resolve", () => {
         it("should resolve explicit objects", () => {
             const cashier   = new Cashier(1000000.00),
-                  inventory = new (Handler.extend({
+                  inventory = new (class extends Handler {
                       @provides(Cashier)
                       cashier() { return cashier; }
-                  }));
+                  });
             expect(inventory.resolve(Cashier)).to.equal(cashier);
         });
         
@@ -1212,25 +1236,26 @@ describe("Handler", () => {
         });
 
         it("should resolve copy of object with @copy", () => {
-            const Circle = Base.extend({
+            const Circle = class {
                       constructor(radius) {
                           this.radius = radius;
-                      },
+                      }
+
                       copy() {
                           return new Circle(this.radius);
                       }
-                  }),
+                  },
                   circle = new Circle(2),
-                  shapes = new (Handler.extend({
+                  shapes = new (class extends Handler {
                       @copy
                       @provides(Circle)                      
                       circle() { return circle; }
-                  })),
-                  shapesG = new (Handler.extend({
+                  }),
+                  shapesG = new (class extends Handler {
                       @copy
                       @provides(Circle)                      
                       get circle() { return circle; }
-                  }));                  
+                  });                  
            const shape  = shapes.resolve(Circle),
                  shapeG = shapesG.resolve(Circle);
            expect(shape).to.not.equal(circle);
@@ -1267,10 +1292,10 @@ describe("Handler", () => {
 
         it("should resolve objects by class invariantly", () => {
             const cashier   = new Cashier(1000000.00),
-                  inventory = new (Handler.extend({
+                  inventory = new (class extends Handler {
                       @provides($eq(Cashier))
                       cashier() { return cashier; }
-                  }));
+                  });
             expect(inventory.resolve(Accountable)).to.be.undefined;
             expect(inventory.resolve(Cashier)).to.equal(cashier);
             provides.addHandler(inventory, Cashier, inquiry => cashier);
@@ -1279,10 +1304,10 @@ describe("Handler", () => {
 
         it("should resolve objects by protocol invariantly", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides($eq(Game))
                       game() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve(CardTable)).to.be.undefined;
             expect(cardGames.resolve(Game)).to.equal(blackjack);
         });
@@ -1290,12 +1315,13 @@ describe("Handler", () => {
         it("should resolve objects by class instantly", () => {
             const cashier   = new Cashier(1000000.00),
                   blackjack = new CardTable("BlackJack", 1, 5),
-                  inventory = new (Handler.extend({
+                  inventory = new (class extends Handler {
                       @provides(Cashier)
-                      cashier() { return cashier; },
+                      cashier() { return cashier; }
+
                       @provides(CardTable)
                       blackjack() { return Promise.resolve(blackjack); }                      
-                  }));
+                  });
             expect(inventory.resolve($instant(Cashier))).to.equal(cashier);
             expect($isPromise(inventory.resolve(CardTable))).to.be.true;
             expect(inventory.resolve($instant(CardTable))).to.be.undefined;
@@ -1303,20 +1329,17 @@ describe("Handler", () => {
 
         it("should resolve objects by protocol instantly", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides(Game)
                       game() { return Promise.resolve(blackjack); }
-                  }));
+                  });
             expect($isPromise(cardGames.resolve(Game))).to.be.true;
             expect(cardGames.resolve($instant(Game))).to.be.undefined;
         });
 
         it("should resolve base2 constructor", () => {
             const Car     = Protocol.extend(),
-                  Ferarri = Base.extend(Car, {
-                      @provides
-                      constructor() {}
-                  }),          
+                  Ferarri = @conformsTo(Car) @provides() class {},          
                   handler = new StaticHandler([Ferarri]),
                   car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);               
@@ -1325,13 +1348,12 @@ describe("Handler", () => {
         it("should resolve base2 constructor with dependencies", () => {
             const Car     = Protocol.extend(),
                   Engine  = Protocol.extend(),
-                  V12     = Base.extend(Engine, provides()),
-                  Ferarri = Base.extend(Car, {
-                      @design(Engine)
-                      @provides constructor(engine) {
+                  V12     = @conformsTo(Engine) @provides() class {},
+                  Ferarri = @conformsTo(Car) @design(Engine) @provides() class {
+                      constructor(engine) {
                           this.engine = engine;
                       }
-                  }),          
+                  },          
                   handler = new StaticHandler([Ferarri, V12]),
                   car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);
@@ -1341,10 +1363,7 @@ describe("Handler", () => {
         it("should reject provides with arguments on base2 constructor", () => {
             expect(() => {
                 const Car     = Protocol.extend(),
-                      Ferarri = Base.extend(Car, {
-                          @provides(Car)
-                          constructor() {}
-                      });  
+                      Ferarri = @conformsTo(Car) @provides(Car) class {}; 
             }).to.throw(SyntaxError, "@provides expects no arguments if applied to a constructor.");     
         });
 
@@ -1361,76 +1380,77 @@ describe("Handler", () => {
 
         it("should resolve by string literal", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides("BlackJack")
                       blackjack() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve("BlackJack")).to.equal(blackjack);
         });
 
         it("should resolve by string literal case-insensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides("BlackJack")
                       blackjack() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve("BLACKJACK")).to.equal(blackjack);
         });
 
         it("should resolve by string literal case-sensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides("BlackJack")
                       blackjack() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve($eq("BLACKJACK"))).to.be.undefined;
         });
         
         it("should resolve by string instance", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides("BlackJack")
                       blackjack() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve(new String("BlackJack"))).to.equal(blackjack);
         });
 
         it("should resolve by string instance case-insensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides("BlackJack")
                       blackjack() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve(new String("blackjack"))).to.equal(blackjack);
         });
 
         it("should resolve by string instance case-sensitive", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides("BlackJack")
                       blackjack() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve($eq(new String("blackjack")))).to.be.undefined;
         });
         
         it("should resolve string by regular expression", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides(/black/i)
                       blackjack() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.resolve("BlackJack")).to.equal(blackjack);
         });
 
         it("should resolve instances using instance class", () => {
-            const Config = Base.extend({
+            const Config = class extends Base {
                       constructor(key) {
+                          super();
                           this.extend({
                               get key() { return key; }
                           });
                       }
-                  }), 
-                  settings = new (Handler.extend({
+                  }, 
+                  settings = new (class extends Handler {
                       @provides(Config)
                       config(inquiry) {
                           const config = inquiry.key,
@@ -1441,7 +1461,7 @@ describe("Handler", () => {
                               return "dba";
                           }
                       }
-                  }));
+                  });
                 expect(settings.resolve(new Config("user"))).to.equal("dba");
                 expect(settings.resolve(new Config("name"))).to.be.undefined;
         });
@@ -1449,7 +1469,7 @@ describe("Handler", () => {
         it("should resolve objects with compound keys", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cashier   = new Cashier(1000000.00),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides(CardTable, Cashier)
                       stuff(inquiry) {
                           const key = inquiry.key;
@@ -1459,7 +1479,7 @@ describe("Handler", () => {
                               return cashier;
                           }
                       }
-                  }));
+                  });
             expect(cardGames.resolve(Game)).to.equal(blackjack);
             expect(cardGames.resolve(Cashier)).to.equal(cashier);
         });
@@ -1489,23 +1509,23 @@ describe("Handler", () => {
         });
 
         it("should not resolve objects if $unhandled", () => {
-            const inventory = new (Handler.extend({
+            const inventory = new (class extends Handler {
                 @provides(Cashier)
                 notHandled() { return $unhandled; }
-            }));
+            });
             expect(inventory.resolve(Cashier)).to.be.undefined;
         });
 
         it("should resolve unknown objects", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @provides(True)
                       unknown(inquiry) {
                           if (inquiry.key === CardTable) {
                               return blackjack;
                           }
                       }
-                  }));
+                  });
             expect(cardGames.resolve(CardTable)).to.equal(blackjack);
             expect(cardGames.resolve(Game)).to.be.undefined;
         });
@@ -1524,23 +1544,29 @@ describe("Handler", () => {
         });
 
         it("should resolve with precedence rules", () => {
-            const Checkers  = Base.extend(Game),
-                  inventory = new (Handler.extend({
+            const Checkers  = @conformsTo(Game) class {},
+                  inventory = new (class extends Handler {
                       @provides(constraint => constraint === PitBoss)
-                      predicate() { return 0; },
+                      predicate() { return 0; }
+
                       @provides
-                      anything() { return 1; },
+                      anything() { return 1; }
+
                       @provides(Checkers)
-                      anonymousType() { return 2; },
+                      anonymousType() { return 2; }
+
                       @provides(Level1Security)
-                      type() { return 3; },
+                      type() { return 3; }
+
                       @provides(Activity)
-                      derivedType() { return 5; },
+                      derivedType() { return 5; }
+
                       @provides(Accountable)
-                      baseType() { return 4; },
+                      baseType() { return 4; }
+
                       @provides(CardTable)
                       deepType() { return 6; }
-                  }));
+                  });
             expect(inventory.resolve(CardTable)).to.equal(6);
             expect(inventory.resolve(Activity)).to.equal(5);
             expect(inventory.resolve(Cashier)).to.equal(1);
@@ -1551,28 +1577,22 @@ describe("Handler", () => {
         });
 
         it("should infer resolve", () => {
-            const cashier = new Cashier(1000000.00),
-                  Inventory = Handler.extend({
-                      @provides
-                      constructor() {},
-
+            const cashier   = new Cashier(1000000.00),
+                  Inventory = @provides() class extends Handler {
                       @provides(Cashier)
                       cashier() { return cashier; }
-                  }),
+                  },
                   handler = new StaticHandler([Inventory])
                      .next(new InferenceHandler([Inventory]));
             expect(handler.resolve(Cashier)).to.equal(cashier);
         });
 
         it("should infer promise resolve", done => {
-            const cashier = new Cashier(1000000.00),
-                  Inventory = Handler.extend({
-                      @provides
-                      constructor() {},
-
+            const cashier   = new Cashier(1000000.00),
+                  Inventory = @provides() class extends Handler {
                       @provides(Cashier)
                       cashier() { return Promise.resolve(cashier); }
-                  }),
+                  },
                   handler = new StaticHandler([Inventory])
                      .next(new InferenceHandler([Inventory]));
             Promise.resolve(handler.resolve(Cashier)).then(result => {
@@ -1582,28 +1602,22 @@ describe("Handler", () => {
         });
 
         it("should fail infer resolve", () => {
-            const Inventory = Handler.extend({
-                      @provides
-                      constructor() {},
-
+            const Inventory = @provides() class extends Handler {
                       @provides(Cashier)
                       cashier() {}
-                  }),
+                  },
                   handler = new StaticHandler([Inventory])
                     .next(new InferenceHandler([Inventory]));
             expect(handler.resolve(Cashier)).to.be.undefined;   
         });
 
         it("should fail infer promise resolve", done => {
-            const Inventory = Handler.extend({
-                      @provides
-                      constructor() {},
-
+            const Inventory = @provides() class extends Handler {
                       @provides(Cashier)
                       cashier() { 
                           return Promise.reject("Cashier is sick");
                       }
-                  }),
+                  },
                   handler = new StaticHandler([Inventory])
                      .next(new InferenceHandler([Inventory]));
             Promise.resolve(handler.resolve(Cashier)).then(result => {
@@ -1629,27 +1643,27 @@ describe("Handler", () => {
             const stop1 = [ new PitBoss("Craig"),  new PitBoss("Matthew") ],
                   stop2 = [ new PitBoss("Brenda"), new PitBoss("Lauren"), new PitBoss("Kaitlyn") ],
                   stop3 = [ new PitBoss("Phil") ],
-                  bus1  = new (Handler.extend({
+                  bus1  = new (class extends Handler {
                       @provides(PitBoss)
                       pitBoss(inquiry) {
                           expect(inquiry.isMany).to.be.true;
                           return Promise.delay(75).then(() => stop1);
                       }
-                  })),
-                  bus2  = new (Handler.extend({
+                  }),
+                  bus2  = new (class extends Handler {
                       @provides(PitBoss)
                       pitBoss(inquiry) {               
                           expect(inquiry.isMany).to.be.true;
                           return Promise.delay(100).then(() => stop2);
                       }
-                  })),
-                  bus3  = new (Handler.extend({
+                  }),
+                  bus3  = new (class extends Handler {
                       @provides(PitBoss)
                       pitBoss(inquiry) {               
                           expect(inquiry.isMany).to.be.true;
                           return Promise.delay(50).then(() => stop3);
                       }
-                  })),
+                  }),
                   company = bus1.next(bus2, bus3);
             Promise.resolve(company.resolveAll(PitBoss)).then(pitBosses => {
                 expect(pitBosses).to.have.members($flatten([stop1, stop2, stop3]));
@@ -1661,14 +1675,16 @@ describe("Handler", () => {
             const belagio  = new Casino("Belagio"),
                   venetian = new Casino("Venetian"),
                   paris    = new Casino("Paris"),
-                  strip    = new (Handler.extend({
+                  strip    = new (class extends Handler {
                       @provides(Casino)
-                      venetion() { return venetian; },
+                      venetion() { return venetian; }
+
                       @provides(Casino)
-                      belagio() { return Promise.resolve(belagio); },
+                      belagio() { return Promise.resolve(belagio); }
+
                       @provides(Casino)
                       paris() { return paris; }
-                  }));
+                  });
             const casinos = strip.resolveAll($instant(Casino));
             expect(casinos).to.have.members([venetian, paris]);
         });
@@ -1682,10 +1698,10 @@ describe("Handler", () => {
 
         it("should return empty array instantly if none resolved", () => {
             const belagio = new Casino("Belagio"),
-                  strip   = new (Handler.extend({
+                  strip   = new (class extends Handler {
                       @provides(Casino)
                       casino() { return Promise.resolve(belagio); }
-                  }));
+                  });
             const casinos = strip.resolveAll($instant(Casino));
             expect(casinos).to.have.length(0);
         });
@@ -1694,36 +1710,39 @@ describe("Handler", () => {
     describe("#lookup", () => {
         it("should lookup by class", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @looksup(CardTable)
-                      cardTable() { return blackjack; },
+                      cardTable() { return blackjack; }
+
                       @looksup
                       everything() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.lookup(CardTable)).to.equal(blackjack);
             expect(cardGames.lookup(Game)).to.be.undefined;
         });
 
         it("should lookup by protocol", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @looksup(Game)
-                      game() { return blackjack; },
+                      game() { return blackjack; }
+
                       @looksup
                       everything() { return blackjack; }
-                  }));
+                  });
             expect(cardGames.lookup(Game)).to.equal(blackjack);
             expect(cardGames.lookup(CardTable)).to.be.undefined;
         });
 
         it("should lookup by string", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
-                  cardGames = new (Handler.extend({
+                  cardGames = new (class extends Handler {
                       @looksup("blackjack")
-                      blackjack() { return blackjack; },
+                      blackjack() { return blackjack; }
+
                       @looksup(/game/)
-                      blackjack() { return blackjack; },
-                  }));
+                      blackjack() { return blackjack; }
+                  });
             expect(cardGames.lookup("blackjack")).to.equal(blackjack);
             expect(cardGames.lookup("game")).to.be.undefined;
         });
@@ -1772,7 +1791,7 @@ describe("Handler", () => {
 
         it("should ignore invocation", () => {
             const guest = new Guest(21),
-                  level = Handler(new Level1Security);
+                  level = Handler.for(new Level1Security);
             expect(() => {
                 Security(level.aspect(False)).admit(guest);
             }).to.throw(RejectedError);
@@ -1790,7 +1809,7 @@ describe("Handler", () => {
         it("should invoke with side-effect", () => {
             let count = 0,
                 guest = new Guest(21),
-                level = Handler(new Level1Security);
+                level = Handler.for(new Level1Security);
             expect(Security(level.aspect(True, () => { ++count; }))
                             .admit(guest)).to.be.true;
             expect(count).to.equal(1);
@@ -1810,7 +1829,7 @@ describe("Handler", () => {
         });
 
         it("should ignore async invocation", done => {
-            const level2 = Handler(new Level2Security);
+            const level2 = Handler.for(new Level2Security);
             Security(level2.aspect(() => {
                 return Promise.resolve(false);
             })).scan().then(scanned => {
@@ -1833,7 +1852,7 @@ describe("Handler", () => {
         });
 
         it("should invoke async with side-effect", done => {
-            const level2 = Handler(new Level2Security);
+            const level2 = Handler.for(new Level2Security);
             Security(level2.aspect(True, () => done())).scan().then(scanned => {
                 expect(scanned).to.be.true;
             });
@@ -1863,7 +1882,7 @@ describe("Handler", () => {
         });
 
         it("should fail async invoke on rejection in before", done => {
-            const level2 = Handler(new Level2Security);
+            const level2 = Handler.for(new Level2Security);
             Security(level2.aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
@@ -1876,10 +1895,10 @@ describe("Handler", () => {
 
     describe("#create", () => {
         it("should create instances", () => {
-            const inventory = new (Handler.extend({
+            const inventory = new (class extends Handler {
                       @creates(Cashier)
                       cashier() { return new Cashier(); }
-                  }));
+                  });
             expect(inventory.create(Cashier)).to.be.instanceOf(Cashier);
         });
     });
@@ -1907,7 +1926,7 @@ describe("Handler", () => {
                   baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  security = Handler(level1).next(level2);
+                  security = Handler.for(level1).next(level2);
             expect(Security(security).admit(guest)).to.be.false;
             Security(security).trackActivity(baccarat);
         });
@@ -1916,7 +1935,7 @@ describe("Handler", () => {
             const baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  compose  = Handler(level1).next(level2, baccarat),
+                  compose  = Handler.for(level1).next(level2, baccarat),
             countMoney = new CountMoney();
             expect(compose.handle(countMoney)).to.be.true;
         });
@@ -1936,10 +1955,10 @@ describe("Handler", () => {
     });
    
     describe("Options", () => {
-        const ServerOptions = Options.extend({
-            url:     undefined,
-            timeout: undefined
-        });
+        class ServerOptions extends Options {
+            url;
+            timeout;
+        }
 
         Handler.registerOptions(ServerOptions, "serverOptions");
 
@@ -1993,13 +2012,13 @@ describe("InvocationHandler", () => {
         it("should handle invocations", () => {
             const guest1 = new Guest(17),
                   guest2 = new Guest(21),
-                  level1 = Handler(new Level1Security());
+                  level1 = Handler.for(new Level1Security());
             expect(Security(level1).admit(guest1)).to.be.false;
             expect(Security(level1).admit(guest2)).to.be.true;
         });
         
         it("should handle async invocations", done => {
-            const level2 = Handler(new Level2Security());
+            const level2 = Handler.for(new Level2Security());
             Security(level2).scan().then(() => {
                 done();
             });
@@ -2033,16 +2052,18 @@ describe("InvocationHandler", () => {
         });
 
         it("should require protocol conformance", () => {
-            const gate  = new (Handler.extend(Security, {
-                      admit(guest) { return true; }
-                  }));
+            @conformsTo(Security)
+            class Gate extends Handler {
+                admit(guest) { return true; }
+            };
+            const gate = new Gate();
             expect(Security(gate).admit(new Guest("Me"))).to.be.true;
         });
 
         it("should reject if no protocol conformance", () => {
-            const gate  = new (Handler.extend({
+            const gate = new (class extends Handler {
                       admit(guest) { return true; }
-                  }));
+                  });
             expect(() => {
                 Security(gate).admit(new Guest("Me"))
             }).to.throw(Error, /admit could not be handled/);
@@ -2074,26 +2095,26 @@ describe("InvocationHandler", () => {
         });
 
         it("should resolve target for invocation", () => {
-            const Poker = Base.extend(Game, {
+            const Poker = @conformsTo(Game) class {
                       open(numPlayers) {
                           return "poker" + numPlayers;
                       }
-                  }),
-                  handler = Handler(new Poker()),
+                  },
+                  handler = Handler.for(new Poker()),
                   id      = Game(handler).open(5);
             expect(id).to.equal("poker5");
         });
 
         it("should resolve target for invocation using promise", done => {
-            const Poker = Base.extend(Game, {
+            const Poker = @conformsTo(Game) class {
                       open(numPlayers) {
                           return "poker" + numPlayers;
                       }
-                  }),
-                  handler = new (Handler.extend({
+                  },
+                  handler = new (class extends Handler {
                       @provides(Game)
                       game() { return Promise.delay(10).then(() => new Poker()); }
-                  }));
+                  });
             Game(handler).open(5).then(id => {
                 expect(id).to.equal("poker5");
                 done();
@@ -2104,9 +2125,9 @@ describe("InvocationHandler", () => {
             const Pumping = ResolvingProtocol.extend({
                       pump() {}
                   }),
-                  Pump = Base.extend(Pumping, {
+                  Pump = @conformsTo(Pumping) class {
                       pump() { return 5; }
-                  }),
+                  },
                   handler = new Handler();
             provides.addHandler(handler, new Pump());
             expect(Pumping(handler).pump()).to.equal(5);
@@ -2120,19 +2141,19 @@ describe("InvocationHandler", () => {
         });
 
         it("should fail invocation if method not found", () => {
-            const Poker   = Base.extend(Game),
-                  handler = Handler(new Poker());
+            const Poker   = @conformsTo(Game) class {},
+                  handler = Handler.for(new Poker());
             expect(() => {
                 Game(handler).open(4);
             }).to.throw(TypeError, /open could not be handled/);
         });
 
         it("should fail invocation promise if method not found", done => {
-            const Poker   = Base.extend(Game),
-                  handler = new (Handler.extend({
+            const Poker   = @conformsTo(Game) class {},
+                  handler = new (class extends Handler {
                       @provides(Game)
                       game() { return Promise.delay(10).then(() => new Poker()); }
-                  }));
+                  });
             Game(handler).open(5).catch(error => {
                 expect(error).to.be.instanceOf(TypeError);
                 expect(error.message).to.match(/open could not be handled/)
@@ -2147,10 +2168,10 @@ describe("InvocationHandler", () => {
         });
 
         it("should ignore invocation if unable to resolve promise", done => {
-            const handler = new (Handler.extend({
+            const handler = new (class extends Handler {
                 @provides(Game)
                 game() { return Promise.delay(10).then(() => $unhandled); }
-              }));
+              });
             Game(handler.$bestEffort()).open(5).then(id => {
                 expect(id).to.be.undefined;
                 done();
@@ -2159,18 +2180,18 @@ describe("InvocationHandler", () => {
         
         it("should resolve all targets or invocation", () => {
             let   count = 0;
-            const Poker = Base.extend(Game, {
+            const Poker = @conformsTo(Game) class {
                       open(numPlayers) {
                           ++count;
                           return "poker" + numPlayers;
                       }
-                  }),
-                  Slots = Base.extend(Game, {
+                  },
+                  Slots = @conformsTo(Game) class {
                       open(numPlayers) {
                           ++count;
                           return "poker" + numPlayers;
                       }
-                  }),                
+                  },                
                   handler = new CascadeHandler(new Poker(), new Slots()),
                   id      = Game(handler.$broadcast()).open(5);
             expect(id).to.equal("poker5");
@@ -2179,28 +2200,32 @@ describe("InvocationHandler", () => {
 
         it("should resolve all targets or invocation using promise", done => {
             let   count = 0;
-            const Poker = Base.extend(Game, {
+            const Poker = @conformsTo(Game) class {
                       open(numPlayers) {
                           ++count;
                           return "poker" + numPlayers;
                       }
-                  }),
-                  Slots = Base.extend(Game, {
+                  },
+                  Slots = @conformsTo(Game) class {
                       open(numPlayers) {
                           ++count;
                           return "poker" + numPlayers;
                       }
-                  }),
+                  },
                   handler = new CascadeHandler(
-                      new (Handler.extend({
+                      new (class extends Handler {
                           @provides(Game)
-                          game() { return Promise.delay(10).then(() => new Poker()); }
-                      })),
-                      new (Handler.extend({
+                          game() {
+                              return Promise.delay(10).then(() => new Poker());
+                          }
+                      }),
+                      new (class extends Handler {
                           @provides(Game)
-                          game() { return Promise.delay(5).then(() => new Slots()); }
-                      }))
-                );
+                          game() {
+                              return Promise.delay(5).then(() => new Slots());
+                          }
+                      })
+                  );
             Game(handler.$broadcast()).open(5).then(id => {
                 expect(id).to.equal("poker5");
                 expect(count).to.equal(2);                
@@ -2216,12 +2241,12 @@ describe("InvocationHandler", () => {
         });
 
         it("should apply filters to resolved invocations", () => {
-            const Poker = Base.extend(Game, {
+            const Poker = @conformsTo(Game) class {
                       open(numPlayers) {
                           return "poker" + numPlayers;
                       }
-                  }),
-                  handler = Handler(new Poker());
+                  },
+                  handler = Handler.for(new Poker());
             expect(Game(handler.filter(
                 (cb, cm, proceed) => proceed())).open(5))
                 .to.equal("poker5");
@@ -2239,89 +2264,104 @@ describe("Handler", () => {
              fail(msg) {},
              failConfirm(msg) {}        
           }),
-          Offline = Emailing.extend(),
-          EmailHandler = Handler.extend(Emailing, {
-              send(msg) {
-                  const batch = this.ensureBatch();
-                  return batch ? batch.send(msg) : msg; 
-              },
-              sendConfirm(msg) {
-                  const batch = this.ensureBatch();
-                  return batch ? batch.sendConfirm(msg)
-                       : Promise.resolve(msg);
-              },
-              fail(msg) {
-                  if (msg === "OFF") {
-                      return Offline($composer).fail(msg);
-                  }
-                  throw new Error("Can't send message");
-              },
-              failConfirm(msg) {
-                  const batch = this.ensureBatch();
-                  return batch ? batch.failConfirm(msg)
-                       : Promise.reject(Error("Can't send message"));
-              },            
-              ensureBatch() {
-                  const batch = $composer.getBatch(Emailing);
-                  if (batch) {
-                      const emailBatch = new EmailBatch();
-                      batch.addHandlers(emailBatch);
-                      return emailBatch;
-                  }
-              }
-          }),
-          OfflineHandler = Handler.extend(Offline, {
-              send(msg) { return 99; },
-              sendConfirm(msg) {
-                  throw new Error("Can't confirm message offline");
-              },            
-              fail(msg) { return -1; },
-              failConfirm(msg) {}
-          }),
-          DemoHandler = Handler.extend({
-              send(msg) { return msg; },
-              sendConfirm(msg) { return Promise.resolve(msg); },            
-              fail(msg) {},
-              failConfirm(msg) {}
-          });    
-        const EmailBatch = Base.extend(Emailing, Batching, {
-            constructor() {
-                _(this).msgs     = [];
-                _(this).resolves = [];
-                _(this).promises = [];
-            },
+          Offline = Emailing.extend();
 
-            send(msg) {
-                _(this).msgs.push(msg + " batch");
-            },
-            sendConfirm(msg) {
-                const { msgs, resolves, promises } = _(this);
-                msgs.push(msg);
-                const promise = new Promise(resolve =>
-                    resolves.push(() => { resolve(msg + " batch"); })
-                );
-                promises.push(promise);
-                return promise;
-            },
-            failConfirm(msg) {
-                const { resolves, promises } = _(this);
-                const promise = new Promise((resolve, reject) =>
-                    resolves.push(() => { reject(Error("Can't send message")); })
-                );
-                promises.push(promise);
-                return promise;
-            },
-            complete(composer) {
-                const { msgs, resolves, promises } = _(this);
-                for (let i = 0; i < resolves.length; ++i) {
-                    resolves[i]();
-                }
-                const results = Emailing(composer).send(msgs);
-                return promises.length > 0
-                     ? Promise.all(promises).then(() => results)
-                     : results;
-            }            
-        });
+    @conformsTo(Emailing)
+    class EmailHandler extends Handler {
+        send(msg) {
+            const batch = this.ensureBatch();
+            return batch ? batch.send(msg) : msg; 
+        }
+
+        sendConfirm(msg) {
+            const batch = this.ensureBatch();
+            return batch ? batch.sendConfirm(msg)
+                : Promise.resolve(msg);
+        }
+
+        fail(msg) {
+            if (msg === "OFF") {
+                return Offline($composer).fail(msg);
+            }
+            throw new Error("Can't send message");
+        }
+
+        failConfirm(msg) {
+            const batch = this.ensureBatch();
+            return batch ? batch.failConfirm(msg)
+                : Promise.reject(Error("Can't send message"));
+        }
+
+        ensureBatch() {
+            const batch = $composer.getBatch(Emailing);
+            if (batch) {
+                const emailBatch = new EmailBatch();
+                batch.addHandlers(emailBatch);
+                return emailBatch;
+            }
+        }
+    }
+          
+    @conformsTo(Offline)
+    class OfflineHandler extends Handler {
+        send(msg) { return 99; }
+        sendConfirm(msg) {
+            throw new Error("Can't confirm message offline");
+        }
+        fail(msg) { return -1; }
+        failConfirm(msg) {}
+    }
+
+    class DemoHandler extends Handler {
+        send(msg) { return msg; }
+        sendConfirm(msg) { return Promise.resolve(msg); }         
+        fail(msg) {}
+        failConfirm(msg) {}
+    }
+
+    @conformsTo(Emailing, Batching)
+    class EmailBatch extends Base {
+        constructor() {
+            super();
+            _(this).msgs     = [];
+            _(this).resolves = [];
+            _(this).promises = [];
+        }
+
+        send(msg) {
+            _(this).msgs.push(msg + " batch");
+        }
+
+        sendConfirm(msg) {
+            const { msgs, resolves, promises } = _(this);
+            msgs.push(msg);
+            const promise = new Promise(resolve =>
+                resolves.push(() => { resolve(msg + " batch"); })
+            );
+            promises.push(promise);
+            return promise;
+        }
+
+        failConfirm(msg) {
+            const { resolves, promises } = _(this);
+            const promise = new Promise((resolve, reject) =>
+                resolves.push(() => { reject(Error("Can't send message")); })
+            );
+            promises.push(promise);
+            return promise;
+        }
+
+        complete(composer) {
+            const { msgs, resolves, promises } = _(this);
+            for (let i = 0; i < resolves.length; ++i) {
+                resolves[i]();
+            }
+            const results = Emailing(composer).send(msgs);
+            return promises.length > 0
+                    ? Promise.all(promises).then(() => results)
+                    : results;
+        }          
+    }
 
     it("should require protocol conformance", () => {
         const handler = new DemoHandler();
@@ -2404,13 +2444,13 @@ describe("Handler", () => {
     
     describe("#$timeout", () => {
         it("should reject promise if timed out", done => {
-            const bank = (new (Handler.extend({
+            const bank = new (class extends Handler {
                       @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(100).then(() => wireMoney);
                       }
-                  }))),
+                  }),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50).command(wireMoney)).catch(err => {
@@ -2420,13 +2460,13 @@ describe("Handler", () => {
         });
 
         it("should ignore time out if promise resolved", done => {
-            const bank = (new (Handler.extend({
+            const bank = new (class extends Handler {
                       @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(50).then(() => wireMoney);
                       }
-                  }))),
+                  }),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(100).command(wireMoney)).then(result => {
@@ -2437,13 +2477,13 @@ describe("Handler", () => {
         });
         
         it("should reject promise with error instance", done => {
-            const bank = (new (Handler.extend({
+            const bank = new (class extends Handler {
                       @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(100).then(() => wireMoney);
                       }                
-                  }))),
+                  }),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, new Error("Oh No!"))
@@ -2460,13 +2500,13 @@ describe("Handler", () => {
             }
             BankError.prototype             = new Error();
             BankError.prototype.constructor = BankError;
-            const bank = (new (Handler.extend({
+            const bank = new (class extends Handler {
                       @handles(WireMoney)
                       wireMoney(wireMoney) {
                           wireMoney.received = 50000;
                           return Promise.delay(100).then(() => wireMoney);
                       }                
-                  }))),
+                  }),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, BankError)
@@ -2478,12 +2518,12 @@ describe("Handler", () => {
         });
 
         it("should propogate errors", done => {
-            const bank = (new (Handler.extend({
+            const bank = new (class extends Handler {
                       @handles(WireMoney)
                       wireMoney(wireMoney) {
                           return Promise.reject(new Error("No money"))                    
                       }                
-                  }))),
+                  }),
                   casino    = new Casino("Venetian").addHandlers(bank),
                   wireMoney = new WireMoney(150000);
             Promise.resolve(casino.$timeout(50, new Error("Oh No!"))

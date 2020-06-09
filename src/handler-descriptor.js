@@ -12,31 +12,35 @@ import KeyResolver from "./key-resolver";
 import FilteredObject from "./filters/filtered-object";
 
 const _ = createKey(),
+      defaultKeyResolver = new KeyResolver(),
       descriptorMetadataKey = Symbol("descriptor-metadata");
 
-export const HandlerDescriptor = FilteredObject.extend({
+export class HandlerDescriptor extends FilteredObject {
     constructor(owner) {
         if ($isNothing(owner)) {
             throw new Error("The owner argument is required.");
         }
+        super();
         _(this).owner    = owner;
         _(this).bindings = new Map();
-    },
+    }
 
-    get owner()    { return _(this).owner; },
-    get policies() { return [..._(this).bindings.keys()]; },
-    get bindings() { return [..._(this).bindings.entries()]; },
+    get owner()    { return _(this).owner; }
+    get policies() { return [..._(this).bindings.keys()]; }
+    get bindings() { return [..._(this).bindings.entries()]; }
 
     getBindings(policy) {
         requireValidPolicy(policy);
         return _(this).bindings.get(policy);
-    },
+    }
+
     addBinding(policy, constraint, handler, key, removed) {
         requireValidPolicy(policy);
         const binding = constraint instanceof Binding ? constraint
                       : Binding.create(constraint, handler, key, removed);
         return addBinding.call(this, policy, binding);
-    },
+    }
+
     removeBindings(policy) {
         requireValidPolicy(policy);
 
@@ -52,7 +56,8 @@ export const HandlerDescriptor = FilteredObject.extend({
         }
 
         bindings.delete(policy);
-    },
+    }
+
     dispatch(policy, handler, callback, constraint, composer, greedy, results) {
         requireValidPolicy(policy);
 
@@ -84,11 +89,12 @@ export const HandlerDescriptor = FilteredObject.extend({
             if (dispatched && !greedy) return true;
         }
         return dispatched; 
-    },
+    }
+
     *getDescriptorChain(includeSelf) {
         if (includeSelf) yield this;
         yield* HandlerDescriptor.getChain(Object.getPrototypeOf(this.owner));
-    },
+    }
 
     /**
      * Metadata management methods.
@@ -118,7 +124,8 @@ export const HandlerDescriptor = FilteredObject.extend({
             }
         }
         return targetDescriptor;
-    },
+    }
+
     mergeMetadata(sourceDescriptor, target, source, sourceKey) {
         if ($classOf(sourceDescriptor) !== $classOf(this)) {
             throw new TypeError("mergeMetadata expects a HandlerDescriptor.");
@@ -130,26 +137,28 @@ export const HandlerDescriptor = FilteredObject.extend({
             }
         }
     }
-}, {
-    get(owner, create) {
+
+    static get(owner, create) {
         if (create) {
             return Metadata.getOrCreateOwn(
                 descriptorMetadataKey, owner, () => new this(owner));
         }
         return Metadata.getOwn(descriptorMetadataKey, owner);
-    },
-    *getChain(target) {
+    }
+
+    static *getChain(target) {
         while (target && target !== Base.prototype &&
                target !== Object.prototype && target !== Abstract.prototype) {
             const descriptor = HandlerDescriptor.get(target);
             if (descriptor) yield descriptor;
             target = Object.getPrototypeOf(target);
         }
-    },
-    remove(owner) {
+    }
+
+    static remove(owner) {
         return Metadata.remove(descriptorMetadataKey, owner);
     }
-});
+}
 
 function addBinding(policy, binding) {
     const owner    = _(this).owner,
@@ -248,7 +257,7 @@ function resolveArgs(callback, target, binding, composer) {
 
         const many     = arg.flags.hasFlag(TypeFlags.Array),
               inquiry  = new Inquiry(arg.type, many, parent),
-              resolver = arg.keyResolver || KeyResolver;
+              resolver = arg.keyResolver || defaultKeyResolver;
 
         const validateKey = resolver.validateKey;
         if ($isFunction(validateKey)) {

@@ -1,4 +1,4 @@
-import { Base } from "miruken-core";
+import { Base, conformsTo } from "miruken-core";
 import Filtering from "../src/filters/filtering";
 import FilterInstanceProvider from "../src/filters/filter-instance-provider";
 import { FilterOptions } from "../src/filters/filter-options";
@@ -6,25 +6,27 @@ import FilteredObject from "../src/filters/filtered-object";
 
 import { expect } from "chai";
 
-const NullFilter = Base.extend(Filtering, {
+@conformsTo(Filtering)
+class NullFilter extends Base {
     next(callback, rawCallback, binding, composer, next, provider) {
         return next();
     }
-});
+}
 
-const LogFilter = Base.extend(Filtering, {
+@conformsTo(Filtering)
+class LogFilter extends Base {
     next(callback, rawCallback, binding, composer, next, provider) {
         console.log(binding.key);
         return next();
     }
-});
+}
 
 describe("FilterOptions", () => {
     describe("mergeInto", () => {
         it("should merge filter options", () => {
             const filter   = new NullFilter(),
                   provider = new FilterInstanceProvider([filter]),
-                  options  = new FilterOptions({
+                  options  = new FilterOptions().extend({
                       skipFilters: true,
                       providers:   [provider]
                   }),

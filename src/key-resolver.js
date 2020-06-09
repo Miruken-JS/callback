@@ -1,11 +1,12 @@
 import { 
-    Base, TypeFlags, $isNothing,
-    $isPromise, $optional
+    Base, TypeFlags, conformsTo,
+    $isNothing, $isPromise, $optional
 } from "miruken-core";
 
 import KeyResolving from "./key-resolving";
 
-export const KeyResolver = new (Base.extend(KeyResolving, {
+@conformsTo(KeyResolving)
+export class KeyResolver extends Base {
     resolveKey(inquiry, typeInfo, handler) {
         if (typeInfo.flags.hasFlag(TypeFlags.Lazy)) {
             return ((created, dep) => () => {
@@ -18,7 +19,7 @@ export const KeyResolver = new (Base.extend(KeyResolving, {
         }
         return resolveKeyInfer.call(this, inquiry, typeInfo, handler);
     }
-}));
+}
 
 function resolveKeyInfer(inquiry, typeInfo, handler) {
     if (inquiry.isMany) {

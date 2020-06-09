@@ -14,7 +14,7 @@ export let $composer;
  * @param  {Object}  [delegate]  -  delegate
  * @extends Base
  */
-export const Handler = Base.extend({
+export class Handler extends Base {
     /**
      * Handles the callback.
      * @method handle
@@ -31,7 +31,8 @@ export const Handler = Base.extend({
             composer = compositionScope(this);
         }
         return !!this.handleCallback(callback, !!greedy, composer);
-    },
+    }
+    
     /**
      * Handles the callback with all arguments populated.
      * @method handleCallback
@@ -43,30 +44,28 @@ export const Handler = Base.extend({
     handleCallback(callback, greedy, composer) {
         return CallbackPolicy.dispatch(this, callback, greedy, composer);
     }
-}, {
-    coerce(object) { return new HandlerAdapter(object); }
-});
 
-export const HandlerAdapter = Handler.extend({
+    static for(object) { 
+        return object instanceof Handler ? object : new HandlerAdapter(object);
+    }
+}
+
+export class HandlerAdapter extends Handler {
     constructor(handler) {
         if ($isNothing(handler)) {
             throw new TypeError("No handler specified.");
         }
+        super();
         Object.defineProperty(this, "handler", {
             configurable: false,
             value:        handler
         });
-    },
+    }
+
     handleCallback(callback, greedy, composer) {
         return CallbackPolicy.dispatch(this.handler, callback, greedy, composer);
     }
-});
-
-Base.implement({
-    toHandler() {
-         return this instanceof Handler ? this : new HandlerAdapter(this);
-    }
-});
+}
 
 const compositionScope = $decorator({
     handleCallback(callback, greedy, composer) {

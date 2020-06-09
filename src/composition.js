@@ -8,15 +8,15 @@ import Trampoline from "./trampoline";
  * @param   {Object}  callback  -  callback to compose
  * @extends Trampoline
  */
-export const Composition = Trampoline.extend({
+export class Composition extends Trampoline {
     get canBatch() {
         const callback = this.callback;
         return $isNothing(callback) || callback.canBatch !== false;
     }
-}, {
-    isComposed(callback, type) {
+
+    static isComposed(callback, type) {
         return callback instanceof this && callback.callback instanceof type;
     }
-});
+}
 
 export default Composition;

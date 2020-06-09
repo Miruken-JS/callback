@@ -1,5 +1,6 @@
 import {
-    Base, $isPromise, $isNothing, createKeyChain
+    Base, $isPromise, $isNothing,
+    conformsTo, createKeyChain
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
@@ -15,25 +16,27 @@ const _ = createKeyChain();
  * @param   {boolean}  many      -  command cardinality
  * @extends Base
  */
-export const Command = Base.extend(CallbackControl, {
+@conformsTo(CallbackControl)
+export class Command extends Base {
     constructor(callback, many) {
         if ($isNothing(callback)) {
             throw new TypeError("The callback argument is required.");
         }
+        super();
         const _this = _(this);
         _this.callback = callback;
         _this.many     = !!many;
         _this.results  = [];
         _this.promises = [];
-    },
+    }
     
-    get isMany()         { return _(this).many; },
-    get callback()       { return _(this).callback; },
-    get results()        { return _(this).results; }, 
-    get callbackPolicy() { return handles.policy; },
+    get isMany()         { return _(this).many; }
+    get callback()       { return _(this).callback; }
+    get results()        { return _(this).results; } 
+    get callbackPolicy() { return handles.policy; }
     get canBatch() {
         return this.callback.canBatch !== false;
-    },           
+    }
     get callbackResult() {
         let { result, results, promises} = _(this);
         if (result === undefined) {
@@ -46,8 +49,8 @@ export const Command = Base.extend(CallbackControl, {
             }
         }
         return result;
-    },
-    set callbackResult(value) { _(this).result = value; },
+    }
+    set callbackResult(value) { _(this).result = value; }
 
     respond(response) {
         if ($isNothing(response)) return;
@@ -61,16 +64,18 @@ export const Command = Base.extend(CallbackControl, {
             _(this).results.push(response);
         }
         delete _(this).result;
-    },            
+    }
+
     dispatch(handler, greedy, composer) {
         const count = _(this).results.length;
         return handles.dispatch(handler, this.callback, null,
             composer, this.isMany, this.respond.bind(this)) || 
             _(this).results.length > count;     
-    },        
+    }
+
     toString() {
         return `Command ${this.isMany ? "many ": ""}| ${this.callback}`;
     }  
-});
+}
 
 export default Command;

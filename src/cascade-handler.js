@@ -10,32 +10,34 @@ import Handler from "./handler";
  * @param  {Handler}  cascadeToHandler  -  secondary handler
  * @extends Handler
  */
-export const CascadeHandler = Handler.extend({
+export class CascadeHandler extends Handler {
     constructor(handler, cascadeToHandler) {
         if ($isNothing(handler)) {
             throw new TypeError("No handler specified.");
         } else if ($isNothing(cascadeToHandler)) {
             throw new TypeError("No cascadeToHandler specified.");
         }
+        super();
         Object.defineProperties(this, {
             handler:  {
-                value:    handler.toHandler(),
+                value:    Handler.for(handler),
                 writable: false
             },         
             cascadeToHandler: {
-                value:    cascadeToHandler.toHandler(),
+                value:    Handler.for(cascadeToHandler),
                 writable: false
             }
         });
-    },
+    }
+
     handleCallback(callback, greedy, composer) {
-        let handled = this.base(callback, greedy, composer);
+        let handled = super.handleCallback(callback, greedy, composer);
         return !!(greedy
             ? handled | (this.handler.handle(callback, true, composer)
                | this.cascadeToHandler.handle(callback, true, composer))
             : handled || (this.handler.handle(callback, false, composer)
                || this.cascadeToHandler.handle(callback, false, composer)));
     }
-});
+}
 
 export default CascadeHandler;

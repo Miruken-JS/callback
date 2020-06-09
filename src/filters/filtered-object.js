@@ -1,20 +1,23 @@
 import { 
-    Base, emptyArray, $isNothing, createKey
+    Base, emptyArray, $isNothing,
+    conformsTo, createKey
 } from "miruken-core";
 
 import { Filtered } from "./filtering";
 
 const _ = createKey();
 
-export const FilteredObject = Base.extend(Filtered, {
+@conformsTo(Filtered)
+export class FilteredObject extends Base {
     constructor(providers) {
+        super();
         this.addFilters.apply(this, arguments);
-    },
+    }
 
     get filters() {
         const filters = _(this).filters;
         return $isNothing(filters) ? emptyArray : [...filters];
-    },
+    }
 
     addFilters(providers) {
         providers = getProviders.apply(this, arguments);
@@ -27,7 +30,8 @@ export const FilteredObject = Base.extend(Filtered, {
         } else {
             providers.forEach(p => filters.add(p));
         }
-    },
+    }
+
     removeFilters(providers) {
         providers = getProviders.apply(this, arguments);
         if ($isNothing(providers) || providers.length === 0) {
@@ -36,14 +40,15 @@ export const FilteredObject = Base.extend(Filtered, {
         const filters = _(this).filters;
         if ($isNothing(filters)) return;
         providers.forEach(p => filters.delete(p));  
-    },
+    }
+
     removeAllFilters() {
         const filters = _(this).filters;
         if (filters) {
             filters.clear();
         }
     }
-});
+}
 
 function getProviders(providers) {
     if ($isNothing(providers)) return;

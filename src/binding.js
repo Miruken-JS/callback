@@ -6,9 +6,10 @@ import {
 
 import FilteredObject from "./filters/filtered-object";
 
-export const Binding = FilteredObject.extend({
+export class Binding extends FilteredObject {
     constructor(constraint, handler, key, removed) {
-        if ($classOf(this) === Binding) {
+        super();
+        if (new.target === Binding) {
              throw new Error("Binding cannot be instantiated.  Use Binding.create().");
         }
         this.constraint = constraint;
@@ -17,13 +18,14 @@ export const Binding = FilteredObject.extend({
         if (removed) {
             this.removed = removed;
         }
-    },
+    }
 
     equals(other) {
         return this.constraint === other.constraint
             && (this.handler === other.handler ||
                (this.key && other.key && this.key === other.key));
-    },
+    }
+
     copy(constraint, handler) {
         const binding = new ($classOf(this))(
             constraint || this.constraint,
@@ -32,8 +34,8 @@ export const Binding = FilteredObject.extend({
         binding.addFilters(this.filters);
         return binding;
     }
-}, {
-    create(constraint, handler, key, removed) {
+
+    static create(constraint, handler, key, removed) {
         let bindingType;
         const invariant = $eq.test(constraint);
         constraint = $contents(constraint);
@@ -54,25 +56,25 @@ export const Binding = FilteredObject.extend({
         }
         return new bindingType(constraint, handler, key, removed);
     }
-});
+}
 
-const BindingNone = Binding.extend({
+class BindingNone extends Binding {
     match() { return false; }
-});
+}
 
-const BindingInvariant = Binding.extend({
+class BindingInvariant extends Binding {
     match(match) {
         return this.constraint === match;
     }
-});
+}
 
-const BindingEverything = Binding.extend({
+class BindingEverything extends Binding {
     match(match, variance) {
         return variance !== Variance.Invariant;
     }
-});
+}
 
-const BindingProtocol = Binding.extend({
+class BindingProtocol extends Binding {
     match(match, variance) {
         const constraint = this.constraint;
         if (constraint === match) {
@@ -84,9 +86,9 @@ const BindingProtocol = Binding.extend({
         }
         return false;
     }
-});
+}
 
-const BindingClass = Binding.extend({
+class BindingClass extends Binding {
     match(match, variance) {
         const constraint = this.constraint;
         if (constraint === match) return true;
@@ -100,27 +102,27 @@ const BindingClass = Binding.extend({
         }
         return false;
     }
-})
+}
 
-const BindingString = Binding.extend({
+class BindingString extends Binding {
     match(match, variance) {
         if (!$isString(match)) return false;
         return variance === Variance.Invariant
              ? this.constraint == match
              : this.constraint.toLowerCase() == match.toLowerCase();   
     }
-});
+}
 
-const BindingRegExp = Binding.extend({
+class BindingRegExp extends Binding {
     match(match, variance) {
         return (variance !== Variance.Invariant) && this.constraint.test(match);
     }
-});
+}
 
-const BindingCustom = Binding.extend({
+class BindingCustom extends Binding {
     match(match, variance) {
         return this.constraint.call(this, match, variance);
     }
-});
+}
 
 export default Binding;

@@ -5,11 +5,12 @@ import {
 import Handler from "./handler";
 import HandlerDescriptor from "./handler-descriptor";
 
-export const StaticHandler = Handler.extend({
+export class StaticHandler extends Handler {
     constructor(types) {
         if ($isNothing(types)) {
             throw new Error("The types argument is required");
         }
+        super();
         const descriptor = HandlerDescriptor.get(this, true);
         for (let type of types) {
             const typeDescriptor = HandlerDescriptor.get(type);
@@ -24,6 +25,6 @@ export const StaticHandler = Handler.extend({
             }
         }
     }
-});
+}
 
 export default StaticHandler;

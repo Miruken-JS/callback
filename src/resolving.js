@@ -7,24 +7,24 @@ import { CallbackPolicy } from "./callback-policy";
 
 const _ = createKeyChain();
 
-export const Resolving = Inquiry.extend({
+export class Resolving extends Inquiry {
     constructor(key, callback) {
         if ($isNothing(callback)) {
             throw new Error("The callback argument is required.");
         }
         if (callback instanceof Inquiry) {
-            this.base(key, true, callback);
+            super(key, true, callback);
         } else {
-            this.base(key, true);
+            super(key, true);
         }
         _(this).callback = callback;
-    },
+    }
 
-    get callback()  { return _(this).callback; },
-    get succeeded() { return _(this).succeeded; },
+    get callback()  { return _(this).callback; }
+    get succeeded() { return _(this).succeeded; }
 
     guardDispatch(handler, binding) {
-        const outer = this.base(handler, binding);
+        const outer = super.guardDispatch(handler, binding);
         if (outer) {
             const callback      = _(this).callback,
                   guardDispatch = callback.guardDispatch;
@@ -48,7 +48,8 @@ export const Resolving = Inquiry.extend({
             }
         }
         return outer;
-    },
+    }
+
     isSatisfied(resolution, greedy, composer) { 
         if (_(this).succeeded && !greedy) return true;
         const callback = this.callback,
@@ -56,10 +57,11 @@ export const Resolving = Inquiry.extend({
                   resolution, callback, greedy, composer);
         if (handled) { _(this).succeeded = true; }    
         return handled;
-    },
+    }
+
     toString() {
         return `Resolving | ${this.key} => ${this.callback}`;
     }     
-});
+}
 
 export default Resolving;

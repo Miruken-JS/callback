@@ -1,10 +1,10 @@
 import { 
-    Base, emptyArray, $isNothing, $isFunction,
-    getPropertyDescriptors
+    Base, emptyArray, $isNothing,
+    $isFunction, getPropertyDescriptors
 } from "miruken-core";
 
-export const Options = Base.extend({
-    get canBatch() { return false },
+export class Options extends Base {
+    get canBatch() { return false }
     
     /**
      * Merges this options data into `options`.
@@ -20,7 +20,9 @@ export const Options = Base.extend({
               keys        = Reflect.ownKeys(descriptors);
         keys.forEach(key => {
             const keyValue = this[key];
-            if ($isFunction(keyValue)) { return; }
+            if (Reflect.has(Options.prototype, key) || $isFunction(keyValue)) { 
+                return;
+            }
             if (keyValue !== undefined && this.hasOwnProperty(key)) {
                 const optionsValue = options[key];
                 if (optionsValue === undefined || !options.hasOwnProperty(key)) {
@@ -31,21 +33,21 @@ export const Options = Base.extend({
             }
         });
         return true;
-    },
+    }
+
     mergeKeyInto(options, key, keyValue, optionsValue) {
         const mergeInto = keyValue.mergeInto;
         if ($isFunction(mergeInto)) {
             mergeInto.call(keyValue, optionsValue);
         }
-    },
+    }
+
     copy() {
         var options = Reflect.construct(this.constructor, emptyArray);
         this.mergeInto(options);
         return options;
     }
-}, {
-    coerce(...args) { return Reflect.construct(this, args); }
-});
+}
 
 function _copyOptionsValue(optionsValue) {
     if ($isNothing(optionsValue)) {

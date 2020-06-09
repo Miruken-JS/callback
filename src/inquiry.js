@@ -1,8 +1,8 @@
 import {
     Base, Undefined, Variance,
-    $isPromise, $classOf, $isNothing,
-    $isSomething, $instant, $flatten,
-    createKeyChain
+    conformsTo, $isPromise, $classOf,
+    $isNothing, $isSomething, $instant,
+    $flatten, createKeyChain
 } from "miruken-core";
 
 import Binding from "./binding";
@@ -20,12 +20,14 @@ const _ = createKeyChain();
  * @param   {Inquiry}  parent -  parent inquiry
  * @extends Base
  */
-export const Inquiry = Base.extend(CallbackControl, {
+@conformsTo(CallbackControl)
+export class Inquiry extends Base {
     constructor(key, many, parent) {
         if ($isNothing(key)) {
             throw new Error("The key argument is required.");
         }
         
+        super();
         const _this = _(this);
 
         if ($isSomething(parent)) {
@@ -40,15 +42,15 @@ export const Inquiry = Base.extend(CallbackControl, {
         _this.resolutions = [];
         _this.promises    = [];
         _this.instant     = $instant.test(key);
-    },
+    }
 
-    get key()            { return _(this).key; },            
-    get isMany()         { return _(this).many; },
-    get parent()         { return _(this).parent; },
-    get handler()        { return _(this).handler; },
-    get binding()        { return _(this).binding; },         
-    get resolutions()    { return _(this).resolutions; },
-    get callbackPolicy() { return provides.policy; },       
+    get key()            { return _(this).key; }   
+    get isMany()         { return _(this).many; }
+    get parent()         { return _(this).parent; }
+    get handler()        { return _(this).handler; }
+    get binding()        { return _(this).binding; }        
+    get resolutions()    { return _(this).resolutions; }
+    get callbackPolicy() { return provides.policy; }    
     get callbackResult() {
         if (_(this).result === undefined) {
             const resolutions = this.resolutions,
@@ -62,10 +64,11 @@ export const Inquiry = Base.extend(CallbackControl, {
             }
         }
         return _(this).result;
-    },
-    set callbackResult(value) { _(this).result = value; },
+    }
+    set callbackResult(value) { _(this).result = value; }
 
-    isSatisfied(resolution, greedy, composer) { return true; },
+    isSatisfied(resolution, greedy, composer) { return true; }
+
     resolve(resolution, greedy, composer) {
         let resolved;
         if ($isNothing(resolution)) return false;
@@ -79,10 +82,12 @@ export const Inquiry = Base.extend(CallbackControl, {
             _(this).result = undefined;
         }
         return resolved;
-    },
+    }
+
     acceptPromise(promise) {
         return promise.catch(Undefined);
-    },
+    }
+
     guardDispatch(handler, binding) {
         if (!this.inProgress(handler, binding)) {
             return function (self, h, b) {
@@ -94,12 +99,14 @@ export const Inquiry = Base.extend(CallbackControl, {
                 }
             }(this, _(this).handler, _(this).binding);
         }
-    },
+    }
+
     inProgress(handler, binding) {
         return _(this).handler === handler &&
             _(this).binding === binding ||
             (this.parent && this.parent.inProgress(handler, binding));
-    },    
+    }
+
     dispatch(handler, greedy, composer) {
         // check if handler implicitly satisfies key
         const implied = Binding.create(this.key);
@@ -116,11 +123,11 @@ export const Inquiry = Base.extend(CallbackControl, {
             || resolved;
 
         return resolved || (resolutions.length + promises.length > count);
-    },
+    }
     toString() {
         return `Inquiry ${this.isMany ? "many ": ""}| ${this.key}`;
     }          
-});
+}
 
 function include(resolution, greedy, composer) {
     if ($isNothing(resolution)) return false;

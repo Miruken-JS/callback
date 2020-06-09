@@ -1,7 +1,7 @@
 import {
-    Base, Undefined, $isPromise,
-    $isNothing, $instant, $flatten,
-    createKeyChain
+    Base, Undefined, conformsTo,
+    $isPromise, $isNothing, $instant,
+    $flatten, createKeyChain
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
@@ -17,24 +17,26 @@ const _ = createKeyChain();
  * @param   {boolean}  many  -  lookup cardinality
  * @extends Base
  */
-export const Lookup = Base.extend(CallbackControl, {
+@conformsTo(CallbackControl)
+export class Lookup extends Base {
     constructor(key, many) {
         if ($isNothing(key)) {
             throw new Error("The key argument is required.");
         }
 
+        super();
         const _this = _(this);
         _this.key      = key;
         _this.many     = !!many;
         _this.results  = [];
         _this.promises = [];
         _this.instant  = $instant.test(key);
-    },
+    }
 
-    get key()            { return _(this).key; },
-    get isMany()         { return _(this).many; },
-    get results()        { return _(this).results; },
-    get callbackPolicy() { return lookups.policy; },     
+    get key()            { return _(this).key; }
+    get isMany()         { return _(this).many; }
+    get results()        { return _(this).results; }
+    get callbackPolicy() { return lookups.policy; }     
     get callbackResult() {
         if (_(this).result === undefined) {
             const results  = this.results,
@@ -48,8 +50,8 @@ export const Lookup = Base.extend(CallbackControl, {
             }
         }
         return _(this).result;
-    },
-    set callbackResult(value) { _(this).result = value; },
+    }
+    set callbackResult(value) { _(this).result = value; }
     
     addResult(result, composer) {
         let found;
@@ -64,7 +66,8 @@ export const Lookup = Base.extend(CallbackControl, {
             delete _(this).result;
         }
         return found;
-    },               
+    }
+
     dispatch(handler, greedy, composer) {
         const results  = this.results,
               promises = _(this).promises,
@@ -72,11 +75,12 @@ export const Lookup = Base.extend(CallbackControl, {
               found    = looksup.dispatch(handler, this, this.key,
                 composer, this.isMany, this.addResult.bind(this));
         return found || (results.length + promises.length > count);
-    },
+    }
+
     toString() {
         return `Lookup ${this.isMany ? "many ": ""}| ${this.key}`;
     }            
-});
+}
 
 function include(result, composer) {
     if ($isNothing(result)) return false;

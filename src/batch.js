@@ -1,6 +1,6 @@
 import {
     Protocol, createKeyChain,
-    $isPromise, $flatten
+    conformsTo, $isPromise, $flatten
 } from "miruken-core";
 
 import Inquiry from "./inquiry";
@@ -38,17 +38,19 @@ export const Batching = Protocol.extend({
  */
 const BatchingComplete = Batching.extend();
 
-export const Batch = CompositeHandler.extend(BatchingComplete, {
+@conformsTo(BatchingComplete)
+export class Batch extends CompositeHandler {
     constructor(...protocols) {
-        this.base();
+        super();
         _(this).protocols = $flatten(protocols, true);
-    },
+    }
 
     shouldBatch(protocol) {
         const { protocols } = _(this);
         return protocol && (protocols.length == 0 ||
             protocols.indexOf(protocol) >= 0); 
-    },
+    }
+
     complete(composer) {
         let promise = false,
             results = this.getHandlers().reduce((res, handler) => {
@@ -61,11 +63,11 @@ export const Batch = CompositeHandler.extend(BatchingComplete, {
             }, []);
         return promise ? Promise.all(results) : results;
     }
-});
+}
 
-export const NoBatch = Trampoline.extend({
+export class NoBatch extends Trampoline {
     get canBatch() { return false }
-});
+};
 
 Handler.implement({
     /**

@@ -49,28 +49,32 @@ export const CallbackOptions = Flags({
  * @param  {CallbackOptions}  options  -  callback options.
  * @extends Composition
  */
-export const CallbackSemantics = Composition.extend({
+export class CallbackSemantics extends Composition {
     constructor(options) {
+        super();
         const _this = _(this);
         _this.options   = CallbackOptions.None.addFlag(options);
         _this.specified = _this.options;
-    },
+    }
 
-    get canBatch() { return false },
+    get canBatch() { return false }
 
     hasOption(options) {
         return _(this).options.hasFlag(options);
-    },              
+    }
+
     setOption(options, enabled) {
         const _this = _(this);
         _this.options = enabled
             ? _this.options.addFlag(options)
             : _this.options.removeFlag(options);
         _this.specified = _this.specified.addFlag(options);
-    },              
+    }
+
     isSpecified(options) {
         return _(this).specified.hasFlag(options);
-    },
+    }
+
     mergeInto(semantics) {
         const items = CallbackOptions.items;
         for (let i = 0; i < items.length; ++i) {
@@ -80,7 +84,7 @@ export const CallbackSemantics = Composition.extend({
             }
         }
     }
-});
+}
 
 Handler.implement({
     /**

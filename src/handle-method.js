@@ -1,6 +1,7 @@
 import {
-    Base, MethodType, $isNothing, $isFunction,
-    $isProtocol, $isPromise, createKeyChain
+    Base, MethodType, conformsTo, $isNothing,
+    $isFunction, $isProtocol, $isPromise,
+    createKeyChain
 } from "miruken-core";
 
 import Trampoline from "./trampoline";
@@ -23,7 +24,8 @@ const _ = createKeyChain();
  * @param  {InvocationSemanics}  semantics   -  invocation semantics
  * @extends Base
  */
-export const HandleMethod = Base.extend(CallbackControl, {
+@conformsTo(CallbackControl)
+export class HandleMethod extends Base {
     constructor(methodType, protocol, methodName, args, semantics) {
         if ($isNothing(methodName)) {
             throw new Error("The methodName argument is required");
@@ -31,30 +33,32 @@ export const HandleMethod = Base.extend(CallbackControl, {
         if (protocol && !$isProtocol(protocol)) {
             throw new TypeError("Invalid protocol supplied.");
         }
+        super();
         const _this = _(this);
         _this.methodType = methodType;
         _this.protocol   = protocol;
         _this.methodName = methodName;
         _this.args       = args;
         _this.semantics  = semantics || new CallbackSemantics();
-    },
+    }
 
-    get methodType()          { return _(this).methodType; },
-    get protocol()            { return _(this).protocol; },
-    get semantics()           { return _(this).semantics; },
-    get methodName()          { return _(this).methodName; },
-    get args()                { return _(this).args; },
-    set args(value)           { _(this).args = value; },
-    get returnValue()         { return _(this).returnValue; },
-    set returnValue(value)    { _(this).returnValue = value; },
-    get exception()           { return _(this).exception; },
-    set exception(exception)  { _(this).exception = exception; },          
-    get callbackResult()      { return _(this).returnValue; },
-    set callbackResult(value) { _(this).returnValue = value; },
+    get methodType()          { return _(this).methodType; }
+    get protocol()            { return _(this).protocol; }
+    get semantics()           { return _(this).semantics; }
+    get methodName()          { return _(this).methodName; }
+    get args()                { return _(this).args; }
+    set args(value)           { _(this).args = value; }
+    get returnValue()         { return _(this).returnValue; }
+    set returnValue(value)    { _(this).returnValue = value; }
+    get exception()           { return _(this).exception; }
+    set exception(exception)  { _(this).exception = exception; }        
+    get callbackResult()      { return _(this).returnValue; }
+    set callbackResult(value) { _(this).returnValue = value; }
 
     inferCallback() {
          return new HandleMethodInference(this);
-    },
+    }
+
     /**
      * Attempts to invoke the method on the target.<br/>
      * During invocation, the receiver will have access to the ambient **$composer** property
@@ -103,7 +107,8 @@ export const HandleMethod = Base.extend(CallbackControl, {
             _(this).exception = exception;
             throw exception;
         }
-    },
+    }
+
     isAcceptableTarget(target) {
         if (!target) return false;
         if (!this.protocol) { return true; }
@@ -111,7 +116,8 @@ export const HandleMethod = Base.extend(CallbackControl, {
                 ? this.protocol.isToplevel(target)
                 : this.semantics.hasOption(CallbackOptions.Duck)
             || this.protocol.isAdoptedBy(target);
-    },
+    }
+
     notHandledError() {
         let qualifier = "";
         switch (this.methodType) {
@@ -123,17 +129,18 @@ export const HandleMethod = Base.extend(CallbackControl, {
             break;                    
         }
         return new TypeError(`Protocol ${this.protocol.name}:${this.methodName}${qualifier} could not be handled.`);
-    },
+    }
+
     dispatch(handler, greedy, composer) {
         return this.invokeOn(handler, composer);
     }    
-});
+}
 
-const HandleMethodInference = Trampoline.extend({
+class HandleMethodInference extends Trampoline {
     constructor(handleMethod) {
-        this.base(handleMethod);
+        super(handleMethod);
         _(this).resolving = new Resolving(handleMethod.protocol, handleMethod);
-    },
+    }
 
     get callbackResult() {
         const result = _(this).resolving.callbackResult;
@@ -146,12 +153,13 @@ const HandleMethodInference = Trampoline.extend({
             });
         }
         return this.callback.callbackResult;
-    },
+    }
+    set callbackResult(value) { super.callbackResult = value; }
     
     dispatch(handler, greedy, composer) {
-        return this.base(handler, greedy, composer) ||
+        return super.dispatch(handler, greedy, composer) ||
                _(this).resolving.dispatch(handler, greedy, composer);          
     }
-});
+}
 
 export default HandleMethod;

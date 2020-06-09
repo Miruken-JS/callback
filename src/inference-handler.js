@@ -8,11 +8,12 @@ import Resolving from "./resolving";
 import { $unhandled } from "./callback-policy";
 import { NotHandledError } from "./errors";
 
-export const InferenceHandler = Handler.extend({
+export class InferenceHandler extends Handler {
     constructor(types) {
         if ($isNothing(types)) {
             throw new Error("The types argument is required");
         }
+        super();
         const owners          = new Set(),
               inferDescriptor = HandlerDescriptor.get(this, true);
         for (let type of types) {
@@ -30,7 +31,7 @@ export const InferenceHandler = Handler.extend({
                 }
             }
         }
-    },
+    }
 
     infer(type, callback, { composer, results }) {
         const resolving = new Resolving(type, callback);
@@ -46,6 +47,6 @@ export const InferenceHandler = Handler.extend({
             }));
         }
     }
-});
+}
 
 export default InferenceHandler;

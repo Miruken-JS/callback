@@ -7,12 +7,12 @@ import { FilteringProvider } from "./filtering";
  * @class FilterOptions
  * @extends Options
  */
-export const FilterOptions = Options.extend({
+export class FilterOptions extends Options {
     @design(Boolean)
-    skipFilters: undefined,
+    skipFilters;
     
     @design([FilteringProvider])
-    providers: undefined,
+    providers;
     
     mergeKeyInto(options, key, keyValue, optionsValue) {
         if (key === "providers") {
@@ -22,6 +22,6 @@ export const FilterOptions = Options.extend({
         }
         this.base(options, key, keyValue, optionsValue);
      }
-});
+}
 
 export default FilterOptions;

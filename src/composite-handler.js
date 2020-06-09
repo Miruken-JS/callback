@@ -12,29 +12,33 @@ const _ = createKeyChain();
  * @param  {Any}  [...handlers]  -  callback handlers
  * @extends Handler
  */
-export const CompositeHandler = Handler.extend({
+export class CompositeHandler extends Handler {
     constructor(...handlers) {
+        super();
         _(this).handlers = [];
         this.addHandlers(handlers);
-    },
+    }
 
     getHandlers() { 
         return _(this).handlers.slice();
-    },
+    }
+
     addHandlers(...handlers) {
         handlers = $flatten(handlers, true)
             .filter(h => this.findHandler(h) == null)
-            .map(h => h.toHandler());
+            .map(Handler.for);
         _(this).handlers.push(...handlers);
         return this;
-    },
+    }
+
     insertHandlers(atIndex, ...handlers) {
         handlers = $flatten(handlers, true)
             .filter(h => this.findHandler(h) == null)
-            .map(h => h.toHandler());
+            .map(Handler.for);
         _(this).handlers.splice(atIndex, 0, ...handlers);                
         return this;                    
-    },                
+    }
+
     removeHandlers(...handlers) {
         $flatten(handlers, true).forEach(handler => {
             const handlers = _(this).handlers,
@@ -50,7 +54,8 @@ export const CompositeHandler = Handler.extend({
             }
         });
         return this;
-    },
+    }
+
     findHandler(handler) {
         for (const h of _(this).handlers) {
             if (h === handler) return h;
@@ -58,9 +63,10 @@ export const CompositeHandler = Handler.extend({
                 return h;
             }
         }
-    },
+    }
+
     handleCallback(callback, greedy, composer) {
-        let handled = this.base(callback, greedy, composer);
+        let handled = super.handleCallback(callback, greedy, composer);
         if (handled && !greedy) return true;
         for (const handler of _(this).handlers) {
             if (handler.handle(callback, greedy, composer)) {
@@ -70,6 +76,6 @@ export const CompositeHandler = Handler.extend({
         }
         return handled;
     }
-});
+}
 
 export default CompositeHandler;

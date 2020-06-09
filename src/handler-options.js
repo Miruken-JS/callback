@@ -30,7 +30,9 @@ Handler.registerOptions = function (optionsType, optionsKey) {
         [optionsKey](options) {
             if ($isNothing(options)) return this;
             if (!(options instanceof optionsType)) {
-                options = Reflect.construct(optionsType, [options]);
+                const properties = options;
+                options = Reflect.construct(optionsType, []);
+                Object.assign(options, properties);
             }
             return this.decorate({
                 @handles(optionsType)

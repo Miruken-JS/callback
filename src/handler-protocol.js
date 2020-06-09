@@ -19,23 +19,26 @@ const _ = createKeyChain();
  * @param   {Handler}  handler  -  forwarding handler 
  * @extends Delegate
  */
-export const InvocationDelegate = Delegate.extend({
+export class InvocationDelegate extends Delegate {
     constructor(handler) {
+        super();
         _(this).handler = handler;
-    },
+    }
     
-    get handler() { return _(this).handler; },
+    get handler() { return _(this).handler; }
 
     get(protocol, propertyName) {
         return delegate(this, MethodType.Get, protocol, propertyName, null);
-    },
+    }
+
     set(protocol, propertyName, propertyValue) {
         return delegate(this, MethodType.Set, protocol, propertyName, propertyValue);
-    },
+    }
+
     invoke(protocol, methodName, args) {
         return delegate(this, MethodType.Invoke, protocol, methodName, args);
     }
-});
+}
 
 function delegate(delegate, methodType, protocol, methodName, args) {
     let handler   = delegate.handler,

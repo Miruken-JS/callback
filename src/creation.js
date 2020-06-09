@@ -1,5 +1,6 @@
 import {
-    Base, $isPromise, $isNothing, createKeyChain
+    Base, $isPromise, $isNothing,
+    conformsTo, createKeyChain
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
@@ -15,22 +16,24 @@ const _ = createKeyChain();
  * @param   {boolean}  many      -  creation cardinality
  * @extends Base
  */
-export const Creation = Base.extend(CallbackControl, {
+@conformsTo(CallbackControl)
+export class Creation extends Base {
     constructor(type, many) {
         if ($isNothing(type)) {
             throw new TypeError("The type argument is required.");
         }
+        super();
         const _this = _(this);
         _this.type      = type;
         _this.many      = !!many;
         _this.instances = [];
         _this.promises  = [];
-    },
+    }
     
-    get isMany()         { return _(this).many; },
-    get type()           { return _(this).type; },
-    get instances()      { return _(this).instances; }, 
-    get callbackPolicy() { return creates.policy; },          
+    get isMany()         { return _(this).many; }
+    get type()           { return _(this).type; }
+    get instances()      { return _(this).instances; }
+    get callbackPolicy() { return creates.policy; }        
     get callbackResult() {
         let { result, instances, promises} = _(this);
         if (result === undefined) {
@@ -43,8 +46,8 @@ export const Creation = Base.extend(CallbackControl, {
             }
         }
         return result;
-    },
-    set callbackResult(value) { _(this).result = value; },
+    }
+    set callbackResult(value) { _(this).result = value; }
 
     addInstance(instance) {
         if ($isNothing(instance)) return;
@@ -58,16 +61,18 @@ export const Creation = Base.extend(CallbackControl, {
             _(this).instances.push(instance);
         }
         delete _(this).result;
-    },            
+    }
+
     dispatch(handler, greedy, composer) {
         const count = _(this).instances.length;
         return creates.dispatch(handler, this, this.type,
             composer, this.isMany, this.addInstance.bind(this)) || 
             _(this).instances.length > count;     
-    },        
+    }
+
     toString() {
         return `Creation ${this.isMany ? "many ": ""}| ${this.type}`;
     }  
-});
+}
 
 export default Creation;
