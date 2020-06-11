@@ -1,10 +1,10 @@
 import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType,
-    ResolvingProtocol, assignID, design,
-    returns, conformsTo, copy, $isPromise,
-    $eq, $optional, $instant, $lazy, $using,
-    $flatten, createKeyChain
+    TypeInfo, ResolvingProtocol, assignID,
+    design, returns, type, conformsTo, copy,
+    $isPromise, $eq, $optional, $instant,
+    $lazy, $using, $flatten, createKeyChain
 } from "miruken-core";
 
 import { Handler, $composer } from "../src/handler";
@@ -28,7 +28,8 @@ import {
     RejectedError, TimeoutError, NotHandledError
 } from "../src/errors";
 
-import { $proxy } from "../src/proxy-resolver";
+import KeyResolver from "../src/key-resolver";
+import { proxy } from "../src/proxy-resolver";
 
 import "../src/handler-helper";
 import "../src/handler-options"
@@ -196,6 +197,19 @@ class Casino extends CompositeHandler {
     toString() { return "Casino " + this.name; }
 }
 
+describe("TypeInfo", () => {
+    describe("#merge", () => {
+        it("should merge key resolver", () => {
+            const typeInfo = new TypeInfo(Activity),
+                  otherTypeInfo = new TypeInfo().extend({
+                      keyResolver: new KeyResolver()
+                  });
+            expect(typeInfo.keyResolver).to.be.undefined;
+            typeInfo.merge(otherTypeInfo);
+            expect(typeInfo.keyResolver).to.equal(otherTypeInfo.keyResolver);
+        });
+    });
+});
 
 describe("HandleMethod", () => {
     describe("#type", () => {
@@ -1071,8 +1085,7 @@ describe("Handler", () => {
                   },
                   Bank = class extends Accountable {
                       @handles
-                      @design(WireMoney, $proxy(Supervisor))
-                      wireMoney(wireMoney, supervisor) {
+                      wireMoney(@type(WireMoney) wireMoney, @proxy(Supervisor) supervisor) {
                           supervisor.approve(wireMoney);
                           this.transfer(wireMoney.requested);
                       }

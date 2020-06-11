@@ -259,12 +259,12 @@ function resolveArgs(callback, target, binding, composer) {
               inquiry  = new Inquiry(arg.type, many, parent),
               resolver = arg.keyResolver || defaultKeyResolver;
 
-        const validateKey = resolver.validateKey;
-        if ($isFunction(validateKey)) {
-            validateKey.call(resolver, inquiry.key, arg);
+        const validate = resolver.validate;
+        if ($isFunction(validate)) {
+            validate.call(resolver, inquiry.key, arg);
         }
         
-        const dep = resolver.resolveKey(inquiry, arg, composer);
+        const dep = resolver.resolve(inquiry, arg, composer);
         if ($isNothing(dep)) return null;
         if ($optional.test(dep)) {
             resolved[i] = $contents(dep);

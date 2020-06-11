@@ -1,7 +1,7 @@
 import {
-    MethodType, Delegate, StrictProtocol,
-    ResolvingProtocol, DuckTyping, $isPromise,
-    createKeyChain
+    MethodType, Delegate, Protocol,
+    StrictProtocol, ResolvingProtocol,
+    DuckTyping, $isPromise, createKeyChain
 } from "miruken-core";
 
 import Handler from "./handler";
@@ -14,12 +14,12 @@ const _ = createKeyChain();
 /**
  * Delegates properties and methods to a callback handler using 
  * {{#crossLink "HandleMethod"}}{{/crossLink}}.
- * @class InvocationDelegate
+ * @class HandleMethodDelegate
  * @constructor
  * @param   {Handler}  handler  -  forwarding handler 
  * @extends Delegate
  */
-export class InvocationDelegate extends Delegate {
+export class HandleMethodDelegate extends Delegate {
     constructor(handler) {
         super();
         _(this).handler = handler;
@@ -96,7 +96,20 @@ Handler.implement({
     /**
      * Converts the callback handler to a {{#crossLink "Delegate"}}{{/crossLink}}.
      * @method toDelegate
-     * @returns {InvocationDelegate}  delegate for this callback handler.
+     * @returns {HandleMethodDelegate}  delegate for this callback handler.
      */            
-    toDelegate() { return new InvocationDelegate(this); }
+    toDelegate() { return new HandleMethodDelegate(this); },
+
+    /**
+     * Creates a proxy for this Handler over the `protocol`.
+     * @method proxy
+     * @param   {Protocol}  protocol  -  the protocol to proxy.
+     * @returns {Protocol}  an instance of the protocol bound to this handler.
+     */   
+    proxy(protocol) {
+        if (!Protocol.isProtocol(protocol)) {
+            throw new TypeError("The protocol is not valid.");
+        }
+        return new protocol(new HandleMethodDelegate(this));
+    }
 });

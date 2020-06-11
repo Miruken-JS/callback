@@ -1,8 +1,19 @@
-import { StrictProtocol } from "miruken-core";
+import { 
+    StrictProtocol, TypeInfo, $isNothing
+} from "miruken-core";
 
 export const KeyResolving = StrictProtocol.extend({
-    validateKey(key, typeInfo) {},     
-    resolveKey(inquiry, typeInfo, handler) {}
+    validate(key, typeInfo) {},     
+    resolve(inquiry, typeInfo, handler) {}
+});
+
+TypeInfo.implement({
+    merge(otherTypeInfo) {
+        this.base(otherTypeInfo);
+        if ($isNothing(this.keyResolver)) {
+            this.keyResolver = otherTypeInfo.keyResolver;
+        }
+    }
 });
 
 export default KeyResolving;

@@ -7,7 +7,7 @@ import KeyResolving from "./key-resolving";
 
 @conformsTo(KeyResolving)
 export class KeyResolver extends Base {
-    resolveKey(inquiry, typeInfo, handler) {
+    resolve(inquiry, typeInfo, handler) {
         if (typeInfo.flags.hasFlag(TypeFlags.Lazy)) {
             return ((created, dep) => () => {
                 if (!created) {
@@ -19,14 +19,22 @@ export class KeyResolver extends Base {
         }
         return resolveKeyInfer.call(this, inquiry, typeInfo, handler);
     }
+
+    resolveKey(inquiry, typeInfo, handler) {
+        return handler.resolve(inquiry);
+    }
+
+    resolveKeyAll(inquiry, typeInfo, handler) {
+        return handler.resolveAll(inquiry);
+    }
 }
 
 function resolveKeyInfer(inquiry, typeInfo, handler) {
     if (inquiry.isMany) {
-        return handler.resolveAll(inquiry);
+        return this.resolveKeyAll(inquiry, typeInfo, handler);
     } else {
         const optional = typeInfo.flags.hasFlag(TypeFlags.Optional),
-              value    = handler.resolve(inquiry);
+              value    = this.resolveKey(inquiry, typeInfo, handler);
         if ($isNothing(value)) {
             return optional ? $optional(value) : value;
         } if ($isPromise(value)) {
