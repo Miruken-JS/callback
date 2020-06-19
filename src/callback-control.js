@@ -16,6 +16,13 @@ export const CallbackControl = Protocol.extend({
     get canBatch() {},
 
     /**
+     * Returns true if this callback can participate in filtering.
+     * @property {Boolean} canFilter
+     * @readOnly
+     */    
+    get canFilter() {},
+
+    /**
      * Gets the callback policy.
      * @property {Function} policy
      * @readOnly

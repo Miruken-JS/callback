@@ -1,4 +1,3 @@
-import { design } from "miruken-core";
 import Options from "../options";
 import { FilteringProvider } from "./filtering";
 
@@ -8,12 +7,9 @@ import { FilteringProvider } from "./filtering";
  * @extends Options
  */
 export class FilterOptions extends Options {
-    @design(Boolean)
-    skipFilters;
-    
-    @design([FilteringProvider])
     providers;
-    
+    skipFilters;
+
     mergeKeyInto(options, key, keyValue, optionsValue) {
         if (key === "providers") {
             if (keyValue && this.providers) {

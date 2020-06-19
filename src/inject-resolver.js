@@ -24,11 +24,8 @@ export class InjectResolver extends KeyResolver {
     }
 }
 
-export const ibject = createTypeInfoDecorator((typeInfo, [key]) => {
-    if ($isNothing(key)) {
-        throw new Error("@inject requires a key.");
-    }
-    typeInfo.keyResolver = new InjectResolver(key);
+export const inject = createTypeInfoDecorator((key, typeInfo, [actualKey]) => {
+    typeInfo.keyResolver = new InjectResolver(actualKey || key);
 });
 
 export default InjectResolver;

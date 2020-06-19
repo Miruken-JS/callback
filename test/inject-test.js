@@ -1,12 +1,15 @@
 import { 
-    Base, Protocol
+    Base, Protocol, conformsTo,
+    disposableMixin, all, optional,
+    createKey
 } from "miruken-core";
 
-import { inject } from "../src/inject";
+import { inject } from "../src/inject-resolver";
 
 import { expect } from "chai";
 
-/*
+const _ = createKey();
+
 const Engine = Protocol.extend({
     get numberOfCylinders() {},
     get horsepower() {},
@@ -18,7 +21,7 @@ const Engine = Protocol.extend({
 const Car = Protocol.extend({
     get make() {},
     get model() {},
-    get engine () {}
+    get engine() {}
 });
 
 const Diagnostics = Protocol.extend({
@@ -29,82 +32,104 @@ const Junkyard = Protocol.extend({
     decomission(part) {}
 });
 
-const V12 = Base.extend(Engine, {
-    @inject(_,_,$optional(Diagnostics))
-    constructor(horsepower, displacement, diagnostics) {
-        let _rpm;
-        this.extend({
-            get horsepower() { return horsepower; },
-            get displacement() { return displacement; },
-            get diagnostics() { return diagnostics; },
-            get rpm() { return _rpm; },
-            rev(rpm) {
-                if (rpm <= 8000) {
-                    _rpm = rpm;
-                    return true;
-                }
-                return false;
-            }
-        });
-    },
+@conformsTo(Engine)
+class V12 {
+    constructor(
+        @inject                        horsepower,
+        @inject                        displacement,
+        @inject(Diagnostics) @optional diagnostics) {
+
+        _(this).horsepower   = horsepower;
+        _(this).displacement = displacement;
+        _(this).diagnostics  = diagnostics;
+    }
+
     initialize() {
         Object.defineProperty(this, "calibrated", { value: true });
-    },
+    }
+
+    get horsepower() { return _(this).horsepower; }
+    get displacement() { return _(this).displacement; }
+    get diagnostics() { return _(this).diagnostics; }
     get numberOfCylinders() { return 12; }
-});
 
-const RebuiltV12 = V12.extend(Engine, Disposing, {
-    @inject(_,_,_,Junkyard)
-    constructor(horsepower, displacement, diagnostics, junkyard) {
-        this.base(horsepower, displacement, diagnostics, junkyard);
-        this.extend({
-            dispose() {
-                junkyard.decomission(this);
-            }
-        });
+    get rpm() { return _(this).rpm; }
+    rev(rpm) {
+        if (rpm <= 8000) {
+            _(this).rpm = rpm;
+            return true;
+        }
+        return false;
     }
-});
+}
 
-const Supercharger = Base.extend(Engine, {
-    @inject(Engine)
-    constructor(engine, boost) {
-        this.extend({
-            get horsepower() {
-                return engine.horsepower * (1.0 + boost); 
-            },
-            get displacement() {
-                return engine.displacement; 
-            }
-        });
+class RebuiltV12 extends disposableMixin(V12) {
+    constructor(
+        @inject           horsepower,
+        @inject           displacement,
+        @inject           diagnostics,
+        @inject(Junkyard) junkyard) {
+
+        super(horsepower, displacement, diagnostics);
+        _(this).junkyard = junkyard;
     }
-});
 
-const Ferrari = Base.extend(Car, {
-    @inject(_,Engine)
-    constructor(model, engine) {
-        this.extend({
-            get make() { return "Ferrari"; },
-            get model() { return model; },
-            get engine() { return engine; }
-        });
+    _dispose() {
+        _(this).junkyard.decomission(this);
     }
-});
+}
 
-const Bugatti = Base.extend(Car, {
-    @inject(_,Engine)
-    constructor(model, engine) {
-        this.extend({
-            get make() { return "Bugatti"; },
-            get model() { return model; },
-            get engine() { return engine; }
-        });
+@conformsTo(Engine)
+class Supercharger {
+    constructor(
+        @inject(Engine) engine,
+        @inject         boost) {
+
+        _(this).engine = engine;
+        _(this).boost  = boost;
     }
-});
 
-const Auction = Base.extend({
-    @inject($all(Car))
-    constructor(cars) {
-        let inventory = {};
+    get boost() { return _(this).boost; }
+    get displacement() {
+        return _(this).engine.displacement; 
+    }    
+    get horsepower() {
+        return _(this).engine.horsepower * (1.0 + this.boost); 
+    }
+}
+
+@conformsTo(Car)
+class Ferrari {
+    constructor(
+        @inject         model,
+        @inject(Engine) engine) {
+
+        _(this).model  = model;
+        _(this).engine = engine;
+    }
+
+    get make() { return "Ferrari"; }
+    get model() { return _(this).model; }
+    get engine() { return _(this).engine; }
+}
+
+@conformsTo(Car)
+class Bugatti {
+    constructor(
+        @inject         model,
+        @inject(Engine) engine) {
+        _(this).model  = model;
+        _(this).engine = engine; 
+    }
+
+    get make() { return "Bugatti"; }
+    get model() { return _(this).model; }
+    get engine() { return _(this).engine; }    
+}
+
+class Auction {
+    constructor(@inject(Car) @all cars) {
+        const inventory = {};
         cars.forEach(car => {
             const make   = car.make;
             let   models = inventory[make];
@@ -113,32 +138,28 @@ const Auction = Base.extend({
             }
             models.push(car);
         });
-        this.extend({
-            get cars() { return inventory; }
-        });
+        _(this).inventory = inventory;
     }
-});
 
-const OBDII = Base.extend(Diagnostics, {
-    constructor() {
-        this.extend({
-            get mpg() { return 22.0; }
-        });
-    }
-});
+     get cars() { return _(this).inventory; }
+}
 
-const CraigsJunk = Base.extend(Junkyard, {
+@conformsTo(Diagnostics)
+class OBDII {
+    get mpg() { return 22.0; }
+}
+
+@conformsTo(Junkyard)
+class CraigsJunk  {
     constructor() {
-        let _parts = [];
-        this.extend({
-            get parts() { return _parts.slice(0); },
-            decomission(part) { _parts.push(part); }
-        });
+        _(this).parts = [];
     }
-});
+
+    get parts() { return _(this)._parts.slice(0); }
+
+    decomission(part) { _(this)._parts.push(part); }
+}
 
 describe("@inject", () => {
 
 });
-
-*/

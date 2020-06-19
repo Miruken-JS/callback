@@ -37,6 +37,9 @@ export class Command extends Base {
     get canBatch() {
         return this.callback.canBatch !== false;
     }
+    get canFilter() {
+        return this.callback.canFilter !== false;
+    }
     get callbackResult() {
         let { result, results, promises} = _(this);
         if (result === undefined) {

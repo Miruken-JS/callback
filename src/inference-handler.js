@@ -1,5 +1,5 @@
 import { 
-    Undefined, $isNothing, $isPromise
+    pcopy, $isNothing, $isPromise
 } from "miruken-core";
 
 import HandlerDescriptor from "./handler-descriptor";
@@ -9,23 +9,21 @@ import { $unhandled } from "./callback-policy";
 import { NotHandledError } from "./errors";
 
 export class InferenceHandler extends Handler {
-    constructor(types) {
-        if ($isNothing(types)) {
-            throw new Error("The types argument is required");
-        }
+    constructor(...types) {
         super();
         const owners          = new Set(),
               inferDescriptor = HandlerDescriptor.get(this, true);
-        for (let type of types) {
+        for (let type of types.flat()) {
             const prototype = type.prototype;
             if ($isNothing(prototype)) continue;
             for (let descriptor of HandlerDescriptor.getChain(prototype)) {
                 if (!owners.add(descriptor.owner)) continue;
                 for (let [policy, bindings] of descriptor.bindings) {
                     for (let binding of bindings) {
-                        const instanceBinding = binding.copy(null, function (...args) {
+                        const instanceBinding = pcopy(binding);
+                        instanceBinding.handler = function (...args) {
                             return this.infer(type, ...args);
-                        });
+                        };
                         inferDescriptor.addBinding(policy, instanceBinding);
                     }
                 }

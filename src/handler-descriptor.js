@@ -3,13 +3,16 @@ import {
     Metadata, TypeFlags, design, $isNothing,
     $eq, $isFunction, $isString, $isPromise,
     $classOf, $isObject, $optional, $contents,
-    assignID, createKey
+    assignID, pcopy, createKey
 } from "miruken-core";
 
 import Binding from "./binding";
 import Inquiry from "./inquiry";
 import KeyResolver from "./key-resolver";
+import Filtering from "./filters/filtering";
 import FilteredObject from "./filters/filtered-object";
+import FilterInstanceProvider from "./filters/filter-instance-provider";
+import filter from "./filters/filter";
 
 const _ = createKey(),
       defaultKeyResolver = new KeyResolver(),
@@ -119,7 +122,7 @@ export class HandlerDescriptor extends FilteredObject {
                     constructor.owner = target;
                     addBinding.call(classDescriptor, policy, constructor);
                 } else {
-                    addBinding.call(targetDescriptor, policy, binding.copy());
+                    addBinding.call(targetDescriptor, policy, pcopy(binding));
                 }
             }
         }
@@ -133,7 +136,7 @@ export class HandlerDescriptor extends FilteredObject {
         if (sourceKey) return;
         for (let [policy, bindings] of sourceDescriptor.bindings) {
             for (let binding of bindings) {
-                addBinding.call(this, policy, binding.copy());
+                addBinding.call(this, policy, pcopy(binding));
             }
         }
     }
@@ -199,10 +202,23 @@ function dispatch(policy, target, callback, constraint, index,
                     guard = guardDispatch.call(callback, target, binding);
                     if (!guard) continue;
                 }
+                let ownedBinding;
+                if (binding.owner) {
+                    ownedBinding = binding;
+                } else {
+                    ownedBinding = pcopy(binding);
+                    ownedBinding.owner = this.owner;
+                }
                 try {
-                    const args = resolveArgs.call(this, callback, target, binding, composer);
+                    if (callback.canFilter !== false) {
+                        const filters = resolveFilters.call(
+                            this, policy, target, callback, ownedBinding, composer);
+                        if ($isNothing(filters)) continue;
+                    }
+                    const args = resolveArgs.call(
+                        this, callback, target, ownedBinding, composer);
                     if ($isNothing(args)) continue;
-                    const context = { composer, constraint, binding, results },
+                    const context = { composer, constraint, binding: ownedBinding, results },
                           handler = binding.handler,
                           result  = $isPromise(args)
                                   ? args.then(a => handler.call(target, ...a, context))
@@ -226,12 +242,20 @@ function dispatch(policy, target, callback, constraint, index,
     return dispatched;
 }
 
+function resolveFilters(policy, target, callback, binding, composer) {
+    const targetFilter = Filtering.isAdoptedBy(target)
+                       ? new FilterInstanceProvider([target])
+                       : null;
+    return composer.getOrderedFilters(binding, callback, [
+        binding.getMetadata(filter), this, policy, targetFilter
+    ]);
+}
+
 function resolveArgs(callback, target, binding, composer) {
-    const key = binding.key;
-    if ($isNothing(key)) return [callback];
-    const owner     = binding.owner || this.owner,
-          signature = design.getOwn(owner, key);
-    if ($isNothing(signature)) return [callback];
+    const signature = binding.getMetadata(design);
+    if ($isNothing(signature)) {
+        return [callback];
+    }
     const { args } = signature;
     if ($isNothing(args) || args.length === 0) {
         return [callback];

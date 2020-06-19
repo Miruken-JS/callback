@@ -1,23 +1,62 @@
-import { Base, conformsTo } from "miruken-core";
+import { 
+    Base, type, conformsTo
+} from "miruken-core";
+
+import {
+    handles, provides, looksup, creates
+} from "../src/callback-policy";
+
+import Command from "../src/command";
+import Handler from "../src/handler"
+import StaticHandler from "../src/static-handler";
+import InferenceHandler from "../src/inference-handler";
 import Filtering from "../src/filters/filtering";
-import FilterInstanceProvider from "../src/filters/filter-instance-provider";
-import { FilterOptions } from "../src/filters/filter-options";
 import FilteredObject from "../src/filters/filtered-object";
+import FilterInstanceProvider from "../src/filters/filter-instance-provider";
+import FilterOptions from "../src/filters/filter-options";
+import { filter, createFilteSpecDecorator } from "../src/filters/filter";
+import "../src/filters/filter-helper";
 
 import { expect } from "chai";
+import FilterSpecProvider from "../src/filters/filter-spec-provider";
+import FilterSpec from "../src/filters/filter-spec";
 
 @conformsTo(Filtering)
-class NullFilter extends Base {
+@provides() class NullFilter {
     next(callback, rawCallback, binding, composer, next, provider) {
         return next();
     }
 }
 
 @conformsTo(Filtering)
-class LogFilter extends Base {
+@provides() class LogFilter {
+    get order() { return 1; }
+
     next(callback, rawCallback, binding, composer, next, provider) {
-        console.log(binding.key);
+        const capture = extractCapture(callback);
+        console.log(`Filter log ${callback} ${key}: ${binding.key}`);
+        if (capture) {
+            capture.filters.push(this);
+        }
         return next();
+    }
+}
+
+const log = createFilteSpecDecorator(new FilterSpec(LogFilter));
+
+class Capture {
+    handled     = 0                                                                                                        
+    hasComposer = false  
+    filters     = []
+}
+
+class Bar extends Capture {}
+
+@conformsTo(Filtering)
+@provides() class FilteringHandler extends Handler {
+    @handles @log
+    handleBar(@type(Bar) bar) {
+        bar.handled++;
     }
 }
 
@@ -103,3 +142,21 @@ describe("FilteredObject", () => {
         });     
     });
 });
+
+describe("Filter", () => {
+     it.only("should create filters", () => {
+        const bar     = new Bar(),
+              handler = new StaticHandler(FilteringHandler, LogFilter)
+                .next(new InferenceHandler(FilteringHandler));
+        expect(handler.handle(bar)).to.be.true;
+        expect(bar.handled).to.equal(1);
+     });
+});
+
+function extractCapture(callback) {
+    if (callback instanceof Capture) return callback;
+    if (callback instanceof Command) {
+        const cb = callback.callback;
+        if (cb instanceof Capture) return cb;
+    }
+}

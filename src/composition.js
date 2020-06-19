@@ -14,6 +14,11 @@ export class Composition extends Trampoline {
         return $isNothing(callback) || callback.canBatch !== false;
     }
 
+    get canFilter() {
+        const callback = this.callback;
+        return $isNothing(callback) || callback.canFilter !== false;
+    }
+
     static isComposed(callback, type) {
         return callback instanceof this && callback.callback instanceof type;
     }

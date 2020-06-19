@@ -4,11 +4,8 @@ import {
     $isProtocol, $isClass, $classOf
 } from "miruken-core";
 
-import FilteredObject from "./filters/filtered-object";
-
-export class Binding extends FilteredObject {
+export class Binding {
     constructor(constraint, handler, key, removed) {
-        super();
         if (new.target === Binding) {
              throw new Error("Binding cannot be instantiated.  Use Binding.create().");
         }
@@ -20,19 +17,19 @@ export class Binding extends FilteredObject {
         }
     }
 
-    equals(other) {
-        return this.constraint === other.constraint
-            && (this.handler === other.handler ||
-               (this.key && other.key && this.key === other.key));
-    }
-
-    copy(constraint, handler) {
-        const binding = new ($classOf(this))(
-            constraint || this.constraint,
-            handler    || this.handler);
-        binding.key = this.key;
-        binding.addFilters(this.filters);
-        return binding;
+    getMetadata(metadata) {
+        if ($isNothing(metadata)) {
+            throw new Error("The metadata is required.");
+        }
+        const get = metadata.get;
+        if (!$isFunction(get)) {
+            throw new Error("The metadata.get method is missing.");
+        }
+        const key = this.key;
+        if ($isNothing(key)) return;
+        const owner = this.owner;
+        if ($isNothing(owner)) return;
+        return get.call(metadata, owner, this.key);
     }
 
     static create(constraint, handler, key, removed) {

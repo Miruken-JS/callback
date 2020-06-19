@@ -5,6 +5,7 @@ import {
 
 export class Options extends Base {
     get canBatch() { return false }
+    get canFilter() { return false }
     
     /**
      * Merges this options data into `options`.

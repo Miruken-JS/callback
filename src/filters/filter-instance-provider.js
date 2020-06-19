@@ -15,7 +15,7 @@ export class FilterInstanceProvider extends Base {
         }
         super();
         _(this).required = !!required; 
-        _(this).filters  = new Set(filters);
+        _(this).filters  = [...new Set(filters)];
     }
 
     get required() { return _(this).required; }

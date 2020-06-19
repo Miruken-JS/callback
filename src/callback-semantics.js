@@ -58,6 +58,7 @@ export class CallbackSemantics extends Composition {
     }
 
     get canBatch() { return false }
+    get canFilter() { return false }
 
     hasOption(options) {
         return _(this).options.hasFlag(options);
