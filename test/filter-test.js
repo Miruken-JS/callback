@@ -144,7 +144,7 @@ describe("FilteredObject", () => {
 });
 
 describe("Filter", () => {
-     it.only("should create filters", () => {
+     it.skip("should create filters", () => {
         const bar     = new Bar(),
               handler = new StaticHandler(FilteringHandler, LogFilter)
                 .next(new InferenceHandler(FilteringHandler));

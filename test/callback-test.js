@@ -284,6 +284,28 @@ describe("HandleMethod", () => {
 describe("Policies", () => {
     describe("CallbackPolicy", () => {
         it("should define callbacks on base2 classes", () => {
+            const Cashier = Base.extend({
+                      @handles(CountMoney)
+                      countMoney(countMoney, { composer }) {
+                          countMoney.record(200);
+                      }
+                  }),
+                  countMoney = new CountMoney(),
+                  wireMoney  = new WireMoney(75),
+                  cashier    = Handler.for(new Cashier());
+            Cashier.implement({
+                @handles(WireMoney)
+                wireMoney(wireMoney) {
+                    wireMoney.received = wireMoney.requested;     
+                }
+            });                  
+            expect(cashier.handle(countMoney)).to.be.true;
+            expect(cashier.handle(wireMoney)).to.be.true;
+            expect(countMoney.total).to.equal(200);
+            expect(wireMoney.received).to.equal(75);
+        });
+
+        it("should define callbacks on base2 extended real classes", () => {
             const Cashier = class extends Handler {
                       @handles(CountMoney)
                       countMoney(countMoney, { composer }) {
@@ -318,15 +340,27 @@ describe("Policies", () => {
         });
 
         it("should define callbacks on base2 static members", () => {
-            const Cashier = class {
+            const Cashier = Base.extend(null, {
                       @handles(CountMoney)
-                      static countMoney(countMoney, { composer }) {
+                      countMoney(countMoney, { composer }) {
                           countMoney.record(1000);
                       }
-                  },
+                  }),
                   countMoney = new CountMoney();
-            const handler = new StaticHandler(Cashier);
+            const handler = Handler.for(Cashier);
             expect(handler.handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(1000);
+        });
+
+        it("should infer callbacks on base2 static members", () => {
+            const Cashier = Base.extend(null, {
+                      @handles(CountMoney)
+                      countMoney(countMoney, { composer }) {
+                          countMoney.record(1000);
+                      }
+                  }),
+                  countMoney = new CountMoney();
+            expect(new StaticHandler(Cashier).handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000);
         });
 
@@ -339,6 +373,18 @@ describe("Policies", () => {
             }
             const countMoney = new CountMoney();
             expect(Handler.for(Cashier).handle(countMoney)).to.be.true;
+            expect(countMoney.total).to.equal(3500);
+        });
+
+        it("should infer callbacks on static class members", () => {
+            class Cashier {
+                @handles(CountMoney)
+                static countMoney(countMoney, { composer }) {
+                    countMoney.record(3500);
+                }
+            }
+            const countMoney = new CountMoney();
+            expect(new StaticHandler(Cashier).handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(3500);
         });
 

@@ -16,7 +16,6 @@ export class StaticHandler extends Handler {
                     for (let binding of bindings) {
                         const typeBinding = pcopy(binding);
                         typeBinding.handler     = binding.handler.bind(type);
-                        typeBinding.owner       = binding.owner || type;
                         typeBinding.skipFilters = true;
                         descriptor.addBinding(policy, typeBinding);
                     }

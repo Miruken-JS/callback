@@ -1,5 +1,5 @@
 import { 
-    pcopy, $isNothing, $isPromise
+    pcopy, $isNothing, $classOf, $isPromise
 } from "miruken-core";
 
 import HandlerDescriptor from "./handler-descriptor";
@@ -21,29 +21,28 @@ export class InferenceHandler extends Handler {
                 for (let [policy, bindings] of descriptor.bindings) {
                     for (let binding of bindings) {
                         const instanceBinding = pcopy(binding);
-                        instanceBinding.handler = function (...args) {
-                            return this.infer(type, ...args);
-                        };
+                        instanceBinding.handler = infer;
                         inferDescriptor.addBinding(policy, instanceBinding);
                     }
                 }
             }
         }
     }
+}
 
-    infer(type, callback, { composer, results }) {
-        const resolving = new Resolving(type, callback);
-        if (!composer.handle(resolving, false, composer)) {
-            return $unhandled;
-        } else if (results) {
-            const result = resolving.callbackResult;
-            if (!$isPromise(result)) return;
-            results(result.then(() => {
-                if (!resolving.succeeded) {
-                    throw new NotHandledError(callback);
-                }
-            }));
-        }
+function infer(callback, { composer, binding, results }) {
+    const type      = $classOf(binding.owner),
+          resolving = new Resolving(type, callback);
+    if (!composer.handle(resolving, false, composer)) {
+        return $unhandled;
+    } else if (results) {
+        const result = resolving.callbackResult;
+        if (!$isPromise(result)) return;
+        results(result.then(() => {
+            if (!resolving.succeeded) {
+                throw new NotHandledError(callback);
+            }
+        }));
     }
 }
 

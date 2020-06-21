@@ -5,11 +5,12 @@ import {
 } from "miruken-core";
 
 export class Binding {
-    constructor(constraint, handler, key, removed) {
+    constructor(constraint, owner, handler, key, removed) {
         if (new.target === Binding) {
              throw new Error("Binding cannot be instantiated.  Use Binding.create().");
         }
         this.constraint = constraint;
+        this.owner      = owner;
         this.handler    = handler;
         this.key        = key;
         if (removed) {
@@ -28,11 +29,11 @@ export class Binding {
         const key = this.key;
         if ($isNothing(key)) return;
         const owner = this.owner;
-        if ($isNothing(owner)) return;
-        return get.call(metadata, owner, this.key);
+         if ($isNothing(owner)) return;
+        return get.call(metadata, owner, key);
     }
 
-    static create(constraint, handler, key, removed) {
+    static create(constraint, owner, handler, key, removed) {
         let bindingType;
         const invariant = $eq.test(constraint);
         constraint = $contents(constraint);
@@ -51,7 +52,7 @@ export class Binding {
         } else {
             bindingType = BindingNone;
         }
-        return new bindingType(constraint, handler, key, removed);
+        return new bindingType(constraint, owner, handler, key, removed);
     }
 }
 

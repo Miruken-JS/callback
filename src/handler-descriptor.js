@@ -13,6 +13,7 @@ import Filtering from "./filters/filtering";
 import FilteredObject from "./filters/filtered-object";
 import FilterInstanceProvider from "./filters/filter-instance-provider";
 import filter from "./filters/filter";
+import { NotHandledError } from "./errors";
 
 const _ = createKey(),
       defaultKeyResolver = new KeyResolver(),
@@ -40,14 +41,14 @@ export class HandlerDescriptor extends FilteredObject {
     addBinding(policy, constraint, handler, key, removed) {
         requireValidPolicy(policy);
         const binding = constraint instanceof Binding ? constraint
-                      : Binding.create(constraint, handler, key, removed);
+            : Binding.create(constraint, this.owner, handler, key, removed);
         return addBinding.call(this, policy, binding);
     }
 
     removeBindings(policy) {
         requireValidPolicy(policy);
 
-        const owner          = _(this).owner,
+        const owner          = this.owner,
               bindings       = _(this).bindings,
               policyBindings = bindings.get(policy);
         if (policyBindings == null) return;
@@ -189,7 +190,7 @@ function addBinding(policy, binding) {
 
 function dispatch(policy, target, callback, constraint, index,
                   variance, composer, all, results) {
-    let dispatched  = false;
+    let dispatched = false;
     const bindings = this.getBindings(policy);
     if (bindings == null) return false;;
     const invariant = (variance === Variance.Invariant);
@@ -202,27 +203,37 @@ function dispatch(policy, target, callback, constraint, index,
                     guard = guardDispatch.call(callback, target, binding);
                     if (!guard) continue;
                 }
-                let ownedBinding;
-                if (binding.owner) {
-                    ownedBinding = binding;
-                } else {
-                    ownedBinding = pcopy(binding);
-                    ownedBinding.owner = this.owner;
-                }
                 try {
+                    let filters, result;
                     if (callback.canFilter !== false) {
-                        const filters = resolveFilters.call(
-                            this, policy, target, callback, ownedBinding, composer);
+                        filters = resolveFilters.call(
+                            this, policy, target, callback, binding, composer);
                         if ($isNothing(filters)) continue;
                     }
-                    const args = resolveArgs.call(
-                        this, callback, target, ownedBinding, composer);
-                    if ($isNothing(args)) continue;
-                    const context = { composer, constraint, binding: ownedBinding, results },
-                          handler = binding.handler,
-                          result  = $isPromise(args)
-                                  ? args.then(a => handler.call(target, ...a, context))
-                                  : handler.call(target, ...args, context);
+                    if ($isNothing(filters) || filters.length == 0) {
+                        const args = resolveArgs.call(
+                            this, callback, target, binding, composer);
+                        if ($isNothing(args)) continue;
+                        const context = { composer, constraint, binding, results },
+                              handler = binding.handler;
+                        result = $isPromise(args)
+                               ? args.then(a => handler.call(target, ...a, context))
+                               : handler.call(target, ...args, context);
+                    } else {
+                        let completed = true;
+                        result = filters.reduceRight((next, pipeline) => {
+                            return (comp, proceed) => {
+                                if (proceed) {
+                                    return 
+                                } else {
+                                    completed = false;
+                                    return Promise.reject(new NotHandledError(callback));
+                                }
+                            };
+                        }, (comp, proceed => {
+
+                        }))(composer, true);
+                    }
                     if (policy.acceptResult(result)) {
                         if (!results || results(result, composer) !== false) {
                             if (!all) return true;
