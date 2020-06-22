@@ -49,12 +49,12 @@ Handler.implement({
 
         switch (options && options.skipFilters) {
             case true:
-                allProviders = allProviders.filter(p => required);
+                allProviders = allProviders.filter(p => p.required);
                 handler = this;
                 break;
             case null:
                 if (binding.skipFilters || binding.getMetadata(skipFilters)) {
-                    allProviders = allProviders.filter(p => required);
+                    allProviders = allProviders.filter(p => p.required);
                 }
                 handler = this.skipFilters();
                 break;

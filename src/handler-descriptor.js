@@ -204,7 +204,7 @@ function dispatch(policy, target, callback, constraint, index,
                     if (!guard) continue;
                 }
                 try {
-                    let filters, result;
+                    let filters, result, completed = true;;
                     if (callback.canFilter !== false) {
                         filters = resolveFilters.call(
                             this, policy, target, callback, binding, composer);
@@ -220,20 +220,33 @@ function dispatch(policy, target, callback, constraint, index,
                                ? args.then(a => handler.call(target, ...a, context))
                                : handler.call(target, ...args, context);
                     } else {
-                        let completed = true;
                         result = filters.reduceRight((next, pipeline) => {
                             return (comp, proceed) => {
                                 if (proceed) {
-                                    return 
-                                } else {
-                                    completed = false;
-                                    return Promise.reject(new NotHandledError(callback));
+                                    return pipeline.filter.next(callback, binding, comp,
+                                        (c, p) => next(c != null ? c : comp, p != null ? p : true,
+                                            pipeline.provider));
                                 }
+                                completed = false;
                             };
-                        }, (comp, proceed => {
-
-                        }))(composer, true);
+                        }, (comp, proceed) => {
+                            if (proceed) {
+                                 const args = resolveArgs.call(this, callback, target, binding, comp);
+                                if ($isNothing(args)) {
+                                    completed = false;
+                                    return Promise.reject(new NotHandledError(callback,
+                                        `'${binding.key}' is missing one or more dependencies.`));
+                                }
+                                const context = { composer: comp, constraint, binding, results },
+                                      handler = binding.handler;
+                                return $isPromise(args)
+                                     ? args.then(a => handler.call(target, ...a, context))
+                                     : handler.call(target, ...args, context); 
+                            }
+                            completed = false;
+                        })(composer, true);
                     }
+                    if (!completed) continue;
                     if (policy.acceptResult(result)) {
                         if (!results || results(result, composer) !== false) {
                             if (!all) return true;

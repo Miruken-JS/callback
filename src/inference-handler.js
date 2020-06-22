@@ -22,6 +22,7 @@ export class InferenceHandler extends Handler {
                     for (let binding of bindings) {
                         const instanceBinding = pcopy(binding);
                         instanceBinding.handler = infer;
+                        instanceBinding.skipFilters = true;
                         inferDescriptor.addBinding(policy, instanceBinding);
                     }
                 }

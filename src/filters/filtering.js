@@ -48,14 +48,13 @@ export const Filtering = Protocol.extend({
      * Executes the filter for the `callback`.
      * @method next
      * @param  {Any}       callback             -  callback
-     * @param  {Any}       rawCallback          -  rawCallback
      * @param  {Binding}   binding              -  handler binding
      * @param  {Handler}   composer             -  handler composer
      * @param  {Function}  next                 -  next in pipeline
      * @param  {FilteringProvider} [provider]   -  filter provider
      * @returns {Any} the result of the filter.
      */
-    next(callback, rawCallback, binding, composer, next, provider) {}
+    next(callback, binding, composer, next, provider) {}
 });
 
 /**

@@ -1137,7 +1137,7 @@ describe("Handler", () => {
                       }
                   },
                   bank    = new Bank(10000),
-                  handler = Handler.for(bank).next(new BankManager());
+                  handler = Handler.for(bank).chain(new BankManager());
             expect(handler.handle(new WireMoney(1000))).to.be.true;
             expect(bank.assets).to.equal(9000);
             expect(bank.balance).to.equal(9000);
@@ -1642,7 +1642,7 @@ describe("Handler", () => {
                       cashier() { return cashier; }
                   },
                   handler = new StaticHandler(Inventory)
-                     .next(new InferenceHandler(Inventory));
+                     .chain(new InferenceHandler(Inventory));
             expect(handler.resolve(Cashier)).to.equal(cashier);
         });
 
@@ -1653,7 +1653,7 @@ describe("Handler", () => {
                       cashier() { return Promise.resolve(cashier); }
                   },
                   handler = new StaticHandler(Inventory)
-                     .next(new InferenceHandler(Inventory));
+                     .chain(new InferenceHandler(Inventory));
             Promise.resolve(handler.resolve(Cashier)).then(result => {
                 expect(result).to.equal(cashier);
                 done();
@@ -1666,7 +1666,7 @@ describe("Handler", () => {
                       cashier() {}
                   },
                   handler = new StaticHandler(Inventory)
-                    .next(new InferenceHandler(Inventory));
+                    .chain(new InferenceHandler(Inventory));
             expect(handler.resolve(Cashier)).to.be.undefined;   
         });
 
@@ -1678,7 +1678,7 @@ describe("Handler", () => {
                       }
                   },
                   handler = new StaticHandler(Inventory)
-                     .next(new InferenceHandler(Inventory));
+                     .chain(new InferenceHandler(Inventory));
             Promise.resolve(handler.resolve(Cashier)).then(result => {
                 expect(result).to.be.undefined;  
                 done();
@@ -1691,7 +1691,7 @@ describe("Handler", () => {
             const belagio  = new Casino("Belagio"),
                   venetian = new Casino("Venetian"),
                   paris    = new Casino("Paris"),
-                  strip    = belagio.next(venetian, paris);
+                  strip    = belagio.chain(venetian, paris);
             Promise.resolve(strip.resolveAll(Casino)).then(casinos => {
                 expect(casinos).to.eql([belagio, venetian, paris]);
                 done();
@@ -1723,7 +1723,7 @@ describe("Handler", () => {
                           return Promise.delay(50).then(() => stop3);
                       }
                   }),
-                  company = bus1.next(bus2, bus3);
+                  company = bus1.chain(bus2, bus3);
             Promise.resolve(company.resolveAll(PitBoss)).then(pitBosses => {
                 expect(pitBosses).to.have.members($flatten([stop1, stop2, stop3]));
                 done();
@@ -1985,7 +1985,7 @@ describe("Handler", () => {
                   baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  security = Handler.for(level1).next(level2);
+                  security = Handler.for(level1).chain(level2);
             expect(Security(security).admit(guest)).to.be.false;
             Security(security).trackActivity(baccarat);
         });
@@ -1994,7 +1994,7 @@ describe("Handler", () => {
             const baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  compose  = Handler.for(level1).next(level2, baccarat),
+                  compose  = Handler.for(level1).chain(level2, baccarat),
             countMoney = new CountMoney();
             expect(compose.handle(countMoney)).to.be.true;
         });
@@ -2438,7 +2438,7 @@ describe("Handler", () => {
     });
 
     it("should handle methods polymorphically", () => {
-        const handler = new EmailHandler().next(new OfflineHandler());
+        const handler = new EmailHandler().chain(new OfflineHandler());
         expect(Emailing(handler).fail("OFF")).to.equal(-1);         
     });
     
@@ -2448,7 +2448,7 @@ describe("Handler", () => {
     });
 
     it("should chain handle methods strictly", () => {
-         const handler = new OfflineHandler().next(new EmailHandler());
+         const handler = new OfflineHandler().chain(new EmailHandler());
          expect(Emailing(handler.$strict()).send("Hello")).to.equal("Hello");         
     });
 

@@ -1,5 +1,5 @@
 import { 
-    Base, type, conformsTo
+    Base, type, conformsTo, $classOf
 } from "miruken-core";
 
 import {
@@ -21,29 +21,6 @@ import { expect } from "chai";
 import FilterSpecProvider from "../src/filters/filter-spec-provider";
 import FilterSpec from "../src/filters/filter-spec";
 
-@conformsTo(Filtering)
-@provides() class NullFilter {
-    next(callback, rawCallback, binding, composer, next, provider) {
-        return next();
-    }
-}
-
-@conformsTo(Filtering)
-@provides() class LogFilter {
-    get order() { return 1; }
-
-    next(callback, rawCallback, binding, composer, next, provider) {
-        const capture = extractCapture(callback);
-        console.log(`Filter log ${callback} ${key}: ${binding.key}`);
-        if (capture) {
-            capture.filters.push(this);
-        }
-        return next();
-    }
-}
-
-const log = createFilteSpecDecorator(new FilterSpec(LogFilter));
-
 class Capture {
     handled     = 0                                                                                                        
     hasComposer = false  
@@ -53,10 +30,42 @@ class Capture {
 class Bar extends Capture {}
 
 @conformsTo(Filtering)
+@provides() class NullFilter {
+    next(callback, binding, composer, next, provider) {
+        return next();
+    }
+}
+
+@conformsTo(Filtering)
+@provides() class LogFilter {
+    get order() { return 1; }
+
+    next(callback, binding, composer, next, provider) {
+        const capture = extractCapture(callback);
+        console.log(`Log callback '${$classOf(callback).name}' in method ${binding.key}`);
+        if (capture) {
+            capture.filters.push(this);
+            ++capture.handled;
+        }
+        return next();
+    }
+}
+
+const log = createFilteSpecDecorator(new FilterSpec(LogFilter));
+
+@conformsTo(Filtering)
 @provides() class FilteringHandler extends Handler {
     @handles @log
     handleBar(@type(Bar) bar) {
         bar.handled++;
+    }
+
+    next(callback, binding, composer, next, provider) {
+        const capture = extractCapture(callback);
+        if (capture) {
+            capture.filters.push(this);
+        }
+        return next();
     }
 }
 
@@ -144,12 +153,15 @@ describe("FilteredObject", () => {
 });
 
 describe("Filter", () => {
-     it.skip("should create filters", () => {
+     it("should create filters", () => {
         const bar     = new Bar(),
               handler = new StaticHandler(FilteringHandler, LogFilter)
-                .next(new InferenceHandler(FilteringHandler));
+                .chain(new InferenceHandler(FilteringHandler));
         expect(handler.handle(bar)).to.be.true;
-        expect(bar.handled).to.equal(1);
+        expect(bar.handled).to.equal(2);
+        expect(bar.filters.length).to.equal(2);
+        expect(bar.filters.some(f => f instanceof FilteringHandler)).to.be.true;
+        expect(bar.filters.some(f => f instanceof LogFilter)).to.be.true;
      });
 });
 

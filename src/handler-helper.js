@@ -281,7 +281,7 @@ Handler.implement({
      * @returns {Handler}  chaining callback handler.
      * @for Handler
      */                                                                                
-    next(...handlers) {
+    chain(...handlers) {
         switch(handlers.length) {
         case 0:  return this;
         case 1:  return new CascadeHandler(this, handlers[0])
