@@ -15,9 +15,9 @@ export class InferenceHandler extends Handler {
               inferDescriptor = HandlerDescriptor.get(this, true);
         for (let type of types.flat()) {
             const prototype = type.prototype;
-            if ($isNothing(prototype)) continue;
+            if ($isNothing(prototype) || owners.has(prototype)) continue;
             for (let descriptor of HandlerDescriptor.getChain(prototype)) {
-                if (!owners.add(descriptor.owner)) continue;
+                if (!owners.add(descriptor.owner)) break;
                 for (let [policy, bindings] of descriptor.bindings) {
                     for (let binding of bindings) {
                         const instanceBinding = pcopy(binding);
@@ -36,14 +36,16 @@ function infer(callback, { composer, binding, results }) {
           resolving = new Resolving(type, callback);
     if (!composer.handle(resolving, false, composer)) {
         return $unhandled;
-    } else if (results) {
+    }
+    if (results) {
         const result = resolving.callbackResult;
-        if (!$isPromise(result)) return;
-        results(result.then(() => {
-            if (!resolving.succeeded) {
-                throw new NotHandledError(callback);
-            }
-        }));
+        if ($isPromise(result)) {
+            results(result.then(() => {
+                if (!resolving.succeeded) {
+                    throw new NotHandledError(callback);
+                }
+            }));
+        }
     }
 }
 

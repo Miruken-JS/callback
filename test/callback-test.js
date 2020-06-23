@@ -1060,6 +1060,28 @@ describe("Handler", () => {
             });
         });
 
+        it("should handle callbacks with promise dependencies async", async () => {
+            const Bank = class extends Accountable {
+                      @provides(Cashier)
+                      cashier() { 
+                          return Promise.resolve(new Cashier());
+                      }
+
+                      @handles
+                      @design(WireMoney, Cashier)
+                      wireMoney(wireMoney, cashier) {
+                          this.transfer(this.balance, cashier);
+                          cashier.wireMoney(wireMoney);
+                          cashier.transfer(cashier.balance, this);
+                      }
+                  },
+                  bank = new Bank(10000, 3500);
+            await Handler.for(bank).command(new WireMoney(75));
+            expect(bank.assets).to.equal(9925);
+            expect(bank.liabilities).to.equal(3500);
+            expect(bank.balance).to.equal(6425);
+        });
+
         it("should handle callbacks with array dependencies", () => {
             const Bank = class extends Accountable {
                       @provides(Cashier)

@@ -211,10 +211,10 @@ function dispatch(policy, target, callback, constraint, index,
                         if ($isNothing(filters)) continue;
                     }
                     if ($isNothing(filters) || filters.length == 0) {
-                        const args = resolveArgs.call(
-                            this, callback, target, binding, composer);
+                        const signature = binding.getMetadata(design),
+                              args = resolveArgs.call(this, callback, signature, composer);
                         if ($isNothing(args)) continue;
-                        const context = { composer, constraint, binding, results },
+                        const context = { constraint, binding, composer, results },
                               handler = binding.handler;
                         result = $isPromise(args)
                                ? args.then(a => handler.call(target, ...a, context))
@@ -223,21 +223,31 @@ function dispatch(policy, target, callback, constraint, index,
                         result = filters.reduceRight((next, pipeline) => {
                             return (comp, proceed) => {
                                 if (proceed) {
-                                    return pipeline.filter.next(callback, binding, comp,
-                                        (c, p) => next(c != null ? c : comp, p != null ? p : true,
-                                            pipeline.provider));
+                                    const filter    = pipeline.filter,
+                                          signature = design.get(filter, "next"),
+                                          args      = resolveArgs.call(this, callback, signature, comp);
+                                    if (!$isNothing(args)) {
+                                        const provider = pipeline.provider,
+                                              context  = { binding, provider, composer: comp };
+                                        return $isPromise(args)
+                                             ? args.then(a => filter.next(...a, (c, p) =>
+                                                   next(c != null ? c : comp, p != null ? p : true), context))
+                                             : filter.next(...args, (c, p) =>
+                                                   next(c != null ? c : comp, p != null ? p : true), context);
+                                    }
                                 }
                                 completed = false;
                             };
                         }, (comp, proceed) => {
                             if (proceed) {
-                                 const args = resolveArgs.call(this, callback, target, binding, comp);
+                                const signature = binding.getMetadata(design),
+                                      args = resolveArgs.call(this, callback, signature, comp);
                                 if ($isNothing(args)) {
                                     completed = false;
                                     return Promise.reject(new NotHandledError(callback,
                                         `'${binding.key}' is missing one or more dependencies.`));
                                 }
-                                const context = { composer: comp, constraint, binding, results },
+                                const context = { constraint, binding, composer: comp, results },
                                       handler = binding.handler;
                                 return $isPromise(args)
                                      ? args.then(a => handler.call(target, ...a, context))
@@ -275,8 +285,7 @@ function resolveFilters(policy, target, callback, binding, composer) {
     ]);
 }
 
-function resolveArgs(callback, target, binding, composer) {
-    const signature = binding.getMetadata(design);
+function resolveArgs(callback, signature, composer) {
     if ($isNothing(signature)) {
         return [callback];
     }

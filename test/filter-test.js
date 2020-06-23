@@ -31,16 +31,14 @@ class Bar extends Capture {}
 
 @conformsTo(Filtering)
 @provides() class NullFilter {
-    next(callback, binding, composer, next, provider) {
-        return next();
-    }
+    next(next) { return next(); }
 }
 
 @conformsTo(Filtering)
 @provides() class LogFilter {
     get order() { return 1; }
 
-    next(callback, binding, composer, next, provider) {
+    next(callback, next, { binding }) {
         const capture = extractCapture(callback);
         console.log(`Log callback '${$classOf(callback).name}' in method ${binding.key}`);
         if (capture) {
@@ -60,7 +58,7 @@ const log = createFilteSpecDecorator(new FilterSpec(LogFilter));
         bar.handled++;
     }
 
-    next(callback, binding, composer, next, provider) {
+    next(callback, next) {
         const capture = extractCapture(callback);
         if (capture) {
             capture.filters.push(this);
