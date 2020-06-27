@@ -228,12 +228,13 @@ function dispatch(policy, target, callback, constraint, index,
                                           args      = resolveArgs.call(this, callback, signature, comp);
                                     if (!$isNothing(args)) {
                                         const provider = pipeline.provider,
-                                              context  = { binding, provider, composer: comp };
+                                              context  = { binding, provider, composer: comp,
+                                                           next(c, p) { next(c != null ? c : comp, 
+                                                                             p != null ? p : true) },
+                                                           abort() { next(null, false) } };
                                         return $isPromise(args)
-                                             ? args.then(a => filter.next(...a, (c, p) =>
-                                                   next(c != null ? c : comp, p != null ? p : true), context))
-                                             : filter.next(...args, (c, p) =>
-                                                   next(c != null ? c : comp, p != null ? p : true), context);
+                                             ? args.then(a => filter.next(...a, context))
+                                             : filter.next(...args, context);
                                     }
                                 }
                                 completed = false;
@@ -278,7 +279,7 @@ function dispatch(policy, target, callback, constraint, index,
 
 function resolveFilters(policy, target, callback, binding, composer) {
     const targetFilter = Filtering.isAdoptedBy(target)
-                       ? new FilterInstanceProvider([target])
+                       ? new FilterInstanceProvider([target], true)
                        : null;
     return composer.getOrderedFilters(binding, callback, [
         binding.getMetadata(filter), this, policy, targetFilter

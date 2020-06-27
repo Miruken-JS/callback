@@ -47,11 +47,9 @@ export const Filtering = Protocol.extend({
     /**
      * Executes the filter for the `callback`.
      * @method next
-     * @param  {Any}       callback        -  callback
      * @param  {Object}    ...dependecies  -  dependencies
-     * @param  {Function}  next            -  next in pipeline
      * @param  {Object}    context         -  context information which include
-     *    Binding, FilteringProvider and Composer
+     *    Next, Binding, FilteringProvider and Composer
      * @returns {Any} the result of the filter.
      */
     next(callback, next, context) {}

@@ -26,7 +26,7 @@ export function createFilterDecorator(createFilterProvider) {
     });
 }
 
-export function createFilteSpecDecorator(filterSpec) {
+export function createFilterSpecDecorator(filterSpec) {
     if (filterSpec instanceof FilterSpec) {
         return createFilterDecorator(_ => new FilterSpecProvider(filterSpec));
     }

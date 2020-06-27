@@ -40,6 +40,9 @@ export class Command extends Base {
     get canFilter() {
         return this.callback.canFilter !== false;
     }
+    get canInfer() {
+        return this.callback.canInfer !== false;
+    }
     get callbackResult() {
         let { result, results, promises} = _(this);
         if (result === undefined) {

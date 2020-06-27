@@ -1,5 +1,6 @@
 import { 
-    pcopy, $isNothing, $classOf, $isPromise
+    Undefined, pcopy, $isNothing,
+    $classOf, $isPromise
 } from "miruken-core";
 
 import HandlerDescriptor from "./handler-descriptor";
@@ -22,7 +23,7 @@ export class InferenceHandler extends Handler {
                     for (let binding of bindings) {
                         const instanceBinding = pcopy(binding);
                         instanceBinding.handler = infer;
-                        instanceBinding.skipFilters = true;
+                        instanceBinding.getMetadata = Undefined;
                         inferDescriptor.addBinding(policy, instanceBinding);
                     }
                 }
@@ -32,6 +33,9 @@ export class InferenceHandler extends Handler {
 }
 
 function infer(callback, { composer, binding, results }) {
+    if (callback.canInfer === false) {
+        return $unhandled;
+    }
     const type      = $classOf(binding.owner),
           resolving = new Resolving(type, callback);
     if (!composer.handle(resolving, false, composer)) {

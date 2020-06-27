@@ -23,6 +23,13 @@ export const CallbackControl = Protocol.extend({
     get canFilter() {},
 
     /**
+     * Returns true if this callback can participate in inference.
+     * @property {Boolean} canInfer
+     * @readOnly
+     */    
+    get canInfer() {},
+
+    /**
      * Gets the callback policy.
      * @property {Function} policy
      * @readOnly

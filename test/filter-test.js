@@ -1,5 +1,6 @@
 import { 
-    Base, type, conformsTo, $classOf
+    Base, Protocol, type, conformsTo,
+    $classOf
 } from "miruken-core";
 
 import {
@@ -14,56 +15,153 @@ import Filtering from "../src/filters/filtering";
 import FilteredObject from "../src/filters/filtered-object";
 import FilterInstanceProvider from "../src/filters/filter-instance-provider";
 import FilterOptions from "../src/filters/filter-options";
-import { filter, createFilteSpecDecorator } from "../src/filters/filter";
+import { 
+    filter, skipFilters,  createFilterSpecDecorator 
+} from "../src/filters/filter";
 import "../src/filters/filter-helper";
 
 import { expect } from "chai";
 import FilterSpecProvider from "../src/filters/filter-spec-provider";
 import FilterSpec from "../src/filters/filter-spec";
 
-class Capture {
+class Capture extends Base {
     handled     = 0                                                                                                        
     hasComposer = false  
     filters     = []
 }
 
+class Foo extends Capture {}
+class SpecialFoo extends Foo {}
+class FooDecorator extends Foo {
+    constructor(Foo) {}
+}
 class Bar extends Capture {}
+class SpecialBar extends Bar {}
+class Boo extends Capture {}
+class Baz extends Capture {}
+class SpecialBaz extends Baz {}
+class Bee extends Capture {}
+class Bam extends Capture {}
 
+const Logging = Protocol.extend({
+    log(msg) {}
+});
+
+@conformsTo(Logging)
+@provides() class ConsoleLogger {
+    log(msg) { console.log(msg); }
+}
 @conformsTo(Filtering)
 @provides() class NullFilter {
-    next(next) { return next(); }
+    next(callback, { next }) {
+        const capture = extractCapture(callback);
+        if (capture) {
+            capture.filters.push(this);
+        }
+        return next();
+    }
 }
 
 @conformsTo(Filtering)
 @provides() class LogFilter {
     get order() { return 1; }
 
-    next(callback, next, { binding }) {
+    next(callback, @type(Logging) logger, { next, binding }) {
         const capture = extractCapture(callback);
-        console.log(`Log callback '${$classOf(callback).name}' in method ${binding.key}`);
+        logger.log(`Log callback '${$classOf(callback).name}' in method ${binding.key}`);
         if (capture) {
             capture.filters.push(this);
-            ++capture.handled;
         }
         return next();
     }
 }
 
-const log = createFilteSpecDecorator(new FilterSpec(LogFilter));
+const log = createFilterSpecDecorator(new FilterSpec(LogFilter));
 
 @conformsTo(Filtering)
-@provides() class FilteringHandler extends Handler {
-    @handles @log
-    handleBar(@type(Bar) bar) {
-        bar.handled++;
-    }
+@provides() class ExceptionFilter {
+    get order() { return 2; }
 
-    next(callback, next) {
+    next(callback, { next }) {
         const capture = extractCapture(callback);
         if (capture) {
             capture.filters.push(this);
         }
+        const result = next();
+        if (callback instanceof Boo) {
+            return Promise.reject(new Error("System shutdown"));
+        }
+        return result;
+    }   
+}
+
+const exceptions = createFilterSpecDecorator(new FilterSpec(ExceptionFilter, true));
+
+@conformsTo(Filtering)
+@provides() class AbortFilter {
+    get order() { return 0; }
+
+    next(callback, { next, abort }) {
+        return callback.handled > 99 ? abort() : next();
+    }   
+}
+
+const aborting = createFilterSpecDecorator(new FilterSpec(AbortFilter, true));
+
+@conformsTo(Filtering)
+@provides() class FilteringHandler extends Handler {
+    get order() { return 10; }
+
+    @handles(Bar)
+    @filter(NullFilter)
+    @log @exceptions @aborting
+    handleBar(bar) {
+        bar.handled++;
+    }
+
+    @handles(Bee)
+    @log @skipFilters
+    handleBee(bee) {
+    }
+
+    @handles()
+    handleStuff(callback) {
+        if (callback instanceof Bar) {
+            callback.handled = -99;
+        }
+    }
+
+    next(callback, { next }) {
+        if (callback instanceof Bar) {
+            callback.filters.push(this);
+            callback.handled++;
+        }
         return next();
+    }
+}
+
+@provides() class SpecialFilteringHandler extends Handler {
+  @handles(Foo)
+    @log @exceptions
+    handleFoo(foo) {
+        return new SpecialFoo();
+    }
+
+    @handles(Baz)
+    @log @exceptions
+    handleBaz(baz) {
+        return Promise.resolve(new SpecialBaz());
+    }
+
+    @handles(Bar)
+    @log @exceptions
+    handleBar(bar) {
+        return Promise.resolve(new SpecialBar());
+    }
+
+    @handles(Boo)
+    @exceptions
+    remove(boo) {
     }
 }
 
@@ -151,16 +249,65 @@ describe("FilteredObject", () => {
 });
 
 describe("Filter", () => {
-     it("should create filters", () => {
+    it("should create filters", () => {
         const bar     = new Bar(),
-              handler = new StaticHandler(FilteringHandler, LogFilter)
+              handler = new StaticHandler(
+                  FilteringHandler, LogFilter, ConsoleLogger,
+                  ExceptionFilter, AbortFilter, NullFilter)
                 .chain(new InferenceHandler(FilteringHandler));
         expect(handler.handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);
+        expect(bar.filters.length).to.equal(4);
+        const filters = bar.filters;
+        expect(filters[0]).to.be.instanceOf(LogFilter);
+        expect(filters[1]).to.be.instanceOf(ExceptionFilter);
+        expect(filters[2]).to.be.instanceOf(FilteringHandler);
+        expect(filters[3]).to.be.instanceOf(NullFilter);
+    });
+
+    it("should abort pipeline", () => {
+        const bar     = new Bar().extend({ handled: 100 }),
+              handler = new StaticHandler(
+                  FilteringHandler, LogFilter, ConsoleLogger,
+                  ExceptionFilter, AbortFilter, NullFilter)
+                .chain(new InferenceHandler(FilteringHandler));
+        expect(handler.handle(bar)).to.be.true;
+        expect(bar.handled).to.equal(-99);
+    });
+
+    it("should skip filters", () => {
+        const bee     = new Bee(),
+              handler = new StaticHandler(
+                  FilteringHandler, LogFilter, ConsoleLogger)
+                .chain(new InferenceHandler(FilteringHandler));
+        expect(handler.handle(bee)).to.be.true;
+        expect(bee.filters.length).to.equal(0);
+    });
+
+    it("should skip non-required filters", () => {
+       const bar     = new Bar(),
+             handler = new StaticHandler(
+                  FilteringHandler, LogFilter, ConsoleLogger,
+                  ExceptionFilter, AbortFilter, NullFilter)
+                .chain(new InferenceHandler(FilteringHandler));
+        expect(handler.skipFilters().handle(bar)).to.be.true;
+        expect(bar.handled).to.equal(2);
         expect(bar.filters.length).to.equal(2);
-        expect(bar.filters.some(f => f instanceof FilteringHandler)).to.be.true;
-        expect(bar.filters.some(f => f instanceof LogFilter)).to.be.true;
-     });
+        const filters = bar.filters;
+        expect(filters[0]).to.be.instanceOf(ExceptionFilter);
+        expect(filters[1]).to.be.instanceOf(FilteringHandler);
+    });
+
+    it.only("should propagate rejected filter promise", done => {
+        const boo     = new Boo(),
+              handler = new StaticHandler(
+                  SpecialFilteringHandler, ExceptionFilter)
+                .chain(new InferenceHandler(SpecialFilteringHandler));
+        handler.command(boo).catch(() => {
+            
+            done();
+        });
+    });    
 });
 
 function extractCapture(callback) {
