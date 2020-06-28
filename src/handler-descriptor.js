@@ -62,7 +62,8 @@ export class HandlerDescriptor extends FilteredObject {
         bindings.delete(policy);
     }
 
-    dispatch(policy, handler, callback, constraint, composer, greedy, results) {
+    dispatch(policy, handler, callback, rawCallback, constraint,
+             composer, greedy, results) {
         requireValidPolicy(policy);
 
         let variance = policy.variance;
@@ -87,8 +88,8 @@ export class HandlerDescriptor extends FilteredObject {
         let dispatched = false;
         for (let descriptor of this.getDescriptorChain(true)) {
             dispatched = dispatch.call(descriptor, policy, handler, callback,
-                                       constraint, index, variance, composer,
-                                       greedy, results)
+                                       rawCallback, constraint, index, variance,
+                                       composer, greedy, results)
                       || dispatched;
             if (dispatched && !greedy) return true;
         }
@@ -188,8 +189,8 @@ function addBinding(policy, binding) {
     };
 }
 
-function dispatch(policy, target, callback, constraint, index,
-                  variance, composer, all, results) {
+function dispatch(policy, target, callback, rawCallback, constraint,
+                  index, variance, composer, all, results) {
     let dispatched = false;
     const bindings = this.getBindings(policy);
     if (bindings == null) return false;;
@@ -198,23 +199,24 @@ function dispatch(policy, target, callback, constraint, index,
         for (let binding of bindings.fromIndex(index)) {
             if (binding.match(constraint, variance)) {
                 let guard;
-                const guardDispatch = callback.guardDispatch;
+                const guardDispatch = rawCallback.guardDispatch;
                 if ($isFunction(guardDispatch)) {
-                    guard = guardDispatch.call(callback, target, binding);
+                    guard = guardDispatch.call(rawCallback, target, binding);
                     if (!guard) continue;
                 }
                 try {
                     let filters, result, completed = true;;
-                    if (callback.canFilter !== false) {
+                    if (rawCallback.canFilter !== false) {
                         filters = resolveFilters.call(
                             this, policy, target, callback, binding, composer);
                         if ($isNothing(filters)) continue;
                     }
                     if ($isNothing(filters) || filters.length == 0) {
                         const signature = binding.getMetadata(design),
-                              args = resolveArgs.call(this, callback, signature, composer);
+                              args = resolveArgs.call(
+                                  this, callback, rawCallback, signature, composer);
                         if ($isNothing(args)) continue;
-                        const context = { constraint, binding, composer, results },
+                        const context = { constraint, binding, rawCallback, composer, results },
                               handler = binding.handler;
                         result = $isPromise(args)
                                ? args.then(a => handler.call(target, ...a, context))
@@ -225,10 +227,11 @@ function dispatch(policy, target, callback, constraint, index,
                                 if (proceed) {
                                     const filter    = pipeline.filter,
                                           signature = design.get(filter, "next"),
-                                          args      = resolveArgs.call(this, callback, signature, comp);
+                                          args      = resolveArgs.call(
+                                              this, callback, rawCallback, signature, comp);
                                     if (!$isNothing(args)) {
                                         const provider = pipeline.provider,
-                                              context  = { binding, provider, composer: comp,
+                                              context  = { binding, rawCallback, provider, composer: comp,
                                                            next(c, p) { next(c != null ? c : comp, 
                                                                              p != null ? p : true) },
                                                            abort() { next(null, false) } };
@@ -242,13 +245,14 @@ function dispatch(policy, target, callback, constraint, index,
                         }, (comp, proceed) => {
                             if (proceed) {
                                 const signature = binding.getMetadata(design),
-                                      args = resolveArgs.call(this, callback, signature, comp);
+                                      args = resolveArgs.call(
+                                          this, callback, rawCallback, signature, comp);
                                 if ($isNothing(args)) {
                                     completed = false;
                                     return Promise.reject(new NotHandledError(callback,
                                         `'${binding.key}' is missing one or more dependencies.`));
                                 }
-                                const context = { constraint, binding, composer: comp, results },
+                                const context = { constraint, binding, rawCallback, composer: comp, results },
                                       handler = binding.handler;
                                 return $isPromise(args)
                                      ? args.then(a => handler.call(target, ...a, context))
@@ -266,7 +270,7 @@ function dispatch(policy, target, callback, constraint, index,
                     }
                 } finally {
                     if ($isFunction(guard)) {
-                        guard.call(callback);
+                        guard.call(rawCallback);
                     }
                 }
             } else if (invariant) {
@@ -286,7 +290,7 @@ function resolveFilters(policy, target, callback, binding, composer) {
     ]);
 }
 
-function resolveArgs(callback, signature, composer) {
+function resolveArgs(callback, rawCallback, signature, composer) {
     if ($isNothing(signature)) {
         return [callback];
     }
@@ -295,7 +299,7 @@ function resolveArgs(callback, signature, composer) {
         return [callback];
     }
 
-    const parent   = callback instanceof Inquiry ? callback : null,
+    const parent   = rawCallback instanceof Inquiry ? rawCallback : null,
           resolved = [],
           promises = [];
 
@@ -308,9 +312,15 @@ function resolveArgs(callback, signature, composer) {
             continue;
         }
 
-        if (i === 0 && arg.validate(callback)) {
-            resolved[0] = callback;
-            continue;
+        if (i === 0) {
+            if (arg.validate(callback)) {
+                resolved[0] = callback;
+                continue;
+            }
+            if (arg.validate(rawCallback)) {
+                resolved[0] = rawCallback;
+                continue;
+            }
         }
 
         const many     = arg.flags.hasFlag(TypeFlags.Array),

@@ -298,13 +298,13 @@ describe("Filter", () => {
         expect(filters[1]).to.be.instanceOf(FilteringHandler);
     });
 
-    it.only("should propagate rejected filter promise", done => {
+    it("should propagate rejected filter promise", done => {
         const boo     = new Boo(),
               handler = new StaticHandler(
                   SpecialFilteringHandler, ExceptionFilter)
                 .chain(new InferenceHandler(SpecialFilteringHandler));
-        handler.command(boo).catch(() => {
-            
+        handler.command(boo).catch(error => {
+            expect(error.message).to.equal("System shutdown");
             done();
         });
     });    

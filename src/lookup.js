@@ -72,7 +72,7 @@ export class Lookup extends Base {
         const results  = this.results,
               promises = _(this).promises,
               count    = results.length + promises.length,
-              found    = looksup.dispatch(handler, this, this.key,
+              found    = looksup.dispatch(handler, this, this, this.key,
                 composer, this.isMany, this.addResult.bind(this));
         return found || (results.length + promises.length > count);
     }

@@ -84,10 +84,10 @@ export class CallbackPolicy extends FilteredObject {
         }
     }
 
-    dispatch(handler, callback, constraint, composer, greedy, results) {
+    dispatch(handler, callback, rawCallback, constraint, composer, greedy, results) {
         const descriptor = HandlerDescriptor.get(handler, true);
-        return descriptor.dispatch(
-            this, handler, callback, constraint, composer, greedy, results);
+        return descriptor.dispatch(this, handler, callback,
+            rawCallback || callback, constraint, composer, greedy, results);
     }
 
     /**
@@ -136,7 +136,7 @@ export class CallbackPolicy extends FilteredObject {
         if ($isFunction(callback.dispatch)) {
             return callback.dispatch(handler, greedy, composer);
         }
-        return handles.dispatch(handler, callback, null, composer, greedy);   
+        return handles.dispatch(handler, callback, callback, null, composer, greedy);   
     } 
 }
 

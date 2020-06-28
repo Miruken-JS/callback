@@ -118,7 +118,7 @@ export class Inquiry extends Base {
               promises    = _(this).promises,
               count       = resolutions.length + promises.length;
 
-        let   resolved = provides.dispatch(handler, this, this.key,
+        let   resolved = provides.dispatch(handler, this, this, this.key,
             composer, this.isMany, (r, c) => this.resolve(r, greedy, c))
             || resolved;
 

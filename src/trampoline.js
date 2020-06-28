@@ -1,6 +1,6 @@
 import { 
-    Base, $isFunction, conformsTo,
-    createKeyChain
+    Base, Undefined, $isFunction,
+    conformsTo, createKeyChain
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
@@ -38,16 +38,17 @@ export class Trampoline extends Base {
         if (callback) {
             const guardDispatch = callback.guardDispatch;
             if ($isFunction(guardDispatch)) {
-                guardDispatch.call(callback, handler, binding);
+                return guardDispatch.call(callback, handler, binding);
             }
-        }        
+        }
+        return Undefined;
     }
 
     dispatch(handler, greedy, composer) {
         const callback = this.callback;
         return callback
              ? CallbackPolicy.dispatch(handler, callback, greedy, composer)
-             : handles.dispatch(handler, this, null, composer, greedy);
+             : handles.dispatch(handler, this, this, null, composer, greedy);
     }
 }
 

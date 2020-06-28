@@ -1,6 +1,6 @@
 import {
-    Base, $isPromise, $isNothing,
-    conformsTo, createKeyChain
+    Base, Undefined, $isNothing, $isFunction,
+    $isPromise, conformsTo, createKeyChain
 } from "miruken-core";
 
 import CallbackControl from "./callback-control";
@@ -58,6 +58,17 @@ export class Command extends Base {
     }
     set callbackResult(value) { _(this).result = value; }
 
+    guardDispatch(handler, binding) {
+        const callback = this.callback;
+        if (callback) {
+            const guardDispatch = callback.guardDispatch;
+            if ($isFunction(guardDispatch)) {
+                return guardDispatch.call(callback, handler, binding);
+            }
+        }
+        return Undefined;
+    }
+
     respond(response) {
         if ($isNothing(response)) return;
         if ($isPromise(response)) {
@@ -74,7 +85,7 @@ export class Command extends Base {
 
     dispatch(handler, greedy, composer) {
         const count = _(this).results.length;
-        return handles.dispatch(handler, this.callback, null,
+        return handles.dispatch(handler, this.callback, this, null,
             composer, this.isMany, this.respond.bind(this)) || 
             _(this).results.length > count;     
     }

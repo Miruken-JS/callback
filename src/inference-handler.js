@@ -32,12 +32,12 @@ export class InferenceHandler extends Handler {
     }
 }
 
-function infer(callback, { composer, binding, results }) {
-    if (callback.canInfer === false) {
+function infer(callback, { binding, rawCallback, composer, results }) {
+    if (rawCallback.canInfer === false) {
         return $unhandled;
     }
     const type      = $classOf(binding.owner),
-          resolving = new Resolving(type, callback);
+          resolving = new Resolving(type, rawCallback);
     if (!composer.handle(resolving, false, composer)) {
         return $unhandled;
     }
