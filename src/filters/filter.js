@@ -15,7 +15,7 @@ export function createFilterDecorator(createFilterProvider) {
     }
     return Metadata.decorator(filterMetadataKey, (target, key, descriptor, args) => {
         const provider = createFilterProvider(args)
-        if ($isNothing(isDescriptor(descriptor))) {     
+        if (!isDescriptor(descriptor)) {     
             const filters  = filter.getOrCreateOwn(target, "constructor", () => new FilteredObject()),
                   filtersp = filter.getOrCreateOwn(target.prototype, "constructor", () => filters);
             filters.addFilters(provider);

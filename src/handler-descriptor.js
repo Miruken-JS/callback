@@ -232,9 +232,10 @@ function dispatch(policy, target, callback, rawCallback, constraint,
                                     if (!$isNothing(args)) {
                                         const provider = pipeline.provider,
                                               context  = { binding, rawCallback, provider, composer: comp,
-                                                           next(c, p) { next(c != null ? c : comp, 
-                                                                             p != null ? p : true) },
-                                                           abort() { next(null, false) } };
+                                                           next: (c, p) => next(
+                                                               c != null ? c : comp, 
+                                                               p != null ? p : true),
+                                                           abort: () => next(null, false) };
                                         return $isPromise(args)
                                              ? args.then(a => filter.next(...a, context))
                                              : filter.next(...args, context);

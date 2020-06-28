@@ -23,6 +23,7 @@ import "../src/filters/filter-helper";
 import { expect } from "chai";
 import FilterSpecProvider from "../src/filters/filter-spec-provider";
 import FilterSpec from "../src/filters/filter-spec";
+import singleton from "../src/singleton-lifestyle";
 
 class Capture extends Base {
     handled     = 0                                                                                                        
@@ -165,6 +166,8 @@ const aborting = createFilterSpecDecorator(new FilterSpec(AbortFilter, true));
     }
 }
 
+@provides() @singleton() class ApplicationBase {}
+
 describe("FilterOptions", () => {
     describe("mergeInto", () => {
         it("should merge filter options", () => {
@@ -249,12 +252,18 @@ describe("FilteredObject", () => {
 });
 
 describe("Filter", () => {
+    let handler;
+    beforeEach(() => {
+        handler = new StaticHandler(
+            FilteringHandler, SpecialFilteringHandler,
+            LogFilter, ConsoleLogger, ExceptionFilter,
+            AbortFilter, NullFilter).chain(new InferenceHandler(
+                FilteringHandler,
+                SpecialFilteringHandler));
+    });
+
     it("should create filters", () => {
-        const bar     = new Bar(),
-              handler = new StaticHandler(
-                  FilteringHandler, LogFilter, ConsoleLogger,
-                  ExceptionFilter, AbortFilter, NullFilter)
-                .chain(new InferenceHandler(FilteringHandler));
+        const bar = new Bar();
         expect(handler.handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);
         expect(bar.filters.length).to.equal(4);
@@ -266,30 +275,19 @@ describe("Filter", () => {
     });
 
     it("should abort pipeline", () => {
-        const bar     = new Bar().extend({ handled: 100 }),
-              handler = new StaticHandler(
-                  FilteringHandler, LogFilter, ConsoleLogger,
-                  ExceptionFilter, AbortFilter, NullFilter)
-                .chain(new InferenceHandler(FilteringHandler));
+        const bar = new Bar().extend({ handled: 100 });
         expect(handler.handle(bar)).to.be.true;
         expect(bar.handled).to.equal(-99);
     });
 
     it("should skip filters", () => {
-        const bee     = new Bee(),
-              handler = new StaticHandler(
-                  FilteringHandler, LogFilter, ConsoleLogger)
-                .chain(new InferenceHandler(FilteringHandler));
+        const bee = new Bee();
         expect(handler.handle(bee)).to.be.true;
         expect(bee.filters.length).to.equal(0);
     });
 
     it("should skip non-required filters", () => {
-       const bar     = new Bar(),
-             handler = new StaticHandler(
-                  FilteringHandler, LogFilter, ConsoleLogger,
-                  ExceptionFilter, AbortFilter, NullFilter)
-                .chain(new InferenceHandler(FilteringHandler));
+        const bar = new Bar();
         expect(handler.skipFilters().handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);
         expect(bar.filters.length).to.equal(2);
@@ -299,14 +297,35 @@ describe("Filter", () => {
     });
 
     it("should propagate rejected filter promise", done => {
-        const boo     = new Boo(),
-              handler = new StaticHandler(
-                  SpecialFilteringHandler, ExceptionFilter)
-                .chain(new InferenceHandler(SpecialFilteringHandler));
+        const boo = new Boo();
         handler.command(boo).catch(error => {
             expect(error.message).to.equal("System shutdown");
             done();
         });
+    });
+
+    it("should reject filter if missing dependencies", () => {
+        const bar        = new Bar(),
+              BadHandler = @provides class {
+                  @log
+                  handleBar(bar) {}
+              };
+        handler = new StaticHandler(BadHandler, LogFilter)
+            .chain(new InferenceHandler(BadHandler));
+        expect(handler.handle(bar)).to.be.false;
+    });  
+});
+
+describe("SingletonLifestyle", () => {
+  let handler;
+    beforeEach(() => {
+        handler = new StaticHandler(ApplicationBase);
+    });
+
+    it("should create singleton instances", () => {
+        const app = handler.resolve(ApplicationBase);
+        expect(app).to.be.instanceOf(ApplicationBase);
+        expect(app).to.equal(handler.resolve(ApplicationBase));
     });    
 });
 
