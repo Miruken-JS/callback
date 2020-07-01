@@ -12,7 +12,7 @@ const _ = createKey();
 
 export class SingletonLifestyle extends Lifestyle {
     getInstance(inquiry, { next }) {
-       let instance = _(this).instance;
+        let instance = _(this).instance;
         if ($isNothing(instance)) {
             instance = _(this).instance = next();
             if ($isPromise(instance)) {
@@ -37,6 +37,6 @@ export class SingletonLifestyleProvider extends LifestyleProvider {
 }
 
 export const singleton = createFilterDecorator(
-    () => new SingletonLifestyleProvider());
+    () => new SingletonLifestyleProvider())();
 
 export default singleton;

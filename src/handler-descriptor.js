@@ -120,11 +120,11 @@ export class HandlerDescriptor extends FilteredObject {
                     const clazz           = $classOf(target),
                           classDescriptor = HandlerDescriptor.get(clazz, true),
                           constructor     = Binding.create(
-                              clazz, binding.handler.bind(clazz), "constructor");
-                    constructor.owner = target;
+                              clazz, target, binding.handler.bind(clazz), "constructor");
                     addBinding.call(classDescriptor, policy, constructor);
                 } else {
-                    addBinding.call(targetDescriptor, policy, pcopy(binding));
+                    binding.owner = target;
+                    addBinding.call(targetDescriptor, policy, binding);
                 }
             }
         }
@@ -138,7 +138,8 @@ export class HandlerDescriptor extends FilteredObject {
         if (sourceKey) return;
         for (let [policy, bindings] of sourceDescriptor.bindings) {
             for (let binding of bindings) {
-                addBinding.call(this, policy, pcopy(binding));
+                binding.owner = target;
+                addBinding.call(this, policy, binding);
             }
         }
     }

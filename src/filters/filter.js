@@ -14,10 +14,11 @@ export function createFilterDecorator(createFilterProvider) {
         throw new Error("The createFilterProvider argument must be a function.");
     }
     return Metadata.decorator(filterMetadataKey, (target, key, descriptor, args) => {
-        const provider = createFilterProvider(args)
+        const provider = createFilterProvider(target, key, descriptor, args);
+        if ($isNothing(provider)) return;
         if (!isDescriptor(descriptor)) {     
-            const filters  = filter.getOrCreateOwn(target, "constructor", () => new FilteredObject()),
-                  filtersp = filter.getOrCreateOwn(target.prototype, "constructor", () => filters);
+            const filters = filter.getOrCreateOwn(target, "constructor", () => new FilteredObject());
+            filter.getOrCreateOwn(target.prototype, "constructor", () => filters);
             filters.addFilters(provider);
             return;
         }
@@ -31,7 +32,7 @@ export function createFilterSpecDecorator(filterSpec) {
         return createFilterDecorator(_ => new FilterSpecProvider(filterSpec));
     }
     if ($isFunction(filterSpec)) {
-        return createFilterDecorator(args => {
+        return createFilterDecorator((target, key, descriptor, args) => {
             const spec = filterSpec(args);
             if (!(spec instanceof FilterSpec)) {
                 throw new TypeError("The filterSpec function did not return a FilterSpec.");
@@ -43,7 +44,7 @@ export function createFilterSpecDecorator(filterSpec) {
 }
 
 export const filter = createFilterDecorator(
-    ([filterType, { required, order } = {}]) => {
+    (target, key, descriptor, [filterType, { required, order } = {}]) => {
         if ($isNothing(filterType)) {
             throw new Error("@filter requires a filterType.")
         }

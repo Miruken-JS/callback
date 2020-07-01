@@ -79,7 +79,8 @@ Handler.implement({
 
         return ordered.sort((a, b) => {
             if (a.filter === b.filter) return 0;
-            if (b.filter.order == null) return -1;
+            if (a.filter.order === b.filter.order || 
+                b.filter.order == null) return -1;
             if (a.filter.order == null) return 1;
             return a.filter.order - b.filter.order;
         });

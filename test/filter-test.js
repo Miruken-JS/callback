@@ -24,6 +24,7 @@ import { expect } from "chai";
 import FilterSpecProvider from "../src/filters/filter-spec-provider";
 import FilterSpec from "../src/filters/filter-spec";
 import singleton from "../src/singleton-lifestyle";
+import initialize from "../src/initializer";
 
 class Capture extends Base {
     handled     = 0                                                                                                        
@@ -77,7 +78,7 @@ const Logging = Protocol.extend({
     }
 }
 
-const log = createFilterSpecDecorator(new FilterSpec(LogFilter));
+const logs = createFilterSpecDecorator(new FilterSpec(LogFilter));
 
 @conformsTo(Filtering)
 @provides() class ExceptionFilter {
@@ -115,13 +116,13 @@ const aborting = createFilterSpecDecorator(new FilterSpec(AbortFilter, true));
 
     @handles(Bar)
     @filter(NullFilter)
-    @log @exceptions @aborting
+    @logs @exceptions @aborting
     handleBar(bar) {
         bar.handled++;
     }
 
     @handles(Bee)
-    @log @skipFilters
+    @logs @skipFilters
     handleBee(bee) {
     }
 
@@ -143,19 +144,19 @@ const aborting = createFilterSpecDecorator(new FilterSpec(AbortFilter, true));
 
 @provides() class SpecialFilteringHandler extends Handler {
   @handles(Foo)
-    @log @exceptions
+    @logs @exceptions
     handleFoo(foo) {
         return new SpecialFoo();
     }
 
     @handles(Baz)
-    @log @exceptions
+    @logs @exceptions
     handleBaz(baz) {
         return Promise.resolve(new SpecialBaz());
     }
 
     @handles(Bar)
-    @log @exceptions
+    @logs @exceptions
     handleBar(bar) {
         return Promise.resolve(new SpecialBar());
     }
@@ -166,7 +167,20 @@ const aborting = createFilterSpecDecorator(new FilterSpec(AbortFilter, true));
     }
 }
 
-@provides() @singleton() class ApplicationBase {}
+@provides() @singleton class Application {
+    initialized = 0
+
+    @initialize
+    initialize1() {
+        this.initialized = this.initialized + 1;
+    }
+
+    @initialize
+    initialize2() {
+        this.initialized = this.initialized * 10;
+        return Promise.delay(10);
+    }
+}
 
 describe("FilterOptions", () => {
     describe("mergeInto", () => {
@@ -274,6 +288,45 @@ describe("Filter", () => {
         expect(filters[3]).to.be.instanceOf(NullFilter);
     });
 
+    it("should create filters for base2 class", () => {
+        const bar                   = new Bar(),
+              FilteringBase2Handler = Handler.extend(Filtering, {
+                  @provides
+                  constructor() {
+                  },
+
+                  get order() { return 10; },
+
+                  @handles(Bar)
+                  @filter(NullFilter)
+                  @logs @exceptions @aborting
+                  handleBar(bar) {
+                      bar.handled++;
+                  },
+
+                  next(callback, { next }) {
+                      if (callback instanceof Bar) {
+                          callback.filters.push(this);
+                          callback.handled++;
+                      }
+                      return next();
+                  }
+              }),
+              handler = new StaticHandler(
+                 FilteringBase2Handler,
+                 LogFilter, ConsoleLogger, ExceptionFilter,
+                 AbortFilter, NullFilter).chain(
+                     new InferenceHandler(FilteringBase2Handler));
+        expect(handler.handle(bar)).to.be.true;
+        expect(bar.handled).to.equal(2);
+        expect(bar.filters.length).to.equal(4);
+        const filters = bar.filters;
+        expect(filters[0]).to.be.instanceOf(LogFilter);
+        expect(filters[1]).to.be.instanceOf(ExceptionFilter);
+        expect(filters[2]).to.be.instanceOf(FilteringBase2Handler);
+        expect(filters[3]).to.be.instanceOf(NullFilter);
+    });
+
     it("should abort pipeline", () => {
         const bar = new Bar().extend({ handled: 100 });
         expect(handler.handle(bar)).to.be.true;
@@ -307,7 +360,7 @@ describe("Filter", () => {
     it("should reject filter if missing dependencies", () => {
         const bar        = new Bar(),
               BadHandler = @provides class {
-                  @log
+                  @logs
                   handleBar(bar) {}
               };
         handler = new StaticHandler(BadHandler, LogFilter)
@@ -319,14 +372,72 @@ describe("Filter", () => {
 describe("SingletonLifestyle", () => {
   let handler;
     beforeEach(() => {
-        handler = new StaticHandler(ApplicationBase);
+        handler = new StaticHandler(Application);
     });
 
-    it("should create singleton instances", () => {
-        const app = handler.resolve(ApplicationBase);
-        expect(app).to.be.instanceOf(ApplicationBase);
-        expect(app).to.equal(handler.resolve(ApplicationBase));
+    it("should create singleton instances", async () => {
+        const app = await handler.resolve(Application);
+        expect(app).to.be.instanceOf(Application);
+        expect(app).to.equal(await handler.resolve(Application));
+    });
+
+    it("should create singleton base2 instances", () => {
+        const Application2 = Base.extend({
+                  @provides() @singleton
+                  constructor() {
+                  }
+              }),
+              handler = new StaticHandler(Application2),
+              app     = handler.resolve(Application2);
+        expect(app).to.be.instanceOf(Application2);
+        expect(app).to.equal(handler.resolve(Application2));
     });    
+});
+
+describe("Initializer", () => {
+  let handler;
+    beforeEach(() => {
+        handler = new StaticHandler(Application);
+    });
+
+    it("should initialize singleton instances", async () => {
+        const app = await handler.resolve(Application);
+        expect(app).to.be.instanceOf(Application);
+        expect(app).to.equal(await handler.resolve(Application));
+        expect(app.initialized).to.equal(10);
+    });
+
+    it("should initialize singleton base2 instances", async () => {
+        const Application2 = Base.extend({
+                  @provides() @singleton
+                  constructor() {
+                  },
+                  
+                  initialized: 0,
+
+                  @initialize
+                  initialize1() {
+                      this.initialized = this.initialized + 1;
+                  },
+
+                  @initialize
+                  initialize2() {
+                      this.initialized = this.initialized * 10;
+                          return Promise.delay(10);
+                  }
+              }),
+              handler = new StaticHandler(Application2),
+              app     = await handler.resolve(Application2);
+        expect(app).to.be.instanceOf(Application2);
+        expect(app).to.equal(await handler.resolve(Application2));
+        expect(app.initialized).to.equal(10);
+    });
+
+    it("should fail if calling initializer directly", () => {
+        expect(() => {
+            new Application().initialize1();
+        }).to.throw(Error, "An @initialize method cannot be called directly."); 
+    });   
 });
 
 function extractCapture(callback) {

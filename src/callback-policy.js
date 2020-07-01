@@ -7,6 +7,7 @@ import {
 
 import HandlerDescriptor from "./handler-descriptor";
 import FilteredObject from "./filters/filtered-object";
+import initialize from "./initializer";
 
 const _ = createKey();
 
@@ -120,7 +121,8 @@ export class CallbackPolicy extends FilteredObject {
     static createDecorator(name, allowGets, filter) {
         const policy = new this(name);
         function decorator(...args) {
-            return decorate(registerHandlers(name, policy, allowGets, filter), args);
+            return decorate(registerHandlers(
+                name, policy, allowGets, filter), args);
         }
         decorator.policy     = policy;
         decorator.addHandler = function (...args) {
@@ -227,10 +229,10 @@ function validateComparer(binding, otherBinding) {
 /**
  * Registers methods and properties as handlers.
  * @method registerHandlers
- * @param  {String}         name         - policy name
- * @param  {CallbackPolicy} policy       - the policy
- * @param  {Object}         [allowGets]  - true to allow property handlers
- * @param  {Function}       [filter]     - optional callback filter
+ * @param  {String}         name          -  policy name
+ * @param  {CallbackPolicy} policy        -  the policy
+ * @param  {Object}         [allowGets]   -  true to allow property handlers
+ * @param  {Function}       [filter]      -  optional callback filter
  */
 function registerHandlers(name, policy, allowGets, filter) {
     if ($isNothing(policy)) {

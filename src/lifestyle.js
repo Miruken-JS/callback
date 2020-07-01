@@ -16,7 +16,7 @@ export class Lifestyle {
         }
     }
 
-    get order() { return Number.MAX_SAFE_INTEGER - 100; }
+    get order() { return Number.MAX_SAFE_INTEGER - 1000; }
 
     next(callback, context) {
         if (!(callback instanceof Inquiry)) {
