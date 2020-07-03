@@ -1,5 +1,6 @@
 import { 
-    conformsTo, $isNothing, $isFunction
+    emptyArray, conformsTo, $isNothing,
+    $isFunction, createKey
 } from "miruken-core";
 
 import Inquiry from "./inquiry";
@@ -7,6 +8,8 @@ import Inquiry from "./inquiry";
 import { 
     Filtering, FilteringProvider
 } from "./filters/filtering";
+
+const _ = createKey();
 
 @conformsTo(Filtering)
 export class Lifestyle {
@@ -25,7 +28,7 @@ export class Lifestyle {
         const parent       = callback.parent,
               isCompatible = this.isCompatibleWithParent;
         if ($isNothing(parent) || !$isFunction(isCompatible) ||
-            isCompatible.call(this, parent)) {
+            isCompatible.call(this, parent, context)) {
             const getInstance = this.getInstance;
             if ($isFunction(getInstance)) {
                 try {
@@ -44,9 +47,20 @@ export class Lifestyle {
 
 @conformsTo(FilteringProvider)
 export class LifestyleProvider {
+    constructor(lifestyle) {
+        if ($isNothing(lifestyle)) {
+            throw new Error("The lifestyle argument is required.")
+        }
+        _(this).lifestyle = [lifestyle];
+    }
+
     get required() { return true; }
 
     appliesTo(callback) {
         return callback instanceof Inquiry;
+    }
+
+    getFilters(binding, callback, composer) {
+        return _(this).lifestyle;
     }
 }

@@ -16,9 +16,9 @@ export class SingletonLifestyle extends Lifestyle {
         if ($isNothing(instance)) {
             instance = _(this).instance = next();
             if ($isPromise(instance)) {
-                instance
-                .then(result => _(this).instance = result)
-                .catch(() => _(this).instance = null);
+                _(this).instance = instance = instance
+                    .then(result => _(this).instance = result)
+                    .catch(() => _(this).instance = null);
             }
         }
         return instance;
@@ -27,12 +27,7 @@ export class SingletonLifestyle extends Lifestyle {
 
 export class SingletonLifestyleProvider extends LifestyleProvider {
     constructor() {
-        super();
-        _(this).lifestyle = [new SingletonLifestyle()];
-    }
-
-    getFilters(binding, callback, composer) {
-        return _(this).lifestyle;
+        super(new SingletonLifestyle());
     }
 }
 

@@ -243,7 +243,7 @@ function registerHandlers(name, policy, allowGets, filter) {
         // can't.  Therefore, we must allow decorators on classes too.
         if (!isDescriptor(descriptor)) {
             if (key && key.length > 0) {
-                throw new SyntaxError(`@${name} expects no arguments if applied to a constructor.`);
+                throw new SyntaxError(`@${name} expects no arguments if applied to a class.`);
             }
             policy.addHandler(target, target, instantiate, "constructor");
             return;

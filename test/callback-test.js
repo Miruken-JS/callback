@@ -1441,10 +1441,27 @@ describe("Handler", () => {
             expect(car.engine).to.be.instanceOf(V12);             
         });
 
-        it("should reject provides with arguments on base2 constructor", () => {
+        it("should reject provides with arguments on class", () => {
             expect(() => {
                 const Car     = Protocol.extend(),
                       Ferarri = @conformsTo(Car) @provides(Car) class {}; 
+            }).to.throw(SyntaxError, "@provides expects no arguments if applied to a class.");     
+        });
+
+        it("should reject provides with arguments on base2 class", () => {
+            expect(() => {
+                const Car     = Protocol.extend(),
+                      Ferarri = Base.extend(provides(Car), Car);
+            }).to.throw(SyntaxError, "@provides expects no arguments if applied to a class."); 
+        });
+
+        it("should reject provides with arguments on base2 constructor", () => {
+            expect(() => {
+                const Car     = Protocol.extend(),
+                      Ferarri = Base.extend(Car, {
+                          @provides(Car)
+                          constructor() {}
+                      });
             }).to.throw(SyntaxError, "@provides expects no arguments if applied to a constructor.");     
         });
 
