@@ -241,8 +241,8 @@ function registerHandlers(name, policy, allowGets, filter) {
     return (target, key, descriptor, constraints) => {
         // Base2 classes can have constructor decorators, but real classes
         // can't.  Therefore, we must allow decorators on classes too.
-        if (!isDescriptor(descriptor)) {
-            if (key && key.length > 0) {
+        if ($isNothing(descriptor)) {
+            if (constraints.length > 0) {
                 throw new SyntaxError(`@${name} expects no arguments if applied to a class.`);
             }
             policy.addHandler(target, target, instantiate, "constructor");

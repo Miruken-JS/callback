@@ -167,7 +167,7 @@ const aborting = createFilterSpecDecorator(new FilterSpec(AbortFilter, true));
     }
 }
 
-@provides() @singleton class Application {
+@provides() @singleton() class Application {
     initialized = 0
 
     @initialize
@@ -383,7 +383,7 @@ describe("SingletonLifestyle", () => {
 
     it("should create singleton base2 instances", () => {
         const Application2 = Base.extend({
-                  @provides() @singleton
+                  @provides @singleton
                   constructor() {
                   }
               }),
@@ -409,7 +409,7 @@ describe("Initializer", () => {
 
     it("should initialize singleton base2 instances", async () => {
         const Application2 = Base.extend({
-                  @provides() @singleton
+                  @provides @singleton
                   constructor() {
                   },
                   

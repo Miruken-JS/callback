@@ -1,5 +1,5 @@
 import {
-     Metadata, isDescriptor, $isNothing, $isFunction
+     Metadata, $isNothing, $isFunction
 } from "miruken-core";
 
 import FilterSpec from "./filter-spec";
@@ -16,14 +16,14 @@ export function createFilterDecorator(createFilterProvider) {
     return Metadata.decorator(filterMetadataKey, (target, key, descriptor, args) => {
         const provider = createFilterProvider(target, key, descriptor, args);
         if ($isNothing(provider)) return;
-        if (!isDescriptor(descriptor)) {     
+        if ($isNothing(descriptor)) {
             const filters = filter.getOrCreateOwn(target, "constructor", () => new FilteredObject());
             filter.getOrCreateOwn(target.prototype, "constructor", () => filters);
             filters.addFilters(provider);
-            return;
+        } else {
+            const filters = filter.getOrCreateOwn(target, key, () => new FilteredObject());
+            filters.addFilters(provider);
         }
-        const filters = filter.getOrCreateOwn(target, key, () => new FilteredObject());
-        filters.addFilters(provider);
     });
 }
 
@@ -57,12 +57,12 @@ export const skipFilters = Metadata.decorator(skipFilterMetadataKey,
         if (args.length > 0) {
             throw new SyntaxError("@skipFilters expects no arguments.");
         }
-        if (!isDescriptor(descriptor)) {     
+        if ($isNothing(descriptor)) {
             skipFilters.getOrCreateOwn(target, "constructor", () => true),
             skipFilters.getOrCreateOwn(target.prototype, "constructor", () => true);
-            return;
+        } else {
+            skipFilters.getOrCreateOwn(target, key, () => true);
         }
-        skipFilters.getOrCreateOwn(target, key, () => true);
     });
 
 export default filter;
