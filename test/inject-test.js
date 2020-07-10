@@ -1,10 +1,10 @@
 import { 
     Base, Protocol, conformsTo,
-    disposableMixin, all, optional,
+    disposable, all, optional,
     createKey
 } from "miruken-core";
 
-import { inject } from "../src/inject-resolver";
+import inject from "../src/inject";
 
 import { expect } from "chai";
 
@@ -63,7 +63,7 @@ class V12 {
     }
 }
 
-class RebuiltV12 extends disposableMixin(V12) {
+class RebuiltV12 extends disposable(V12) {
     constructor(
         @inject           horsepower,
         @inject           displacement,

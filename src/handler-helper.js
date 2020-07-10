@@ -16,6 +16,7 @@ import Handler from "./handler";
 import Composition  from "./composition";
 import CascadeHandler from "./cascade-handler";
 import CompositeHandler from "./composite-handler";
+import ConstraintBuilder from "./bindings/constraint-builder";
 
 import { 
     NotHandledError, RejectedError, TimeoutError
@@ -83,12 +84,13 @@ Handler.implement({
     /**
      * Resolves the key.
      * @method resolve
-     * @param   {Any}  key  -  key
+     * @param   {Any}       key            -  key
+     * @param   {Function}  [constraints]  -  optional constraints
      * @returns {Any}  resolved key.  Could be a promise.
      * @for Handler
      * @async
      */                                
-    resolve(key) {
+    resolve(key, constraints) {
         let inquiry;
         if (key instanceof Inquiry) {
             if (key.isMany) {
@@ -98,6 +100,7 @@ Handler.implement({
         } else {
             inquiry = new Inquiry(key);
         }
+        constraints?.(new ConstraintBuilder(inquiry));
         if (this.handle(inquiry, false)) {
             return inquiry.callbackResult;
         }
@@ -105,12 +108,13 @@ Handler.implement({
     /**
      * Resolves the key greedily.
      * @method resolveAll
-     * @param   {Any}   key  -  key
+     * @param   {Any}       key            -  key
+     * @param   {Function}  [constraints]  -  optional constraints
      * @returns {Array} resolved key.  Could be a promise.
      * @for Handler
      * @async
      */                                        
-    resolveAll(key) {
+    resolveAll(key, constraints) {
         let inquiry;
         if (key instanceof Inquiry) {
             if (!key.isMany) {
@@ -120,6 +124,7 @@ Handler.implement({
         } else {
             inquiry = new Inquiry(key, true);
         }
+        constraints?.(new ConstraintBuilder(inquiry));
         return this.handle(inquiry, true) ? inquiry.callbackResult : [];
     },    
     /**

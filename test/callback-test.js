@@ -15,7 +15,7 @@ import InferenceHandler from "../src/inference-handler";
 import HandleMethod from "../src/handle-method";
 import Batching from "../src/batch";
 import Options from "../src/options";
-import Binding from "../src/binding";
+import Binding from "../src/bindings/binding";
 
 import {
     CallbackPolicy, handles, provides,
@@ -29,7 +29,7 @@ import {
 } from "../src/errors";
 
 import KeyResolver from "../src/key-resolver";
-import { proxy } from "../src/proxy-resolver";
+import proxy from "../src/proxy";
 
 import "../src/handler-helper";
 import "../src/handler-options"

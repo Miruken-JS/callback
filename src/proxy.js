@@ -3,7 +3,7 @@ import {
     $createQualifier
 } from "miruken-core";
 
-import { KeyResolver } from "./key-resolver";
+import KeyResolver from "./key-resolver";
 
 export const $proxy = $createQualifier();
 
@@ -29,4 +29,4 @@ export const proxy = createTypeInfoDecorator((key, typeInfo, [type]) => {
     }
 }); 
 
-export default ProxyResolver;
+export default proxy;

@@ -6,7 +6,7 @@ import {
     assignID, pcopy, createKey
 } from "miruken-core";
 
-import Binding from "./binding";
+import Binding from "./bindings/binding";
 import Inquiry from "./inquiry";
 import KeyResolver from "./key-resolver";
 import Filtering from "./filters/filtering";
@@ -263,8 +263,7 @@ function dispatch(policy, target, callback, rawCallback, constraint,
                             completed = false;
                         })(composer, true);
                     }
-                    if (!completed) continue;
-                    if (policy.acceptResult(result)) {
+                    if (completed && policy.acceptResult(result)) {
                         if (!results || results(result, composer) !== false) {
                             if (!all) return true;
                             dispatched = true;

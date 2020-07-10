@@ -28,4 +28,4 @@ export const inject = createTypeInfoDecorator((key, typeInfo, [actualKey]) => {
     typeInfo.keyResolver = new InjectResolver(actualKey || key);
 });
 
-export default InjectResolver;
+export default inject;

@@ -5,8 +5,10 @@ import {
     $flatten, createKeyChain
 } from "miruken-core";
 
-import Binding from "./binding";
 import CallbackControl from "./callback-control";
+import Binding from "./bindings/binding";
+import BindingScope from "./bindings/binding-scope";
+import BindingMetadata from "./bindings/binding-metadata";
 import { provides } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -20,7 +22,7 @@ const _ = createKeyChain();
  * @param   {Inquiry}  parent -  parent inquiry
  * @extends Base
  */
-@conformsTo(CallbackControl)
+@conformsTo(CallbackControl, BindingScope)
 export class Inquiry extends Base {
     constructor(key, many, parent) {
         if ($isNothing(key)) {
@@ -42,13 +44,15 @@ export class Inquiry extends Base {
         _this.resolutions = [];
         _this.promises    = [];
         _this.instant     = $instant.test(key);
+        _this.metadata    = new BindingMetadata();
     }
 
     get key()            { return _(this).key; }   
     get isMany()         { return _(this).many; }
     get parent()         { return _(this).parent; }
     get handler()        { return _(this).handler; }
-    get binding()        { return _(this).binding; }        
+    get binding()        { return _(this).binding; }
+    get metadata()       { return _(this).metadata; }    
     get resolutions()    { return _(this).resolutions; }
     get callbackPolicy() { return provides.policy; }    
     get callbackResult() {
@@ -108,11 +112,13 @@ export class Inquiry extends Base {
     }
 
     dispatch(handler, greedy, composer) {
-        // check if handler implicitly satisfies key
-        const implied = Binding.create(this.key);
-        if (implied.match($classOf(handler), Variance.Contravariant)) {
-            resolved = this.resolve(handler, composer);
-            if (resolved && !greedy) return true;
+        if (_(this).metadata.isEmpty) {
+            // check if handler implicitly satisfies key
+            const implied = Binding.create(this.key);
+            if (implied.match($classOf(handler), Variance.Contravariant)) {
+                resolved = this.resolve(handler, composer);
+                if (resolved && !greedy) return true;
+            }
         }
         const resolutions = this.resolutions,
               promises    = _(this).promises,

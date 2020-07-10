@@ -7,7 +7,6 @@ import {
 
 import HandlerDescriptor from "./handler-descriptor";
 import FilteredObject from "./filters/filtered-object";
-import initialize from "./initializer";
 
 const _ = createKey();
 

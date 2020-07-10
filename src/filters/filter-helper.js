@@ -2,7 +2,7 @@ import {
     emptyArray, $isFunction, $isNothing
 } from "miruken-core";
 
-import Binding from "../binding";
+import Binding from "../bindings/binding";
 import Handler from "../handler";
 import { provides } from "../callback-policy";
 import FilterInstanceProvider from "./filter-instance-provider";

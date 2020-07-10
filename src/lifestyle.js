@@ -22,9 +22,6 @@ export class Lifestyle {
     get order() { return Number.MAX_SAFE_INTEGER - 1000; }
 
     next(callback, context) {
-        if (!(callback instanceof Inquiry)) {
-            return context.abort();
-        }
         const parent       = callback.parent,
               isCompatible = this.isCompatibleWithParent;
         if ($isNothing(parent) || !$isFunction(isCompatible) ||
@@ -49,7 +46,10 @@ export class Lifestyle {
 export class LifestyleProvider {
     constructor(lifestyle) {
         if ($isNothing(lifestyle)) {
-            throw new Error("The lifestyle argument is required.")
+            throw new Error("The lifestyle argument is required.");
+        }
+        if (!(lifestyle instanceof Lifestyle)) {
+            throw new TypeError("The lifestyle argument is not a Lifestyle.");
         }
         _(this).lifestyle = [lifestyle];
     }
