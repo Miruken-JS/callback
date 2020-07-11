@@ -9,7 +9,6 @@ import {
 
 import Command from "../src/command";
 import Handler from "../src/handler"
-import StaticHandler from "../src/static-handler";
 import InferenceHandler from "../src/inference-handler";
 import Filtering from "../src/filters/filtering";
 import FilteredObject from "../src/filters/filtered-object";
@@ -268,7 +267,7 @@ describe("FilteredObject", () => {
 describe("Filter", () => {
     let handler;
     beforeEach(() => {
-        handler = new StaticHandler(
+        handler = new InferenceHandler(
             FilteringHandler, SpecialFilteringHandler,
             LogFilter, ConsoleLogger, ExceptionFilter,
             AbortFilter, NullFilter).chain(new InferenceHandler(
@@ -312,11 +311,10 @@ describe("Filter", () => {
                       return next();
                   }
               }),
-              handler = new StaticHandler(
-                 FilteringBase2Handler,
-                 LogFilter, ConsoleLogger, ExceptionFilter,
-                 AbortFilter, NullFilter).chain(
-                     new InferenceHandler(FilteringBase2Handler));
+              handler = new InferenceHandler(
+                 FilteringBase2Handler, LogFilter,
+                 ConsoleLogger, ExceptionFilter,
+                 AbortFilter, NullFilter);
         expect(handler.handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);
         expect(bar.filters.length).to.equal(4);
@@ -363,8 +361,7 @@ describe("Filter", () => {
                   @logs
                   handleBar(bar) {}
               };
-        handler = new StaticHandler(BadHandler, LogFilter)
-            .chain(new InferenceHandler(BadHandler));
+        handler = new InferenceHandler(BadHandler, LogFilter);
         expect(handler.handle(bar)).to.be.false;
     });  
 });
@@ -372,7 +369,7 @@ describe("Filter", () => {
 describe("SingletonLifestyle", () => {
   let handler;
     beforeEach(() => {
-        handler = new StaticHandler(Application);
+        handler = new InferenceHandler(Application);
     });
 
     it("should create singleton instances", async () => {
@@ -387,7 +384,7 @@ describe("SingletonLifestyle", () => {
                   constructor() {
                   }
               }),
-              handler = new StaticHandler(Application2),
+              handler = new InferenceHandler(Application2),
               app     = handler.resolve(Application2);
         expect(app).to.be.instanceOf(Application2);
         expect(app).to.equal(handler.resolve(Application2));
@@ -397,7 +394,7 @@ describe("SingletonLifestyle", () => {
 describe("Initializer", () => {
   let handler;
     beforeEach(() => {
-        handler = new StaticHandler(Application);
+        handler = new InferenceHandler(Application);
     });
 
     it("should initialize singleton instances", async () => {
@@ -426,7 +423,7 @@ describe("Initializer", () => {
                           return Promise.delay(10);
                   }
               }),
-              handler = new StaticHandler(Application2),
+              handler = new InferenceHandler(Application2),
               app     = await handler.resolve(Application2);
         expect(app).to.be.instanceOf(Application2);
         expect(app).to.equal(await handler.resolve(Application2));

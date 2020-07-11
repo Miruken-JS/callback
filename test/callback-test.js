@@ -10,7 +10,6 @@ import {
 import { Handler, $composer } from "../src/handler";
 import CascadeHandler from "../src/cascade-handler";
 import CompositeHandler from "../src/composite-handler";
-import StaticHandler from "../src/static-handler";
 import InferenceHandler from "../src/inference-handler";
 import HandleMethod from "../src/handle-method";
 import Batching from "../src/batch";
@@ -360,7 +359,7 @@ describe("Policies", () => {
                       }
                   }),
                   countMoney = new CountMoney();
-            expect(new StaticHandler(Cashier).handle(countMoney)).to.be.true;
+            expect(new InferenceHandler(Cashier).handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(1000);
         });
 
@@ -384,7 +383,7 @@ describe("Policies", () => {
                 }
             }
             const countMoney = new CountMoney();
-            expect(new StaticHandler(Cashier).handle(countMoney)).to.be.true;
+            expect(new InferenceHandler(Cashier).handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(3500);
         });
 
@@ -1421,7 +1420,7 @@ describe("Handler", () => {
         it("should resolve base2 constructor", () => {
             const Car     = Protocol.extend(),
                   Ferarri = @conformsTo(Car) @provides() class {},          
-                  handler = new StaticHandler(Ferarri),
+                  handler = new InferenceHandler(Ferarri),
                   car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);               
         });
@@ -1435,7 +1434,7 @@ describe("Handler", () => {
                           this.engine = engine;
                       }
                   },          
-                  handler = new StaticHandler(Ferarri, V12),
+                  handler = new InferenceHandler(Ferarri, V12),
                   car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);
             expect(car.engine).to.be.instanceOf(V12);             
@@ -1471,7 +1470,7 @@ describe("Handler", () => {
             @provides() class Ferarri {  
                 constructor() {}
             };
-            const handler = new StaticHandler(Ferarri),  
+            const handler = new InferenceHandler(Ferarri),  
                   car     = handler.resolve(Car);  
             expect(car).to.be.instanceOf(Ferarri);      
         });
@@ -1680,8 +1679,7 @@ describe("Handler", () => {
                       @provides(Cashier)
                       cashier() { return cashier; }
                   },
-                  handler = new StaticHandler(Inventory)
-                     .chain(new InferenceHandler(Inventory));
+                  handler = new InferenceHandler(Inventory);
             expect(handler.resolve(Cashier)).to.equal(cashier);
         });
 
@@ -1691,8 +1689,7 @@ describe("Handler", () => {
                       @provides(Cashier)
                       cashier() { return Promise.resolve(cashier); }
                   },
-                  handler = new StaticHandler(Inventory)
-                     .chain(new InferenceHandler(Inventory));
+                  handler = new InferenceHandler(Inventory);
             Promise.resolve(handler.resolve(Cashier)).then(result => {
                 expect(result).to.equal(cashier);
                 done();
@@ -1704,8 +1701,7 @@ describe("Handler", () => {
                       @provides(Cashier)
                       cashier() {}
                   },
-                  handler = new StaticHandler(Inventory)
-                    .chain(new InferenceHandler(Inventory));
+                  handler = new InferenceHandler(Inventory);
             expect(handler.resolve(Cashier)).to.be.undefined;   
         });
 
@@ -1716,8 +1712,7 @@ describe("Handler", () => {
                           return Promise.reject("Cashier is sick");
                       }
                   },
-                  handler = new StaticHandler(Inventory)
-                     .chain(new InferenceHandler(Inventory));
+                  handler = new InferenceHandler(Inventory);
             Promise.resolve(handler.resolve(Cashier)).then(result => {
                 expect(result).to.be.undefined;  
                 done();
