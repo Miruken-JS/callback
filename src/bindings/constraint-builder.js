@@ -1,5 +1,6 @@
 import { 
-    $isNothing, $isString, createKey
+    $isNothing, $isFunction, $isString,
+    createKey
 }
  from "miruken-core";
 import BindingMetadata from "./binding-metadata";
@@ -24,7 +25,7 @@ export class ConstraintBuilder {
     }
 
     named(name) {
-        return require(new NamedConstraint(name));
+        return this.require(new NamedConstraint(name));
     }
 
     require(...args) {
@@ -46,8 +47,15 @@ export class ConstraintBuilder {
                 arg.require(metadata);
                 return this;
             }
+            if ($isFunction(arg)) {
+                const constranint = arg();
+                if (constranint instanceof BindingConstraint) {
+                    constranint.require(metadata);
+                    return this;
+                }
+            }
         }
-        throw new Error("require expects a key/value, BindingMetadata or BindingConstraint.");
+        throw new Error("require expects a key/value, BindingMetadata, BindingConstraint or constraint decorator.");
     }
 
     build() { return _(this).metadata; }

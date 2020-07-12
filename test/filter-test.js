@@ -270,9 +270,7 @@ describe("Filter", () => {
         handler = new InferenceHandler(
             FilteringHandler, SpecialFilteringHandler,
             LogFilter, ConsoleLogger, ExceptionFilter,
-            AbortFilter, NullFilter).chain(new InferenceHandler(
-                FilteringHandler,
-                SpecialFilteringHandler));
+            AbortFilter, NullFilter);
     });
 
     it("should create filters", () => {

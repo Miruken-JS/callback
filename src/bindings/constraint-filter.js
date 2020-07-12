@@ -7,6 +7,7 @@ import Filtering from "../filters/filtering";
 import Stage from "../stage";
 
 import BindingMetadata from "./binding-metadata";
+import BindingConstraint from "./binding-constraint";
 
 const _ = createKey();
 
@@ -20,9 +21,11 @@ export class ConstraintFilter {
         }
         const metadata = callback.metadata;
         return !(metadata == null ||
-            provider.constraint.Matches(metadata)) ? abort() : next();
+            provider.constraint.matches(metadata)) ? abort() : next();
     }
 }
+
+const constraintFilter = [new ConstraintFilter()];
 
 @conformsTo(FilteringProvider)
 export class ConstraintProvider {
@@ -33,7 +36,7 @@ export class ConstraintProvider {
         if (!(constraint instanceof BindingConstraint)) {
             throw new TypeError("The constraint argument is not a BindingConstraint.");
         }        
-        _(this).constraint = [constraint];
+        _(this).constraint = constraint;
     }
 
     get required() { return true; }
@@ -45,7 +48,7 @@ export class ConstraintProvider {
     }
 
     getFilters(binding, callback, composer) {
-        return this.constraint;
+        return constraintFilter;
     }
 }
 

@@ -21,11 +21,11 @@ export class KeyResolver extends Base {
     }
 
     resolveKey(inquiry, typeInfo, handler) {
-        return handler.resolve(inquiry);
+        return handler.resolve(inquiry, typeInfo.constraints);
     }
 
     resolveKeyAll(inquiry, typeInfo, handler) {
-        return handler.resolveAll(inquiry);
+        return handler.resolveAll(inquiry, typeInfo.constraints);
     }
 }
 

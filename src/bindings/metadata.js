@@ -29,7 +29,8 @@ export class MetadataKeyConstraint extends BindingConstraint {
         if ($isNothing(metadata)) {
             throw new Error("The metadata argument is required.");
         }
-        return metadata.has(_key) && metadata.get(_key) === value;
+        const { key, value } = _(this); 
+        return metadata.has(key) && metadata.get(key) === value;
     }
 }
 
@@ -64,12 +65,11 @@ export class MetadataConstraint extends BindingConstraint {
     }
 }
 
-export const metadata = createConstraintDecorator(
-    (target, key, descriptor, args) => {
-        if (args.length === 2 && $isString(args[0])) {
-            return new MetadataKeyConstraint(args[0], args[1])
-        }
-        return new MetadataConstraint(...args);
-    });
+export const metadata = createConstraintDecorator((...args) => {
+    if (args.length === 2 && $isString(args[0])) {
+        return new MetadataKeyConstraint(args[0], args[1])
+    }
+    return new MetadataConstraint(...args);
+});
 
 export default metadata;

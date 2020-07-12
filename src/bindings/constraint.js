@@ -5,6 +5,7 @@ import {
 } from "miruken-core";
 
 import { createFilterDecorator } from "../filters/filter";
+import { ConstraintProvider } from "../bindings/constraint-filter";
 import BindingConstraint from "./binding-constraint";
 
 export function createConstraintDecorator(createConstraint) {
@@ -12,17 +13,26 @@ export function createConstraintDecorator(createConstraint) {
         throw new Error("The createConstraint argument must be a function.")
     }
     return function (target, key, descriptorOrIndex) {
-        if (isDescriptor(descriptorOrIndex)) {
-            createConstraintFilter(target, key, descriptorOrIndex, emptyArray);
-        } else if (typeof key == "string" && typeof descriptorOrIndex == "number") {
-            createConstrainedArgument(target, key, descriptorOrIndex, emptyArray);
+        if (arguments.length === 0) { // ConstraintBuilder
+            return createConstraint();
+        }
+        if (isDescriptor(descriptorOrIndex)) /* member */ {
+            createConstraintFilter(createConstraint, target, key, descriptorOrIndex, emptyArray);
+        } else if (target != null && (key == null || typeof key == "string") &&
+                       typeof descriptorOrIndex == "number") /* parameter */ {
+            createConstrainedArgument(createConstraint, target, key, descriptorOrIndex, emptyArray);
         } else {
             const args = [...arguments];
             return function (target, key, descriptorOrIndex) {
-                if (isDescriptor(descriptorOrIndex)) {
-                    createConstraintFilter(target, key, descriptorOrIndex, args);
-                } else if (typeof key == "string" && typeof descriptorOrIndex == "number") {
-                    createConstrainedArgument(target, key, descriptorOrIndex, args);
+                if (arguments.length === 0) { // ConstraintBuilder
+                    return createConstraint(...args);
+                }
+                if ((key == null && descriptorOrIndex == null) /* class */ ||
+                     isDescriptor(descriptorOrIndex)) /* member */ {
+                    createConstraintFilter(createConstraint, target, key, descriptorOrIndex, args);
+                } else  if (target != null && (key == null || typeof key == "string") &&
+                            typeof descriptorOrIndex == "number") /* parameter */ {
+                    createConstrainedArgument(createConstraint, target, key, descriptorOrIndex, args);
                 } else {
                     throw new SyntaxError("Constraints can be applied to classes, methods and arguments.");
                 }
@@ -31,17 +41,20 @@ export function createConstraintDecorator(createConstraint) {
     };
 }
 
-function createConstraintFilter(target, key, descriptor, args) {
-    createFilterDecorator((target, key, descriptor) => {
+function createConstraintFilter(createConstraint, target, key, descriptor, args) {
+    const decorator = createFilterDecorator((target, key, descriptor) => {
         const constraint = createConstraint(...args);
         if (!(constraint instanceof BindingConstraint)) {
             throw new SyntaxError("The createConstraint function did not return a BindingConstraint.");
         }
         return new ConstraintProvider(constraint);
-    })(target, key, descriptor);
+    });
+    return descriptor == null /* class */
+         ? decorator(args)(target, key, descriptor)
+         : decorator(target, key, descriptor);
 }
 
-function createConstrainedArgument(target, key, parameterIndex, args) {
+function createConstrainedArgument(createConstraint, target, key, parameterIndex, args) {
     createTypeInfoDecorator((key, typeInfo) => {
         const constraint = createConstraint(...args);
         if (!(constraint instanceof BindingConstraint)) {
@@ -51,7 +64,6 @@ function createConstrainedArgument(target, key, parameterIndex, args) {
     })(target, key, parameterIndex);
 }
 
-export const constraint = createConstraintDecorator(
-     (target, key, descriptor, [constraint]) => constraint);
+export const constraint = createConstraintDecorator(constraint => constraint);
 
 export default constraint;

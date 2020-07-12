@@ -31,7 +31,6 @@ export class NamedConstraint extends BindingConstraint {
     }
 }
 
-export const named = createConstraintDecorator(
-     (target, key, descriptor, [name]) => new NamedConstraint(name));
+export const named = createConstraintDecorator(name => new NamedConstraint(name));
 
 export default named;
