@@ -3,11 +3,11 @@ import {
 } from "miruken-core";
 
 import { FilteringProvider } from "../filters/filtering";
-import Filtering from "../filters/filtering";
-import Stage from "../stage";
+import { Filtering } from "../filters/filtering";
+import { Stage } from "../stage";
 
-import BindingMetadata from "./binding-metadata";
-import BindingConstraint from "./binding-constraint";
+import { BindingMetadata } from "./binding-metadata";
+import { BindingConstraint } from "./binding-constraint";
 
 const _ = createKey();
 
@@ -52,4 +52,3 @@ export class ConstraintProvider {
     }
 }
 
-export default ConstraintFilter;

@@ -1,4 +1,4 @@
-import Options from "../options";
+import { Options } from "../options";
 import { FilteringProvider } from "./filtering";
 
 /**
@@ -20,4 +20,3 @@ export class FilterOptions extends Options {
      }
 }
 
-export default FilterOptions;

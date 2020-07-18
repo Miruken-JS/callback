@@ -3,7 +3,7 @@ import {
     $isFunction, createKey
 } from "miruken-core";
 
-import Inquiry from "./inquiry";
+import { Inquiry } from "./inquiry";
 
 import { 
     Filtering, FilteringProvider

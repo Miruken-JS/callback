@@ -28,4 +28,3 @@ export const Stage = Enum({
     Validation: 50
 });
 
-export default Stage;

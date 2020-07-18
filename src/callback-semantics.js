@@ -1,6 +1,6 @@
 import { Flags, createKeyChain } from "miruken-core";
-import Handler from "./handler";
-import Composition from "./composition";
+import { Handler } from "./handler";
+import { Composition } from "./composition";
 import { NotHandledError, RejectedError } from "./errors";
 
 const _ = createKeyChain();

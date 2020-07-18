@@ -96,4 +96,3 @@ function mapResult(block, handleResult) {
          : (result ? HandleResult.Handled : HandleResult.NotHandled);
 }
 
-export default HandleResult;

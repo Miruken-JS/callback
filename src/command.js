@@ -3,7 +3,7 @@ import {
     $isPromise, conformsTo, createKeyChain
 } from "miruken-core";
 
-import CallbackControl from "./callback-control";
+import { CallbackControl } from "./callback-control";
 import { handles } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -94,5 +94,3 @@ export class Command extends Base {
         return `Command ${this.isMany ? "many ": ""}| ${this.callback}`;
     }  
 }
-
-export default Command;

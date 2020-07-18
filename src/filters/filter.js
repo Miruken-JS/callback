@@ -2,9 +2,9 @@ import {
      Metadata, $isNothing, $isFunction
 } from "miruken-core";
 
-import FilterSpec from "./filter-spec";
-import FilterSpecProvider from "./filter-spec-provider";
-import FilteredObject from "./filtered-object";
+import { FilterSpec } from "./filter-spec";
+import { FilterSpecProvider } from "./filter-spec-provider";
+import { FilteredObject } from "./filtered-object";
 
 const filterMetadataKey     = Symbol("filter-metadata"),
       skipFilterMetadataKey = Symbol("skipFilter-metadata");
@@ -65,5 +65,4 @@ export const skipFilters = Metadata.decorator(skipFilterMetadataKey,
         }
     });
 
-export default filter;
 

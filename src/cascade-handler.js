@@ -1,5 +1,5 @@
 import { $isNothing } from "miruken-core";
-import Handler from "./handler";
+import { Handler } from "./handler";
 
 /**
  * Represents a two-way
@@ -39,5 +39,3 @@ export class CascadeHandler extends Handler {
                || this.cascadeToHandler.handle(callback, false, composer)));
     }
 }
-
-export default CascadeHandler;

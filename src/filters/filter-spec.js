@@ -22,4 +22,3 @@ export class FilterSpec {
     get order() { return _(this).order; }
 }
 
-export default FilterSpec;

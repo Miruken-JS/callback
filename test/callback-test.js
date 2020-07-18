@@ -8,13 +8,13 @@ import {
 } from "miruken-core";
 
 import { Handler, $composer } from "../src/handler";
-import CascadeHandler from "../src/cascade-handler";
-import CompositeHandler from "../src/composite-handler";
-import InferenceHandler from "../src/inference-handler";
-import HandleMethod from "../src/handle-method";
-import Batching from "../src/batch";
-import Options from "../src/options";
-import Binding from "../src/bindings/binding";
+import { CascadeHandler } from "../src/cascade-handler";
+import { CompositeHandler } from "../src/composite-handler";
+import { InferenceHandler } from "../src/inference-handler";
+import { HandleMethod } from "../src/handle-method";
+import { Batching } from "../src/batch";
+import { Options } from "../src/options";
+import { Binding } from "../src/bindings/binding";
 
 import {
     CallbackPolicy, handles, provides,
@@ -27,8 +27,8 @@ import {
     RejectedError, TimeoutError, NotHandledError
 } from "../src/errors";
 
-import KeyResolver from "../src/key-resolver";
-import proxy from "../src/proxy";
+import { KeyResolver } from "../src/key-resolver";
+import { proxy } from "../src/proxy";
 
 import "../src/handler-helper";
 import "../src/handler-options"

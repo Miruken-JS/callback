@@ -5,10 +5,10 @@ import {
     $flatten, createKeyChain
 } from "miruken-core";
 
-import CallbackControl from "./callback-control";
-import Binding from "./bindings/binding";
-import BindingScope from "./bindings/binding-scope";
-import BindingMetadata from "./bindings/binding-metadata";
+import { CallbackControl } from "./callback-control";
+import { Binding } from "./bindings/binding";
+import { BindingScope } from "./bindings/binding-scope";
+import { BindingMetadata } from "./bindings/binding-metadata";
 import { provides } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -159,5 +159,3 @@ function include(resolution, greedy, composer) {
     }
     return true;                             
 }
-
-export default Inquiry;

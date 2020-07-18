@@ -19,4 +19,3 @@ export class BindingConstraint {
     }
 }
 
-export default BindingConstraint;

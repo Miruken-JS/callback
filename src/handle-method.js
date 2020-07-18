@@ -4,9 +4,9 @@ import {
     createKeyChain
 } from "miruken-core";
 
-import Trampoline from "./trampoline";
-import Resolving from "./resolving";
-import CallbackControl from "./callback-control";
+import { Trampoline } from "./trampoline";
+import { Resolving } from "./resolving";
+import { CallbackControl } from "./callback-control";
 import { $unhandled } from "./callback-policy";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 import { NotHandledError } from "./errors";
@@ -162,4 +162,3 @@ class HandleMethodInference extends Trampoline {
     }
 }
 
-export default HandleMethod;

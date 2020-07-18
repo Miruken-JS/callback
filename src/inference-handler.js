@@ -3,9 +3,9 @@ import {
     $classOf, $isPromise
 } from "miruken-core";
 
-import HandlerDescriptor from "./handler-descriptor";
-import Handler from "./handler";
-import Resolving from "./resolving";
+import { HandlerDescriptor } from "./handler-descriptor";
+import { Handler } from "./handler";
+import { Resolving } from "./resolving";
 import { $unhandled } from "./callback-policy";
 import { NotHandledError } from "./errors";
 
@@ -72,4 +72,3 @@ function infer(callback, { binding, rawCallback, composer, results }) {
     }
 }
 
-export default InferenceHandler;

@@ -1,4 +1,4 @@
-import HandleResult from "../src/handle-result";
+import { HandleResult } from "../src/handle-result";
 import { expect } from "chai";
 
 describe("HandleResult.Handled follows or logic table", () => {

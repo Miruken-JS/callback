@@ -3,7 +3,7 @@ import {
     $isNothing, $isPromise, $optional
 } from "miruken-core";
 
-import KeyResolving from "./key-resolving";
+import { KeyResolving } from "./key-resolving";
 
 @conformsTo(KeyResolving)
 export class KeyResolver extends Base {
@@ -49,4 +49,3 @@ function resolveKeyInfer(inquiry, typeInfo, handler) {
     }
 }
 
-export default KeyResolver;

@@ -3,7 +3,7 @@ import {
     $compose2
 } from "miruken-core";
 
-import BindingConstraint from "./bindings/binding-constraint";
+import { BindingConstraint } from "./bindings/binding-constraint";
 
 export const KeyResolving = StrictProtocol.extend({
     validate(key, typeInfo) {},     
@@ -42,4 +42,3 @@ TypeInfo.implement({
     }
 });
 
-export default KeyResolving;

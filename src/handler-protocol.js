@@ -4,8 +4,8 @@ import {
     DuckTyping, $isPromise, createKeyChain
 } from "miruken-core";
 
-import Handler from "./handler";
-import HandleMethod from "./handle-method";
+import { Handler } from "./handler";
+import { HandleMethod } from "./handle-method";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
 import { NotHandledError } from "./errors";
 

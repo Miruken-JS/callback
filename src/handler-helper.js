@@ -3,20 +3,20 @@ import {
     $isPromise, $flatten, $decorate
 } from "miruken-core";
 
-import Command from "./command";
-import Lookup from "./lookup";
-import Inquiry from "./inquiry";
-import Creation from "./creation";
+import { Command } from "./command";
+import { Lookup } from "./lookup";
+import { Inquiry } from "./inquiry";
+import { Creation } from "./creation";
 
 import {
     handles, provides, looksup
 } from "./callback-policy";
 
-import Handler from "./handler";
-import Composition  from "./composition";
-import CascadeHandler from "./cascade-handler";
-import CompositeHandler from "./composite-handler";
-import ConstraintBuilder from "./bindings/constraint-builder";
+import { Handler } from "./handler";
+import { Composition } from "./composition";
+import { CascadeHandler } from "./cascade-handler";
+import { CompositeHandler } from "./composite-handler";
+import { ConstraintBuilder } from "./bindings/constraint-builder";
 
 import { 
     NotHandledError, RejectedError, TimeoutError

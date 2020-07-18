@@ -1,5 +1,5 @@
 import { $isNothing, createKey } from "miruken-core";
-import BindingConstraint from "./binding-constraint";
+import { BindingConstraint } from "./binding-constraint";
 import { createConstraintDecorator } from "./constraint";
 
 const _ = createKey();
@@ -32,5 +32,3 @@ export class NamedConstraint extends BindingConstraint {
 }
 
 export const named = createConstraintDecorator(name => new NamedConstraint(name));
-
-export default named;

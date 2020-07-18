@@ -4,7 +4,7 @@ import {
     $flatten, createKeyChain
 } from "miruken-core";
 
-import CallbackControl from "./callback-control";
+import { CallbackControl } from "./callback-control";
 import { looksup } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -99,5 +99,3 @@ function include(result, composer) {
     }
     return true;                             
 }
-
-export default Lookup;

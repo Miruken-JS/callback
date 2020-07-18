@@ -9,4 +9,3 @@ export const BindingScope = Protocol.extend({
     get metadata() {}
 });
 
-export default BindingScope;

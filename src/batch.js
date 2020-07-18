@@ -3,11 +3,11 @@ import {
     conformsTo, $isPromise, $flatten
 } from "miruken-core";
 
-import Inquiry from "./inquiry";
-import Handler from "./handler";
-import Composition from "./composition";
-import Trampoline from "./trampoline";
-import CompositeHandler from "./composite-handler";
+import { Inquiry } from "./inquiry";
+import { Handler } from "./handler";
+import { Composition } from "./composition";
+import { Trampoline } from "./trampoline";
+import { CompositeHandler } from "./composite-handler";
 import { provides } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -133,5 +133,3 @@ Handler.implement({
         }
     }  
 });
-
-export default Batching;

@@ -2,7 +2,7 @@ import {
     $isNothing, $isFunction, createKeyChain
 } from "miruken-core";
 
-import Inquiry from "./inquiry";
+import { Inquiry } from "./inquiry";
 import { CallbackPolicy } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -64,4 +64,3 @@ export class Resolving extends Inquiry {
     }     
 }
 
-export default Resolving;

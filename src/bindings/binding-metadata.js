@@ -45,5 +45,3 @@ export class BindingMetadata {
         }
     }
 }
-
-export default BindingMetadata;

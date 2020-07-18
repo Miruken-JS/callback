@@ -2,8 +2,8 @@ import {
     $isFunction, $isNothing, $isClass
 } from "miruken-core";
 
-import Handler from "./handler";
-import Options from "./options";
+import { Handler } from "./handler";
+import { Options } from "./options";
 import { handles } from "./callback-policy";
 
 /**

@@ -7,23 +7,24 @@ import {
     handles, provides, looksup, creates
 } from "../src/callback-policy";
 
-import Command from "../src/command";
-import Handler from "../src/handler"
-import InferenceHandler from "../src/inference-handler";
-import Filtering from "../src/filters/filtering";
-import FilteredObject from "../src/filters/filtered-object";
-import FilterInstanceProvider from "../src/filters/filter-instance-provider";
-import FilterOptions from "../src/filters/filter-options";
+import { Command } from "../src/command";
+import { Handler } from "../src/handler"
+import { InferenceHandler } from "../src/inference-handler";
+import { Filtering } from "../src/filters/filtering";
+import { FilteredObject } from "../src/filters/filtered-object";
+import { FilterInstanceProvider } from "../src/filters/filter-instance-provider";
+import { FilterOptions } from "../src/filters/filter-options";
 import { 
     filter, skipFilters,  createFilterSpecDecorator 
 } from "../src/filters/filter";
+import { FilterSpecProvider } from "../src/filters/filter-spec-provider";
+import { FilterSpec } from "../src/filters/filter-spec";
+import { singleton } from "../src/singleton-lifestyle";
+import { initialize } from "../src/initializer";
+
 import "../src/filters/filter-helper";
 
 import { expect } from "chai";
-import FilterSpecProvider from "../src/filters/filter-spec-provider";
-import FilterSpec from "../src/filters/filter-spec";
-import singleton from "../src/singleton-lifestyle";
-import initialize from "../src/initializer";
 
 class Capture extends Base {
     handled     = 0                                                                                                        

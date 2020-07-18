@@ -25,4 +25,3 @@ export class FilterInstanceProvider extends Base {
     }
 }
 
-export default FilterInstanceProvider;

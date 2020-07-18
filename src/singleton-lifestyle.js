@@ -34,4 +34,3 @@ export class SingletonLifestyleProvider extends LifestyleProvider {
 export const singleton = createFilterDecorator(
     () => new SingletonLifestyleProvider());
 
-export default singleton;

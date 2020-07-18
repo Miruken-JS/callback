@@ -29,4 +29,3 @@ export class FilterSpecProvider {
     }
 }
 
-export default FilterSpecProvider;

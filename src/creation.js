@@ -3,7 +3,7 @@ import {
     conformsTo, createKeyChain
 } from "miruken-core";
 
-import CallbackControl from "./callback-control";
+import { CallbackControl } from "./callback-control";
 import { creates } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -75,4 +75,3 @@ export class Creation extends Base {
     }  
 }
 
-export default Creation;

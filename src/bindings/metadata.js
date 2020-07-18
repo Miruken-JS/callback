@@ -2,7 +2,7 @@ import {
     $isNothing, $isString, createKey
 } from "miruken-core";
 
-import BindingConstraint from "./binding-constraint";
+import { BindingConstraint } from "./binding-constraint";
 import { createConstraintDecorator } from "./constraint";
 
 const _ = createKey();
@@ -72,4 +72,3 @@ export const metadata = createConstraintDecorator((...args) => {
     return new MetadataConstraint(...args);
 });
 
-export default metadata;

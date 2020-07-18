@@ -6,13 +6,13 @@ import {
     assignID, pcopy, createKey
 } from "miruken-core";
 
-import Binding from "./bindings/binding";
-import Inquiry from "./inquiry";
-import KeyResolver from "./key-resolver";
-import Filtering from "./filters/filtering";
-import FilteredObject from "./filters/filtered-object";
-import FilterInstanceProvider from "./filters/filter-instance-provider";
-import filter from "./filters/filter";
+import { Binding } from "./bindings/binding";
+import { Inquiry } from "./inquiry";
+import { KeyResolver } from "./key-resolver";
+import { Filtering } from "./filters/filtering";
+import { FilteredObject } from "./filters/filtered-object";
+import { FilterInstanceProvider } from "./filters/filter-instance-provider";
+import { filter } from "./filters/filter";
 import { NotHandledError } from "./errors";
 
 const _ = createKey(),
@@ -366,5 +366,3 @@ function createIndex(constraint) {
         return assignID(constraint);
     }
 }
-
-export default HandlerDescriptor;

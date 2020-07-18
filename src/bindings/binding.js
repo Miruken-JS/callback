@@ -122,5 +122,3 @@ class BindingCustom extends Binding {
         return this.constraint.call(this, match, variance);
     }
 }
-
-export default Binding;

@@ -3,14 +3,14 @@ import {
     $isFunction, $isPromise, createKey
 } from "miruken-core";
 
-import Inquiry from "./inquiry";
-import Creation from "./creation";
+import { Inquiry } from "./inquiry";
+import { Creation } from "./creation";
 
 import { 
     Filtering, FilteringProvider
 } from "./filters/filtering";
 
-import FilteredObject from "./filters/filtered-object";
+import { FilteredObject } from "./filters/filtered-object";
 import { filter } from "./filters/filter";
 
 const _ = createKey();
@@ -82,4 +82,3 @@ function cannotCallInitializer() {
     throw new Error("An @initialize method cannot be called directly.");
 }
 
-export default initialize;

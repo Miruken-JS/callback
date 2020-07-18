@@ -2,7 +2,7 @@ import {
     Base, $isNothing, $isFunction, $decorator
 } from "miruken-core";
 
-import Composition from "./composition";
+import { Composition } from "./composition";
 import { CallbackPolicy } from "./callback-policy";
 
 export let $composer;
@@ -99,4 +99,3 @@ Handler.implement({
     }
 });
 
-export default Handler;

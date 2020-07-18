@@ -4,7 +4,7 @@ import {
     createKey
 } from "miruken-core";
 
-import inject from "../src/inject";
+import { inject } from "../src/inject";
 
 import { expect } from "chai";
 

@@ -57,5 +57,3 @@ export const CallbackControl = Protocol.extend({
      */
     dispatch(handler, greedy, composer) {},
 });
-
-export default CallbackControl;

@@ -3,7 +3,7 @@ import {
     conformsTo, createKeyChain
 } from "miruken-core";
 
-import CallbackControl from "./callback-control";
+import { CallbackControl } from "./callback-control";
 import { CallbackPolicy, handles } from "./callback-policy";
 
 const _ = createKeyChain();
@@ -52,4 +52,3 @@ export class Trampoline extends Base {
     }
 }
 
-export default Trampoline;

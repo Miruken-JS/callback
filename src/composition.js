@@ -1,5 +1,5 @@
 import { $isNothing } from "miruken-core";
-import Trampoline from "./trampoline";
+import { Trampoline } from "./trampoline";
 
 /**
  * Container for composition.
@@ -29,4 +29,3 @@ export class Composition extends Trampoline {
     }
 }
 
-export default Composition;

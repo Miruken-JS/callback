@@ -57,4 +57,3 @@ function getProviders(providers) {
          : Array.from(arguments);
 }
 
-export default FilteredObject;

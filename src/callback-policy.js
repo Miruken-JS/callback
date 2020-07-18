@@ -5,8 +5,8 @@ import {
     $contents, createKey
 } from "miruken-core";
 
-import HandlerDescriptor from "./handler-descriptor";
-import FilteredObject from "./filters/filtered-object";
+import { HandlerDescriptor } from "./handler-descriptor";
+import { FilteredObject } from "./filters/filtered-object";
 
 const _ = createKey();
 

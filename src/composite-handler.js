@@ -78,4 +78,3 @@ export class CompositeHandler extends Handler {
     }
 }
 
-export default CompositeHandler;

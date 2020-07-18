@@ -6,7 +6,7 @@ import {
 
 import { createFilterDecorator } from "../filters/filter";
 import { ConstraintProvider } from "../bindings/constraint-filter";
-import BindingConstraint from "./binding-constraint";
+import { BindingConstraint } from "./binding-constraint";
 
 export function createConstraintDecorator(createConstraint) {
     if (!$isFunction(createConstraint)) {
@@ -66,4 +66,3 @@ function createConstrainedArgument(createConstraint, target, key, parameterIndex
 
 export const constraint = createConstraintDecorator(constraint => constraint);
 
-export default constraint;

@@ -64,4 +64,3 @@ function _copyOptionsValue(optionsValue) {
     return optionsValue;
 }
 
-export default Options;

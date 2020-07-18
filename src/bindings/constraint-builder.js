@@ -3,8 +3,8 @@ import {
     createKey
 }
  from "miruken-core";
-import BindingMetadata from "./binding-metadata";
-import BindingConstraint from "./binding-constraint";
+import { BindingMetadata } from "./binding-metadata";
+import { BindingConstraint } from "./binding-constraint";
 import { NamedConstraint } from "./named";
 
 const _ = createKey();
@@ -61,4 +61,3 @@ export class ConstraintBuilder {
     build() { return _(this).metadata; }
 }
 
-export default ConstraintBuilder;
