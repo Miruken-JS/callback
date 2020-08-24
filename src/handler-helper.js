@@ -1,6 +1,7 @@
 import {
-    $isFunction, $isSomething,
-    $isPromise, $flatten, $decorate
+    TypeFlags, $isFunction, $isNothing,
+    $isPromise, $optional, $contents,
+    $flatten, $decorate
 } from "miruken-core";
 
 import { Command } from "./command";
@@ -17,11 +18,13 @@ import { Composition } from "./composition";
 import { CascadeHandler } from "./cascade-handler";
 import { CompositeHandler } from "./composite-handler";
 import { ConstraintBuilder } from "./bindings/constraint-builder";
+import { KeyResolver } from "./key-resolver";
 
 import { 
     NotHandledError, RejectedError, TimeoutError
 } from "./errors";
 
+const defaultKeyResolver = new KeyResolver();
 /**
  * Shortcut for handling a callback.
  * @method
@@ -262,6 +265,44 @@ Handler.implement({
             return aspectProceed(callback, composer, proceed, after);
         }, reentrant);
     },
+    resolveArgs(args) {
+        if ($isNothing(args) || args.length === 0) {
+            return [];
+        }
+        const resolved = [],
+              promises = [];
+        for (let i = 0; i < args.length; ++i) {     
+            const arg = args[i];
+            if ($isNothing(arg)) continue;
+
+            const many     = arg.flags.hasFlag(TypeFlags.Array),
+                  inquiry  = new Inquiry(arg.type, many),
+                  resolver = arg.keyResolver || defaultKeyResolver;
+
+            const validate = resolver.validate;
+            if ($isFunction(validate)) {
+                validate.call(resolver, inquiry.key, arg);
+            }
+            
+            const dep = resolver.resolve(inquiry, arg, this);
+            if ($isNothing(dep)) return null;
+            if ($optional.test(dep)) {
+                resolved[i] = $contents(dep);
+            } else if ($isPromise(dep)) {
+                promises.push(dep.then(result => resolved[i] = result));
+            } else {
+                resolved[i] = dep;
+            }
+        }
+
+        if (promises.length === 0) {
+            return resolved;
+        }
+        if (promises.length === 1) {
+            return promises[0].then(() => resolved);
+        }
+        return Promise.all(promises).then(() => resolved);       
+    },
     /**
      * Decorates the handler to provide one or more values.
      * @method $provide
@@ -278,7 +319,7 @@ Handler.implement({
         }
         return this;
     },
-    $with(...values) { return this.$provides(values); },
+    $with(...values) { return this.$provide(values); },
     /**
      * Builds a handler chain.
      * @method next
@@ -343,7 +384,7 @@ Handler.implement({
                     let activity = target[property] || 0;
                     target[property] = ++activity;
                 }
-            }, $isSomething(ms) ? ms : 50);
+            }, !$isNothing(ms) ? ms : 50);
             return state;
         }, (_, composer, state) => {
             if (state.enabled) {

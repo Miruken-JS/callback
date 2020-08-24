@@ -1,7 +1,4 @@
-import { 
-    $isFunction, $isNothing, $isClass
-} from "miruken-core";
-
+import { $isFunction, $isNothing } from "miruken-core";
 import { Handler } from "./handler";
 import { Options } from "./options";
 import { handles } from "./callback-policy";
@@ -56,7 +53,7 @@ function validateOptionsType(optionsType) {
     if ($isNothing(optionsType)) {
         throw new TypeError("No Options type specified.");
     }
-    if (!$isClass(optionsType) || !(optionsType.prototype instanceof Options)) {
+    if (!$isFunction(optionsType) || !(optionsType.prototype instanceof Options)) {
         throw new TypeError(`Options type '${optionsType}' does not extend Options.`);
     }
 }

@@ -3,11 +3,11 @@ import {
     DuckTyping, Variance, MethodType,
     TypeInfo, ResolvingProtocol, assignID,
     design, returns, type, conformsTo, copy,
-    $isPromise, $eq, $optional, $instant,
+    $isPromise, $eq, $eval, $optional, $instant,
     $lazy, $using, $flatten, createKeyChain
 } from "miruken-core";
 
-import { Handler, $composer } from "../src/handler";
+import { Handler, $getComposer } from "../src/handler";
 import { CascadeHandler } from "../src/cascade-handler";
 import { CompositeHandler } from "../src/composite-handler";
 import { InferenceHandler } from "../src/inference-handler";
@@ -903,7 +903,7 @@ describe("Handler", () => {
             let matched   = -1,
                 Checkers  = @conformsTo(Game) class {},
                 inventory = new (class extends Handler {
-                    @handles(c => c === PitBoss)
+                    @handles($eval(c => c === PitBoss))
                     pitBoss() { matched = 0; }
 
                     @handles
@@ -1616,7 +1616,7 @@ describe("Handler", () => {
         it("should resolve unknown objects", () => {
             const blackjack = new CardTable("BlackJack", 1, 5),
                   cardGames = new (class extends Handler {
-                      @provides(True)
+                      @provides($eval(True))
                       unknown(inquiry) {
                           if (inquiry.key === CardTable) {
                               return blackjack;
@@ -1643,7 +1643,7 @@ describe("Handler", () => {
         it("should resolve with precedence rules", () => {
             const Checkers  = @conformsTo(Game) class {},
                   inventory = new (class extends Handler {
-                      @provides(constraint => constraint === PitBoss)
+                      @provides($eval(c => c === PitBoss))
                       predicate() { return 0; }
 
                       @provides
@@ -2000,14 +2000,14 @@ describe("Handler", () => {
         it("should make handler the ambient $composer", () => {
             const handler = new Handler();
             handler.$compose(function () {
-                expect($composer).to.equal(handler);
+                expect($getComposer()).to.equal(handler);
             });
         });
 
         it("should make handler the ambient $composer with receiver", () => {
             const handler = new Handler();
             handler.$compose(function () {
-                expect($composer).to.equal(handler);
+                expect($getComposer()).to.equal(handler);
                 expect(this).to.equal(handler);
             }, handler);
         });        
@@ -2374,7 +2374,7 @@ describe("Handler", () => {
 
         fail(msg) {
             if (msg === "OFF") {
-                return Offline($composer).fail(msg);
+                return Offline($getComposer()).fail(msg);
             }
             throw new Error("Can't send message");
         }
@@ -2386,7 +2386,7 @@ describe("Handler", () => {
         }
 
         ensureBatch() {
-            const batch = $composer.getBatch(Emailing);
+            const batch = $getComposer().getBatch(Emailing);
             if (batch) {
                 const emailBatch = new EmailBatch();
                 batch.addHandlers(emailBatch);

@@ -5,7 +5,9 @@ import {
 import { Composition } from "./composition";
 import { CallbackPolicy } from "./callback-policy";
 
-export let $composer;
+let $composer;
+
+export function $getComposer() { return $composer; }
 
 /**
  * Base class for handling arbitrary callbacks.

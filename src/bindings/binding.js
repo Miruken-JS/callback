@@ -1,7 +1,7 @@
 import { 
-    Variance, $isNothing, $eq,
+    Variance, $isNothing, $eq, $eval,
     $contents, $isFunction, $isString,
-    $isProtocol, $isClass, $classOf
+    $isProtocol, $classOf
 } from "miruken-core";
 
 export class Binding {
@@ -35,20 +35,21 @@ export class Binding {
 
     static create(constraint, owner, handler, key, removed) {
         let bindingType;
-        const invariant = $eq.test(constraint);
+        const invariant = $eq.test(constraint),
+              custom    = $eval.test(constraint);
         constraint = $contents(constraint);
         if ($isNothing(constraint)) {
             bindingType = invariant ? BindingNone : BindingEverything;
+        } else if (custom) {
+            bindingType = BindingCustom;
         } else if ($isProtocol(constraint)) {
             bindingType = invariant ? BindingInvariant : BindingProtocol;
-        } else if ($isClass(constraint)) {
+        } else if ($isFunction(constraint)) {
             bindingType = invariant ? BindingInvariant : BindingClass;
         } else if ($isString(constraint)) {
             bindingType = BindingString;
         } else if (constraint instanceof RegExp) {
             bindingType = invariant ? BindingNone : BindingRegExp;
-        } else if ($isFunction(constraint)) {
-            bindingType = BindingCustom;
         } else {
             bindingType = BindingNone;
         }
