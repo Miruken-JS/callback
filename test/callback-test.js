@@ -7,7 +7,7 @@ import {
     $lazy, $using, $flatten, createKeyChain
 } from "miruken-core";
 
-import { Handler, $getComposer } from "../src/handler";
+import { Handler, $composer } from "../src/handler";
 import { CascadeHandler } from "../src/cascade-handler";
 import { CompositeHandler } from "../src/composite-handler";
 import { InferenceHandler } from "../src/inference-handler";
@@ -2000,14 +2000,14 @@ describe("Handler", () => {
         it("should make handler the ambient $composer", () => {
             const handler = new Handler();
             handler.$compose(function () {
-                expect($getComposer()).to.equal(handler);
+                expect($composer).to.equal(handler);
             });
         });
 
         it("should make handler the ambient $composer with receiver", () => {
             const handler = new Handler();
             handler.$compose(function () {
-                expect($getComposer()).to.equal(handler);
+                expect($composer).to.equal(handler);
                 expect(this).to.equal(handler);
             }, handler);
         });        
@@ -2374,7 +2374,7 @@ describe("Handler", () => {
 
         fail(msg) {
             if (msg === "OFF") {
-                return Offline($getComposer()).fail(msg);
+                return Offline($composer).fail(msg);
             }
             throw new Error("Can't send message");
         }
@@ -2386,7 +2386,7 @@ describe("Handler", () => {
         }
 
         ensureBatch() {
-            const batch = $getComposer().getBatch(Emailing);
+            const batch = $composer.getBatch(Emailing);
             if (batch) {
                 const emailBatch = new EmailBatch();
                 batch.addHandlers(emailBatch);

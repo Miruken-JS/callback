@@ -5,10 +5,6 @@ import {
 import { Composition } from "./composition";
 import { CallbackPolicy } from "./callback-policy";
 
-let $composer;
-
-export function $getComposer() { return $composer; }
-
 /**
  * Base class for handling arbitrary callbacks.
  * @class Handler
@@ -78,6 +74,8 @@ const compositionScope = $decorator({
     }
 });
 
+export let $composer = undefined;
+
 Handler.implement({
     /**
      * Runs `block` with this Handler as the abmient **$composer**.
@@ -100,4 +98,3 @@ Handler.implement({
         }
     }
 });
-
