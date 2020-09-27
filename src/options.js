@@ -25,10 +25,10 @@ export class Options extends Base {
             if (Reflect.has(Options.prototype, key) || $isFunction(keyValue)) { 
                 return;
             }
-            if (keyValue !== undefined && this.hasOwnProperty(key)) {
+            if (keyValue !== undefined) {
                 const optionsValue = options[key];
                 if (optionsValue === undefined || !options.hasOwnProperty(key)) {
-                    options[key] = _copyOptionsValue(keyValue);
+                    options[key] = copyOptionsValue(keyValue);
                 } else {
                     this.mergeKeyInto(options, key, keyValue, optionsValue);
                 }
@@ -51,12 +51,12 @@ export class Options extends Base {
     }
 }
 
-function _copyOptionsValue(optionsValue) {
+function copyOptionsValue(optionsValue) {
     if ($isNothing(optionsValue)) {
         return optionsValue;
     }
     if (Array.isArray(optionsValue)) {
-        return optionsValue.map(_copyOptionsValue);
+        return optionsValue.map(copyOptionsValue);
     }
     if ($isFunction(optionsValue.copy)) {
         return optionsValue.copy();

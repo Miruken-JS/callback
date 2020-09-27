@@ -11,7 +11,7 @@ import { Command } from "../src/command";
 import { Handler } from "../src/handler"
 import { InferenceHandler } from "../src/inference-handler";
 import { Filtering } from "../src/filters/filtering";
-import { FilteredObject } from "../src/filters/filtered-object";
+import { FilteredScope } from "../src/filters/filtered-scope";
 import { FilterInstanceProvider } from "../src/filters/filter-instance-provider";
 import { FilterOptions } from "../src/filters/filter-options";
 import { 
@@ -97,7 +97,8 @@ const logs = createFilterSpecDecorator(new FilterSpec(LogFilter));
     }   
 }
 
-const exceptions = createFilterSpecDecorator(new FilterSpec(ExceptionFilter, true));
+const exceptions = createFilterSpecDecorator(
+    new FilterSpec(ExceptionFilter, { required: true }));
 
 @conformsTo(Filtering)
 @provides() class AbortFilter {
@@ -108,7 +109,8 @@ const exceptions = createFilterSpecDecorator(new FilterSpec(ExceptionFilter, tru
     }   
 }
 
-const aborting = createFilterSpecDecorator(new FilterSpec(AbortFilter, true));
+const aborting = createFilterSpecDecorator(
+    new FilterSpec(AbortFilter, { required: true }));
 
 @conformsTo(Filtering)
 @provides() class FilteringHandler extends Handler {
@@ -191,52 +193,59 @@ describe("FilterOptions", () => {
                       skipFilters: true,
                       providers:   [provider]
                   }),
-                  other = new FilterOptions();
+                  other  = new FilterOptions(),
+                  other2 = new FilterOptions().extend({
+                      skipFilters: false,
+                      providers:   [provider]
+                  });
             expect(other.skipFilters).to.be.undefined;
             expect(other.providers).to.be.undefined;
             options.mergeInto(other);
             expect(other.skipFilters).to.be.true;
             expect(other.providers).to.eql([provider]);
+            options.mergeInto(other2);
+            expect(other2.skipFilters).to.be.false;
+            expect(other2.providers).to.eql([provider, provider]);
         });
     });
 });
 
-describe("FilteredObject", () => {
+describe("FilteredScope", () => {
     const nullProvider = new FilterInstanceProvider([new NullFilter()]),
           logProvider  = new FilterInstanceProvider([new LogFilter()]);
 
     describe("#constructor", () => {
         it("should create no filters", () => {
-            const filtered = new FilteredObject();
+            const filtered = new FilteredScope();
             expect(filtered.filters).to.eql([]);
         });
 
         it("should create with filters", () => {
-            const filtered = new FilteredObject(nullProvider, logProvider);
+            const filtered = new FilteredScope(nullProvider, logProvider);
             expect(filtered.filters).to.eql([nullProvider, logProvider]);
         });
 
         it("should create with filters array", () => {
-            const filtered = new FilteredObject([nullProvider, logProvider]);
+            const filtered = new FilteredScope([nullProvider, logProvider]);
             expect(filtered.filters).to.eql([nullProvider, logProvider]);
         });        
     });
 
     describe("#addFilters", () => {
         it("should add no filters", () => {
-            const filtered = new FilteredObject();
+            const filtered = new FilteredScope();
             filtered.addFilters();
             expect(filtered.filters).to.eql([]);
         });
 
         it("should add filters", () => {
-            const filtered = new FilteredObject();
+            const filtered = new FilteredScope();
             filtered.addFilters(nullProvider, logProvider);
             expect(filtered.filters).to.eql([nullProvider, logProvider]);
         });
 
         it("should add filters array", () => {
-            const filtered = new FilteredObject();
+            const filtered = new FilteredScope();
             filtered.addFilters([nullProvider, logProvider]);
             expect(filtered.filters).to.eql([nullProvider, logProvider]);
         });
@@ -244,13 +253,13 @@ describe("FilteredObject", () => {
 
     describe("#removeFilters", () => {
         it("should remove filters", () => {
-            const filtered = new FilteredObject(nullProvider, logProvider);
+            const filtered = new FilteredScope(nullProvider, logProvider);
             filtered.removeFilters(nullProvider);
             expect(filtered.filters).to.eql([logProvider]);
         });
 
         it("should remove filters array", () => {
-            const filtered = new FilteredObject(nullProvider, logProvider);
+            const filtered = new FilteredScope(nullProvider, logProvider);
             filtered.removeFilters([nullProvider, logProvider]);
             expect(filtered.filters).to.eql([]);
         });        
@@ -258,7 +267,7 @@ describe("FilteredObject", () => {
 
     describe("#removeAllFilters", () => {
         it("should remove filters", () => {
-            const filtered = new FilteredObject(nullProvider, logProvider);
+            const filtered = new FilteredScope(nullProvider, logProvider);
             filtered.removeAllFilters();
             expect(filtered.filters).to.eql([]);
         });     
@@ -336,7 +345,7 @@ describe("Filter", () => {
         expect(bee.filters.length).to.equal(0);
     });
 
-    it("should skip non-required filters", () => {
+    it("shouldfilters", () => {
         const bar = new Bar();
         expect(handler.skipFilters().handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);

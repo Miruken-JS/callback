@@ -10,7 +10,7 @@ import { Binding } from "./bindings/binding";
 import { Inquiry } from "./inquiry";
 import { KeyResolver } from "./key-resolver";
 import { Filtering } from "./filters/filtering";
-import { FilteredObject } from "./filters/filtered-object";
+import { FilteredScope } from "./filters/filtered-scope";
 import { FilterInstanceProvider } from "./filters/filter-instance-provider";
 import { filter } from "./filters/filter";
 import { NotHandledError } from "./errors";
@@ -19,7 +19,7 @@ const _ = createKey(),
       defaultKeyResolver = new KeyResolver(),
       descriptorMetadataKey = Symbol("descriptor-metadata");
 
-export class HandlerDescriptor extends FilteredObject {
+export class HandlerDescriptor extends FilteredScope {
     constructor(owner) {
         if ($isNothing(owner)) {
             throw new Error("The owner argument is required.");

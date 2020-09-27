@@ -8,7 +8,7 @@ import { Filtered } from "./filtering";
 const _ = createKey();
 
 @conformsTo(Filtered)
-export class FilteredObject extends Base {
+export class FilteredScope extends Base {
     constructor(providers) {
         super();
         this.addFilters.apply(this, arguments);

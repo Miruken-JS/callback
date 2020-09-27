@@ -14,7 +14,7 @@ export class FilterInstanceProvider extends Base {
             throw new Error("At least one filter must be provided.");
         }
         super();
-        _(this).required = !!required; 
+        _(this).required = required === true; 
         _(this).filters  = [...new Set(filters)];
     }
 

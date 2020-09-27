@@ -1,3 +1,4 @@
+import { $isNothing } from "miruken-core";
 import { Options } from "../options";
 import { FilteringProvider } from "./filtering";
 
@@ -12,11 +13,13 @@ export class FilterOptions extends Options {
 
     mergeKeyInto(options, key, keyValue, optionsValue) {
         if (key === "providers") {
-            if (keyValue && this.providers) {
+            if ($isNothing(keyValue)) return;
+            if (!$isNothing(options.providers)) {
                 options.providers = options.providers.concat(keyValue);
+                return;
             }
         }
-        this.base(options, key, keyValue, optionsValue);
+        super.mergeKeyInto(options, key, keyValue, optionsValue);
      }
 }
 

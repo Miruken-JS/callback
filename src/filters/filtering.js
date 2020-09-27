@@ -86,4 +86,3 @@ export const Filtered = Protocol.extend({
      */      
     removeAllFilters() {}
 });
-

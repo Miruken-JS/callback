@@ -63,9 +63,14 @@ Handler.implement({
                 break;
         }
 
-        const ordered = [];
+        const ordered  = [],
+              accepted = [];
 
         for (let provider of allProviders) {
+            const accept = provider.accept;
+            if ($isFunction(accept) && !accept.call(provider, accepted)) {
+                continue;
+            }
             let found = false;
             const filters = provider.getFilters(binding, callback, handler);
             if (filters == null) return;
@@ -75,6 +80,7 @@ Handler.implement({
                 ordered.push({ filter, provider });
             }
             if (!found) return;
+            accepted.push(provider);
         }
 
         return ordered.sort((a, b) => {

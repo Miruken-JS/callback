@@ -6,7 +6,7 @@ import {
 } from "miruken-core";
 
 import { HandlerDescriptor } from "./handler-descriptor";
-import { FilteredObject } from "./filters/filtered-object";
+import { FilteredScope } from "./filters/filtered-scope";
 
 const _ = createKey();
 
@@ -17,7 +17,7 @@ export function $unhandled(result) {
     return result === $unhandled;
 }
 
-export class CallbackPolicy extends FilteredObject {
+export class CallbackPolicy extends FilteredScope {
     /**
     * Constructs a callback policy.
     * @method create

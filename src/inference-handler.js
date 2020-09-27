@@ -27,8 +27,7 @@ function addStaticBindings(type, inferDescriptor) {
         for (let [policy, bindings] of typeDescriptor.bindings) {
             for (let binding of bindings) {
                 const typeBinding = pcopy(binding);
-                typeBinding.handler     = binding.handler.bind(type);
-                //typeBinding.skipFilters = true;
+                typeBinding.handler = binding.handler.bind(type);
                 inferDescriptor.addBinding(policy, typeBinding);
             }
         }
@@ -45,6 +44,7 @@ function addInstanceBindings(type, inferDescriptor, owners) {
                 const instanceBinding = pcopy(binding);
                 instanceBinding.handler     = infer;
                 instanceBinding.getMetadata = Undefined;
+                instanceBinding.skipFilters = true;
                 inferDescriptor.addBinding(policy, instanceBinding);
             }
         }

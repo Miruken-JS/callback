@@ -4,7 +4,7 @@ import {
 
 import { FilterSpec } from "./filter-spec";
 import { FilterSpecProvider } from "./filter-spec-provider";
-import { FilteredObject } from "./filtered-object";
+import { FilteredScope } from "./filtered-scope";
 
 const filterMetadataKey     = Symbol("filter-metadata"),
       skipFilterMetadataKey = Symbol("skipFilter-metadata");
@@ -17,11 +17,11 @@ export function createFilterDecorator(createFilterProvider) {
         const provider = createFilterProvider(target, key, descriptor, args);
         if ($isNothing(provider)) return;
         if ($isNothing(descriptor)) {
-            const filters = filter.getOrCreateOwn(target, "constructor", () => new FilteredObject());
+            const filters = filter.getOrCreateOwn(target, "constructor", () => new FilteredScope());
             filter.getOrCreateOwn(target.prototype, "constructor", () => filters);
             filters.addFilters(provider);
         } else {
-            const filters = filter.getOrCreateOwn(target, key, () => new FilteredObject());
+            const filters = filter.getOrCreateOwn(target, key, () => new FilteredScope());
             filters.addFilters(provider);
         }
     });
@@ -44,11 +44,11 @@ export function createFilterSpecDecorator(filterSpec) {
 }
 
 export const filter = createFilterDecorator(
-    (target, key, descriptor, [filterType, { required, order } = {}]) => {
+    (target, key, descriptor, [filterType, options]) => {
         if ($isNothing(filterType)) {
             throw new Error("@filter requires a filterType.")
         }
-        const filterSpec = new FilterSpec(filterType, required, order);
+        const filterSpec = new FilterSpec(filterType, options);
         return new FilterSpecProvider(filterSpec);
     });
 

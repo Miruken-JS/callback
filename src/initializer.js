@@ -10,7 +10,7 @@ import {
     Filtering, FilteringProvider
 } from "./filters/filtering";
 
-import { FilteredObject } from "./filters/filtered-object";
+import { FilteredScope } from "./filters/filtered-scope";
 import { filter } from "./filters/filter";
 
 const _ = createKey();
@@ -70,8 +70,8 @@ export function initialize(target, key, descriptor) {
     }
     descriptor.value = cannotCallInitializer;
     const constructor = target.constructor, 
-          filters     = filter.getOrCreateOwn(target, "constructor", () => new FilteredObject());
-    if (constructor && constructor.prototype === target) {
+          filters     = filter.getOrCreateOwn(target, "constructor", () => new FilteredScope());
+    if (constructor?.prototype === target) {
         filter.getOrCreateOwn(constructor, "constructor", () => filters);
     }
     filters.addFilters(new InitializerProvider(value));
