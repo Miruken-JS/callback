@@ -7,7 +7,7 @@ import { Handler } from "../handler";
 import { provides } from "../callback-policy";
 import { FilterInstanceProvider } from "./filter-instance-provider";
 import { FilterOptions } from "./filter-options";
-import { skipFilters } from "./filter";
+import { skipFilters, allowMultiple } from "./filter";
 import "../handler-options";
 
 Handler.registerOptions(FilterOptions, "filterOptions");
@@ -63,24 +63,24 @@ Handler.implement({
                 break;
         }
 
-        const ordered  = [],
-              accepted = [];
+        const ordered = [], once = new Set();
 
         for (let provider of allProviders) {
-            const accept = provider.accept;
-            if ($isFunction(accept) && !accept.call(provider, accepted)) {
-                continue;
-            }
             let found = false;
             const filters = provider.getFilters(binding, callback, handler);
             if (filters == null) return;
             for (let filter of filters) {
                 if (filter == null) return;
                 found = true;
+                const filterType      = filter.constructor,
+                      multipleAllowed = allowMultiple.get(filterType);
+                if (!($isNothing(multipleAllowed) || multipleAllowed)) {
+                    if (once.has(filterType)) continue;
+                    once.add(filterType);
+                }
                 ordered.push({ filter, provider });
             }
             if (!found) return;
-            accepted.push(provider);
         }
 
         return ordered.sort((a, b) => {

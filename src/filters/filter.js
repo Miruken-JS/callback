@@ -1,13 +1,14 @@
 import {
-     Metadata, $isNothing, $isFunction
+     Metadata, $isNothing, $isFunction, $isBoolean
 } from "miruken-core";
 
 import { FilterSpec } from "./filter-spec";
 import { FilterSpecProvider } from "./filter-spec-provider";
 import { FilteredScope } from "./filtered-scope";
 
-const filterMetadataKey     = Symbol("filter-metadata"),
-      skipFilterMetadataKey = Symbol("skipFilter-metadata");
+const filterMetadataKey        = Symbol("filter-metadata"),
+      skipFilterMetadataKey    = Symbol("skipFilter-metadata"),
+      allowMultipleMetadataKey = Symbol("allowMultiple");
 
 export function createFilterDecorator(createFilterProvider) {
     if (!$isFunction(createFilterProvider)) {
@@ -58,11 +59,25 @@ export const skipFilters = Metadata.decorator(skipFilterMetadataKey,
             throw new SyntaxError("@skipFilters expects no arguments.");
         }
         if ($isNothing(descriptor)) {
-            skipFilters.getOrCreateOwn(target, "constructor", () => true),
+            skipFilters.getOrCreateOwn(target, "constructor", () => true);
             skipFilters.getOrCreateOwn(target.prototype, "constructor", () => true);
         } else {
             skipFilters.getOrCreateOwn(target, key, () => true);
         }
     });
 
+export const allowMultiple = Metadata.decorator(allowMultipleMetadataKey,
+    (target, key, descriptor, [allow]) => {
+        if (!$isNothing(descriptor)) {
+            throw new SyntaxError("@allowMultiple can only be applied to classes.");
+        }
+        if ($isNothing(allow)) {
+            allow = false;
+        } else if (!$isBoolean(allow)) {
+            throw new TypeError("@allowMultiple accepts an optional boolean argument.");
+        }
+        allowMultiple.getOrCreateOwn(target, () => allow);
+        allowMultiple.getOrCreateOwn(target, "constructor", () => allow);
+        allowMultiple.getOrCreateOwn(target.prototype, "constructor", () => allow);
+    });
 

@@ -15,7 +15,7 @@ import { FilteredScope } from "../src/filters/filtered-scope";
 import { FilterInstanceProvider } from "../src/filters/filter-instance-provider";
 import { FilterOptions } from "../src/filters/filter-options";
 import { 
-    filter, skipFilters,  createFilterSpecDecorator 
+    filter, skipFilters, createFilterSpecDecorator 
 } from "../src/filters/filter";
 import { FilterSpecProvider } from "../src/filters/filter-spec-provider";
 import { FilterSpec } from "../src/filters/filter-spec";
