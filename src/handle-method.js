@@ -1,17 +1,26 @@
 import {
-    Base, MethodType, conformsTo, $isNothing,
-    $isFunction, $isProtocol, $isPromise,
+    Base, MethodType, TypeFlags, conformsTo,
+    design, $isNothing, $isFunction, $isProtocol,
+    $isPromise, $optional, $contents,
     createKeyChain
 } from "miruken-core";
 
 import { Trampoline } from "./trampoline";
 import { Resolving } from "./resolving";
+import { Inquiry } from "./inquiry";
+import { KeyResolver } from "./key-resolver";
+import { filter } from "./filters/filter";
+import { FilteredScope } from "./filters/filtered-scope";
 import { CallbackControl } from "./callback-control";
-import { $unhandled } from "./callback-policy";
+import { HandlerDescriptor } from "./handler-descriptor";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
+import { Binding } from "./bindings/binding";
+import { $unhandled } from "./callback-policy";
 import { NotHandledError } from "./errors";
 
-const _ = createKeyChain();
+const _ = createKeyChain(),
+      defaultKeyResolver = new KeyResolver(),
+      globalFilters      = new FilteredScope();
 
 /**
  * Invokes a method on a target.
@@ -71,7 +80,7 @@ export class HandleMethod extends Base {
     invokeOn(target, composer) {
         if (!this.isAcceptableTarget(target)) return false;
         
-        let method, result;
+        let method;
         const { methodName, methodType, args } = this;
 
         if (methodType === MethodType.Invoke) {
@@ -79,28 +88,79 @@ export class HandleMethod extends Base {
             if (!$isFunction(method)) return false;
         }
 
+        let filters, binding;
+
+        if (!$isNothing(composer)) {
+            const owner      = target.constructor,
+                  descriptor = HandlerDescriptor.get(target, true);
+
+            binding = Binding.create(HandleMethod, owner, null, methodName);
+
+            filters = composer.getOrderedFilters(binding, this, [
+                binding.getMetadata(filter), descriptor, HandleMethod.globalFilters
+            ]);
+
+            if ($isNothing(filters)) return false;   
+        }
+
+        let action;
+
         try {
             switch (methodType) {
             case MethodType.Get:
-                result = composer != null
-                       ? composer.$compose(() => target[methodName])
-                       : target[methodName];
-                ;
+                action = composer != null
+                       ? () => composer.$compose(() => target[methodName])
+                       : () => target[methodName];
                 break;
             case MethodType.Set:
-                result = composer != null
-                       ? composer.$compose(() => target[methodName] = args)
-                       : target[methodName] = args;
+                action = composer != null
+                       ? () => composer.$compose(() => target[methodName] = args)
+                       : () => target[methodName] = args;
                 break;
             case MethodType.Invoke:
-                result = composer != null
-                       ? composer.$compose(() => method.apply(target, args))
-                       : method.apply(target, args);
+                action = composer != null
+                       ? () => composer.$compose(() => method.apply(target, args))
+                       : () => method.apply(target, args);
                 break;
             }
-            if (result === $unhandled) {
+
+            let result, completed = true;
+
+            if ($isNothing(filters) || filters.length == 0) {
+                result = action();
+            } else {
+                result = filters.reduceRight((next, pipeline) => {
+                    return (comp, proceed) => {
+                        if (proceed) {
+                            const filter    = pipeline.filter,
+                                  signature = design.get(filter, "next"),
+                                  args      = resolveArgs.call(this, signature, comp);
+                            if (!$isNothing(args)) {
+                                const provider = pipeline.provider,
+                                      context  = { binding, rawCallback: this, provider, composer: comp,
+                                                   next: (c, p) => next(
+                                                       c != null ? c : comp, 
+                                                       p != null ? p : true),
+                                                   abort: () => next(null, false) };
+                                return $isPromise(args)
+                                     ? args.then(a => filter.next(...a, context))
+                                     : filter.next(...args, context);
+                            }
+                        }
+                        completed = false;
+                    };
+                }, (comp, proceed) => {
+                    if (proceed) {
+                        return action();
+                    }
+                    completed = false;
+                })(composer, true);
+            }
+
+            if (!completed || result === $unhandled) {
                 return false;
             }
+
             _(this).returnValue = result;
             return true;                        
         } catch (exception) {
@@ -134,6 +194,12 @@ export class HandleMethod extends Base {
     dispatch(handler, greedy, composer) {
         return this.invokeOn(handler, composer);
     }    
+
+    toString() {
+        return `HandleMethod | ${this.methodName}`;
+    }
+
+    static get globalFilters() { return globalFilters; }
 }
 
 class HandleMethodInference extends Trampoline {
@@ -162,3 +228,59 @@ class HandleMethodInference extends Trampoline {
     }
 }
 
+function resolveArgs(signature, composer) {
+    if ($isNothing(signature)) {
+        return [this];
+    }
+    const { args } = signature;
+    if ($isNothing(args) || args.length === 0) {
+        return [this];
+    }
+
+    const resolved = [],
+            promises = [];
+
+    for (let i = 0; i < args.length; ++i) {     
+        const arg = args[i];
+        if ($isNothing(arg)) {
+            if (i === 0) {
+                resolved[0] = this;
+            }
+            continue;
+        }
+
+        if (i === 0) {
+            if (arg.validate(this)) {
+                resolved[0] = this;
+                continue;
+            }
+        }
+
+        const many     = arg.flags.hasFlag(TypeFlags.Array),
+                inquiry  = new Inquiry(arg.type, many),
+                resolver = arg.keyResolver || defaultKeyResolver;
+
+        const validate = resolver.validate;
+        if ($isFunction(validate)) {
+            validate.call(resolver, inquiry.key, arg);
+        }
+        
+        const dep = resolver.resolve(inquiry, arg, composer);
+        if ($isNothing(dep)) return null;
+        if ($optional.test(dep)) {
+            resolved[i] = $contents(dep);
+        } else if ($isPromise(dep)) {
+            promises.push(dep.then(result => resolved[i] = result));
+        } else {
+            resolved[i] = dep;
+        }
+    }
+
+    if (promises.length === 0) {
+        return resolved;
+    }
+    if (promises.length === 1) {
+        return promises[0].then(() => resolved);
+    }
+    return Promise.all(promises).then(() => resolved);
+}

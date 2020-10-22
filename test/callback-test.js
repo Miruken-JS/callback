@@ -2467,7 +2467,7 @@ describe("Handler", () => {
     });
 
     it("should handle methods covariantly", () => {
-        const handler = new OfflineHandler();
+        const handler = new CompositeHandler().addHandlers(new OfflineHandler());
         expect(Emailing(handler).fail("Hello")).to.equal(-1);         
     });
 

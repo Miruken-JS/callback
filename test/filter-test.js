@@ -8,23 +8,26 @@ import {
 } from "../src/callback-policy";
 
 import { Command } from "../src/command";
-import { Handler } from "../src/handler"
+import { Handler } from "../src/handler";
+import { CompositeHandler } from "../src/composite-handler";
 import { InferenceHandler } from "../src/inference-handler";
 import { Filtering } from "../src/filters/filtering";
+import { FilterSpec } from "../src/filters/filter-spec";
 import { FilteredScope } from "../src/filters/filtered-scope";
+import { FilterSpecProvider } from "../src/filters/filter-spec-provider";
 import { FilterInstanceProvider } from "../src/filters/filter-instance-provider";
 import { FilterOptions } from "../src/filters/filter-options";
 import { 
     filter, skipFilters, createFilterSpecDecorator 
 } from "../src/filters/filter";
-import { FilterSpecProvider } from "../src/filters/filter-spec-provider";
-import { FilterSpec } from "../src/filters/filter-spec";
+
 import { singleton } from "../src/singleton-lifestyle";
 import { initialize } from "../src/initializer";
 
 import "../src/filters/filter-helper";
 
 import { expect } from "chai";
+import { HandleMethod } from "../src/handle-method";
 
 class Capture extends Base {
     handled     = 0                                                                                                        
@@ -372,6 +375,38 @@ describe("Filter", () => {
         handler = new InferenceHandler(BadHandler, LogFilter);
         expect(handler.handle(bar)).to.be.false;
     });  
+});
+
+describe("HandleMethod", () => {
+    const Launching = Protocol.extend({
+            launch(mission) {},
+            abort(mission) {}      
+        });
+
+    @conformsTo(Launching)
+    @provides() class SpaceX extends Handler {
+        launch(mission) {
+           console.log(`Launched ${mission}`);
+        }
+
+        abort(mission) {
+            console.log(`Aborted ${mission}`);
+        }
+    }
+
+    let handler;
+    beforeEach(() => {
+        HandleMethod.globalFilters.removeAllFilters();
+        HandleMethod.globalFilters.addFilters(
+            new FilterSpecProvider(new FilterSpec(LogFilter)));
+        
+        handler = new InferenceHandler(
+            SpaceX, LogFilter, ConsoleLogger);
+    });
+
+    it.only("should apply filters to methods", () => {
+        Launching(handler).launch("Starlink");        
+    });
 });
 
 describe("SingletonLifestyle", () => {

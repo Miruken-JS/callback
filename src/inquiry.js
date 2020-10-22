@@ -116,7 +116,7 @@ export class Inquiry extends Base {
             // check if handler implicitly satisfies key
             const implied = Binding.create(this.key);
             if (implied.match($classOf(handler), Variance.Contravariant)) {
-                resolved = this.resolve(handler, composer);
+                resolved = this.resolve(handler, greedy, composer);
                 if (resolved && !greedy) return true;
             }
         }

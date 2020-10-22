@@ -206,7 +206,7 @@ function dispatch(policy, target, callback, rawCallback, constraint,
                     if (!guard) continue;
                 }
                 try {
-                    let filters, result, completed = true;;
+                    let filters, result, completed = true;
                     if (rawCallback.canFilter !== false) {
                         filters = resolveFilters.call(
                             this, policy, target, callback, binding, composer);
