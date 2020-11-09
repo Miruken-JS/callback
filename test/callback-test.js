@@ -1,10 +1,10 @@
 import {
     True, False, Undefined, Base, Protocol,
     DuckTyping, Variance, MethodType,
-    TypeInfo, ResolvingProtocol, assignID,
-    design, returns, type, conformsTo, copy,
-    $isPromise, $eq, $eval, $optional, $instant,
-    $lazy, $using, $flatten, createKeyChain
+    TypeInfo, assignID, design, returns, type,
+    conformsTo, copy, $isPromise, $eq, $eval,
+    $optional, $instant, $lazy, $using, $flatten,
+    createKeyChain
 } from "miruken-core";
 
 import { Handler, $composer } from "../src/handler";
@@ -29,6 +29,7 @@ import {
 
 import { KeyResolver } from "../src/key-resolver";
 import { proxy } from "../src/proxy";
+import { unmanaged } from "../src/unmanaged";
 
 import "../src/handler-helper";
 import "../src/handler-options"
@@ -2163,20 +2164,21 @@ describe("InvocationHandler", () => {
         });
 
         it("should broadcast invocations", () => {
+            let tracked = 0;
+            @conformsTo(Security)
+            @provides() class Tracker {
+                trackActivity(activity) {
+                    ++tracked;
+                }
+            }
             const letItRide = new Activity("Let It Ride"),
                   level1    = new Level1Security(),
                   level2    = new Level2Security(),
                   casino    = new Casino("Treasure Island")
-                  .addHandlers(level1, level2, letItRide);
+                  .addHandlers(level1, level2, letItRide,
+                      new InferenceHandler(Tracker));
             Security(casino.$broadcast()).trackActivity(letItRide);
-        });
-
-        it("should notify invocations", () => {
-            const letItRide = new Activity("Let It Ride"),
-                  level1    = new Level1Security(),
-                  casino    = new Casino("Treasure Island")
-                  .addHandlers(level1, letItRide);
-            Security(casino.$notify()).trackActivity(letItRide);
+            expect(tracked).to.equal(1);
         });
 
         it("should notify invocations", () => {
@@ -2215,7 +2217,7 @@ describe("InvocationHandler", () => {
         });
 
         it("should resolve target for invocation implicitly", () => {
-            const Pumping = ResolvingProtocol.extend({
+            const Pumping = Protocol.extend({
                       pump() {}
                   }),
                   Pump = @conformsTo(Pumping) class {
@@ -2755,6 +2757,52 @@ describe("Handler", () => {
             })).to.eql([["Hello batch"]]);
             expect(count).to.equal(2);
         });        
+    });
+
+    describe("@unmanaged", () => {
+        class ManagedService {}
+        const ManagedBase2Service = Base.extend();
+
+        @unmanaged
+        class UnmanagedService {}
+        const UnmanagedBase2Service = Base.extend(unmanaged);
+
+        it("should be managed by default", () => {
+            expect(unmanaged.isDefined(ManagedService)).to.be.false;
+            expect(unmanaged.isDefined(ManagedBase2Service)).to.be.false;
+        });
+
+        it("should be unmanaged explicitly", () => {
+            expect(unmanaged.isDefined(UnmanagedService)).to.be.true;
+            expect(unmanaged.isDefined(UnmanagedBase2Service)).to.be.true;
+        });
+
+        it("should not allow unmanaged on methods", () => {
+            expect(() => {
+                class Invalid {
+                    @unmanaged
+                    hello() {}
+                }
+            }).to.throw(SyntaxError, "@unmanaged can only be applied to classes.");        
+        });
+
+        it("should not allow unmanaged on properties", () => {
+            expect(() => {
+                class Invalid {
+                    @unmanaged
+                    get age() {}
+                }
+            }).to.throw(SyntaxError, "@unmanaged can only be applied to classes.");        
+        });
+
+        it("should not allow unmanaged on fields", () => {
+            expect(() => {
+                class Invalid {
+                    @unmanaged
+                    total = 0.0;
+                }
+            }).to.throw(SyntaxError, "@unmanaged can only be applied to classes.");        
+        });
     });
 });
 

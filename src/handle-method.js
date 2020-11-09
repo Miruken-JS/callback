@@ -65,7 +65,7 @@ export class HandleMethod extends Base {
     set callbackResult(value) { _(this).returnValue = value; }
 
     inferCallback() {
-         return new HandleMethodInference(this);
+        return new HandleMethodInference(this);
     }
 
     /**
@@ -91,19 +91,15 @@ export class HandleMethod extends Base {
         let filters, binding;
 
         if (!$isNothing(composer)) {
-            const owner      = target.constructor,
-                  descriptor = HandlerDescriptor.get(target, true);
-
-            binding = Binding.create(HandleMethod, owner, null, methodName);
-
+            const owner = HandlerDescriptor.get(target, true);
+            binding = Binding.create(HandleMethod, target, null, methodName);
             filters = composer.getOrderedFilters(binding, this, [
-                binding.getMetadata(filter), descriptor, HandleMethod.globalFilters
+                binding.getMetadata(filter), owner, HandleMethod.globalFilters
             ]);
-
             if ($isNothing(filters)) return false;   
         }
 
-        let action;
+        let action, completed = true;
 
         try {
             switch (methodType) {
@@ -124,38 +120,31 @@ export class HandleMethod extends Base {
                 break;
             }
 
-            let result, completed = true;
-
-            if ($isNothing(filters) || filters.length == 0) {
-                result = action();
-            } else {
-                result = filters.reduceRight((next, pipeline) => {
-                    return (comp, proceed) => {
-                        if (proceed) {
-                            const filter    = pipeline.filter,
-                                  signature = design.get(filter, "next"),
-                                  args      = resolveArgs.call(this, signature, comp);
-                            if (!$isNothing(args)) {
-                                const provider = pipeline.provider,
-                                      context  = { binding, rawCallback: this, provider, composer: comp,
-                                                   next: (c, p) => next(
-                                                       c != null ? c : comp, 
-                                                       p != null ? p : true),
-                                                   abort: () => next(null, false) };
-                                return $isPromise(args)
-                                     ? args.then(a => filter.next(...a, context))
-                                     : filter.next(...args, context);
-                            }
-                        }
-                        completed = false;
-                    };
-                }, (comp, proceed) => {
+            const result = $isNothing(filters) || filters.length == 0
+                ? action()
+                : filters.reduceRight((next, pipeline) => (comp, proceed) => {
                     if (proceed) {
-                        return action();
+                        const filter    = pipeline.filter,
+                              signature = design.get(filter, "next"),
+                              args      = resolveArgs.call(this, signature, comp);
+                        if (!$isNothing(args)) {
+                            const provider = pipeline.provider, context  = {
+                                binding, rawCallback: this, provider, composer: comp,
+                                next: (c, p) => next(
+                                    c != null ? c : comp, 
+                                    p != null ? p : true),
+                                abort: () => next(null, false)
+                            };
+                            return $isPromise(args)
+                                 ? args.then(a => filter.next(...a, context))
+                                 : filter.next(...args, context);
+                        }
                     }
                     completed = false;
+                }, (comp, proceed) => {
+                    if (proceed) return action();
+                    completed = false;
                 })(composer, true);
-            }
 
             if (!completed || result === $unhandled) {
                 return false;
@@ -170,11 +159,11 @@ export class HandleMethod extends Base {
     }
 
     isAcceptableTarget(target) {
-        if (!target) return false;
-        if (!this.protocol) { return true; }
+        if ($isNothing(target)) return false;
+        if ($isNothing(this.protocol)) return true;
         return this.semantics.hasOption(CallbackOptions.Strict)
-                ? this.protocol.isToplevel(target)
-                : this.semantics.hasOption(CallbackOptions.Duck)
+             ? this.protocol.isToplevel(target)
+             : this.semantics.hasOption(CallbackOptions.Duck)
             || this.protocol.isAdoptedBy(target);
     }
 
@@ -237,8 +226,7 @@ function resolveArgs(signature, composer) {
         return [this];
     }
 
-    const resolved = [],
-            promises = [];
+    const resolved = [], promises = [];
 
     for (let i = 0; i < args.length; ++i) {     
         const arg = args[i];
@@ -257,8 +245,8 @@ function resolveArgs(signature, composer) {
         }
 
         const many     = arg.flags.hasFlag(TypeFlags.Array),
-                inquiry  = new Inquiry(arg.type, many),
-                resolver = arg.keyResolver || defaultKeyResolver;
+              inquiry  = new Inquiry(arg.type, many),
+              resolver = arg.keyResolver || defaultKeyResolver;
 
         const validate = resolver.validate;
         if ($isFunction(validate)) {

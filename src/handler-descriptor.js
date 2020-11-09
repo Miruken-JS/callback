@@ -214,7 +214,7 @@ function dispatch(policy, target, callback, rawCallback, constraint,
                     }
                     if ($isNothing(filters) || filters.length == 0) {
                         const signature = binding.getMetadata(design),
-                              args = resolveArgs.call(
+                              args      = resolveArgs.call(
                                   this, callback, rawCallback, signature, composer);
                         if ($isNothing(args)) continue;
                         const context = { constraint, binding, rawCallback, composer, results },
@@ -223,31 +223,30 @@ function dispatch(policy, target, callback, rawCallback, constraint,
                                ? args.then(a => handler.call(target, ...a, context))
                                : handler.call(target, ...args, context);
                     } else {
-                        result = filters.reduceRight((next, pipeline) => {
-                            return (comp, proceed) => {
-                                if (proceed) {
-                                    const filter    = pipeline.filter,
-                                          signature = design.get(filter, "next"),
-                                          args      = resolveArgs.call(
-                                              this, callback, rawCallback, signature, comp);
-                                    if (!$isNothing(args)) {
-                                        const provider = pipeline.provider,
-                                              context  = { binding, rawCallback, provider, composer: comp,
-                                                           next: (c, p) => next(
-                                                               c != null ? c : comp, 
-                                                               p != null ? p : true),
-                                                           abort: () => next(null, false) };
-                                        return $isPromise(args)
-                                             ? args.then(a => filter.next(...a, context))
-                                             : filter.next(...args, context);
-                                    }
+                        result = filters.reduceRight((next, pipeline) => (comp, proceed) => {
+                            if (proceed) {
+                                const filter    = pipeline.filter,
+                                      signature = design.get(filter, "next"),
+                                      args      = resolveArgs.call(
+                                        this, callback, rawCallback, signature, comp);
+                                if (!$isNothing(args)) {
+                                    const provider = pipeline.provider, context  = {
+                                        binding, rawCallback, provider, composer: comp,
+                                        next: (c, p) => next(
+                                            c != null ? c : comp, 
+                                            p != null ? p : true),
+                                        abort: () => next(null, false)
+                                    };
+                                    return $isPromise(args)
+                                         ? args.then(a => filter.next(...a, context))
+                                         : filter.next(...args, context);
                                 }
-                                completed = false;
-                            };
+                            }
+                            completed = false;
                         }, (comp, proceed) => {
                             if (proceed) {
                                 const signature = binding.getMetadata(design),
-                                      args = resolveArgs.call(
+                                      args      = resolveArgs.call(
                                           this, callback, rawCallback, signature, comp);
                                 if ($isNothing(args)) {
                                     completed = false;

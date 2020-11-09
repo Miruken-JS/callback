@@ -1,7 +1,7 @@
 import {
     MethodType, Delegate, Protocol,
-    StrictProtocol, ResolvingProtocol,
-    DuckTyping, $isPromise, createKeyChain
+    StrictProtocol, DuckTyping, $isPromise,
+    createKeyChain
 } from "miruken-core";
 
 import { Handler } from "./handler";
@@ -53,12 +53,6 @@ function delegate(delegate, methodType, protocol, methodName, args) {
     if (!semantics.isSpecified(CallbackOptions.Strict)
         && StrictProtocol.isAdoptedBy(protocol))
         options |= CallbackOptions.Strict;
-
-    if (ResolvingProtocol.isAdoptedBy(protocol)) {
-        if (semantics.isSpecified(CallbackOptions.Broadcast)) {
-            options |= CallbackOptions.Broadcast
-        }
-    }
 
     if (options != CallbackOptions.None)
     {

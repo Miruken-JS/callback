@@ -95,6 +95,11 @@ const logs = createFilterSpecDecorator(new FilterSpec(LogFilter));
         const result = next();
         if (callback instanceof Boo) {
             return Promise.reject(new Error("System shutdown"));
+        } else if (callback instanceof HandleMethod) {
+            const mission = callback.args?.[0];
+            if (mission.match(/GPS/)) {
+                throw new Error(`Mission '${mission}' aborted`);
+            }
         }
         return result;
     }   
@@ -381,14 +386,16 @@ describe("HandleMethod", () => {
     const Launching = Protocol.extend({
             launch(mission) {},
             abort(mission) {}      
-        });
+          });
 
     @conformsTo(Launching)
     @provides() class SpaceX extends Handler {
+        @exceptions
         launch(mission) {
-           console.log(`Launched ${mission}`);
+            console.log(`Launched ${mission}`);
         }
 
+        @exceptions
         abort(mission) {
             console.log(`Aborted ${mission}`);
         }
@@ -401,11 +408,17 @@ describe("HandleMethod", () => {
             new FilterSpecProvider(new FilterSpec(LogFilter)));
         
         handler = new InferenceHandler(
-            SpaceX, LogFilter, ConsoleLogger);
+            SpaceX, LogFilter, ConsoleLogger, ExceptionFilter);
     });
 
-    it.only("should apply filters to methods", () => {
+    it("should apply global filters on methods", () => {
         Launching(handler).launch("Starlink");        
+    });
+
+    it("should apply explicit method filters", () => {
+        expect(() => {
+            Launching(handler).launch("GPS 3 SV04");  
+        }).to.throw(Error, "Mission 'GPS 3 SV04' aborted");  
     });
 });
 
@@ -476,7 +489,7 @@ describe("Initializer", () => {
     it("should fail if calling initializer directly", () => {
         expect(() => {
             new Application().initialize1();
-        }).to.throw(Error, "An @initialize method cannot be called directly."); 
+        }).to.throw(Error, "An @initialize method cannot be called directly.");
     });   
 });
 

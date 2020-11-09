@@ -5,12 +5,12 @@ import {
 } from "miruken-core";
 
 import { inject } from "../src/inject";
-
+import { initialize } from "../src/initializer";
 import { expect } from "chai";
 
 const _ = createKey();
 
-const Engine = Protocol.extend({
+export const Engine = Protocol.extend({
     get numberOfCylinders() {},
     get horsepower() {},
     get displacement() {},
@@ -18,22 +18,22 @@ const Engine = Protocol.extend({
     rev(rpm) {}
 });
 
-const Car = Protocol.extend({
+export const Car = Protocol.extend({
     get make() {},
     get model() {},
     get engine() {}
 });
 
-const Diagnostics = Protocol.extend({
+export const Diagnostics = Protocol.extend({
     get mpg() {}
 });
 
-const Junkyard = Protocol.extend({
+export const Junkyard = Protocol.extend({
     decomission(part) {}
 });
 
 @conformsTo(Engine)
-class V12 {
+export class V12 {
     constructor(
         @inject                        horsepower,
         @inject                        displacement,
@@ -44,6 +44,7 @@ class V12 {
         _(this).diagnostics  = diagnostics;
     }
 
+    @initialize
     initialize() {
         Object.defineProperty(this, "calibrated", { value: true });
     }
@@ -63,7 +64,7 @@ class V12 {
     }
 }
 
-class RebuiltV12 extends disposable(V12) {
+export class RebuiltV12 extends disposable(V12) {
     constructor(
         @inject           horsepower,
         @inject           displacement,
@@ -80,7 +81,7 @@ class RebuiltV12 extends disposable(V12) {
 }
 
 @conformsTo(Engine)
-class Supercharger {
+export class Supercharger {
     constructor(
         @inject(Engine) engine,
         @inject         boost) {
@@ -99,7 +100,7 @@ class Supercharger {
 }
 
 @conformsTo(Car)
-class Ferrari {
+export class Ferrari {
     constructor(
         @inject         model,
         @inject(Engine) engine) {
@@ -114,7 +115,7 @@ class Ferrari {
 }
 
 @conformsTo(Car)
-class Bugatti {
+export class Bugatti {
     constructor(
         @inject         model,
         @inject(Engine) engine) {
@@ -127,7 +128,7 @@ class Bugatti {
     get engine() { return _(this).engine; }    
 }
 
-class Auction {
+export class Auction {
     constructor(@inject(Car) @all cars) {
         const inventory = {};
         cars.forEach(car => {
@@ -145,12 +146,12 @@ class Auction {
 }
 
 @conformsTo(Diagnostics)
-class OBDII {
+export class OBDII {
     get mpg() { return 22.0; }
 }
 
 @conformsTo(Junkyard)
-class CraigsJunk  {
+export class CraigsJunk  {
     constructor() {
         _(this).parts = [];
     }
