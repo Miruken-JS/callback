@@ -1,5 +1,6 @@
 import { $isNothing } from "miruken-core";
 import { Handler } from "./handler";
+import { unmanaged } from "./unmanaged";
 
 /**
  * Represents a two-way
@@ -10,6 +11,7 @@ import { Handler } from "./handler";
  * @param  {Handler}  cascadeToHandler  -  secondary handler
  * @extends Handler
  */
+@unmanaged
 export class CascadeHandler extends Handler {
     constructor(handler, cascadeToHandler) {
         if ($isNothing(handler)) {

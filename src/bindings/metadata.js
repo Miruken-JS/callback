@@ -47,7 +47,7 @@ export class MetadataConstraint extends BindingConstraint {
         if ($isNothing(metadata)) {
             throw new Error("The metadata argument is required.");
         }
-        for (let [key, value] of _(this).metadata) {
+        for (const [key, value] of _(this).metadata) {
             metadata.set(key, value)
         }
     }
@@ -56,7 +56,7 @@ export class MetadataConstraint extends BindingConstraint {
         if ($isNothing(metadata)) {
             throw new Error("The metadata argument is required.");
         }
-        for (let [key, value] of _(this).metadata) {
+        for (const [key, value] of _(this).metadata) {
             if (!(metadata.has(key) && metadata.get(key) === value)) {
                 return false;
             }

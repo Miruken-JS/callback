@@ -1,5 +1,6 @@
 import { $flatten, createKeyChain } from "miruken-core";
 import { Handler, HandlerAdapter } from "./handler";
+import { unmanaged } from "./unmanaged";
 
 const _ = createKeyChain();
 
@@ -12,6 +13,7 @@ const _ = createKeyChain();
  * @param  {Any}  [...handlers]  -  callback handlers
  * @extends Handler
  */
+@unmanaged
 export class CompositeHandler extends Handler {
     constructor(...handlers) {
         super();

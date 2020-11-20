@@ -4,6 +4,7 @@ import {
 
 import { Composition } from "./composition";
 import { CallbackPolicy } from "./callback-policy";
+import { unmanaged } from "./unmanaged";
 
 /**
  * Base class for handling arbitrary callbacks.
@@ -48,6 +49,7 @@ export class Handler extends Base {
     }
 }
 
+@unmanaged
 export class HandlerAdapter extends Handler {
     constructor(handler) {
         if ($isNothing(handler)) {

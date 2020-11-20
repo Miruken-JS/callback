@@ -35,8 +35,8 @@ export const Junkyard = Protocol.extend({
 @conformsTo(Engine)
 export class V12 {
     constructor(
-        @inject                        horsepower,
-        @inject                        displacement,
+        @inject("horsepower")   horsepower,
+        @inject("displacement") displacement,
         @inject(Diagnostics) @optional diagnostics) {
 
         _(this).horsepower   = horsepower;
@@ -66,10 +66,10 @@ export class V12 {
 
 export class RebuiltV12 extends disposable(V12) {
     constructor(
-        @inject           horsepower,
-        @inject           displacement,
-        @inject           diagnostics,
-        @inject(Junkyard) junkyard) {
+        @inject("horsepower")   horsepower,
+        @inject("displacement") displacement,
+        @inject("diagnostics")  diagnostics,
+        @inject(Junkyard)       junkyard) {
 
         super(horsepower, displacement, diagnostics);
         _(this).junkyard = junkyard;
@@ -83,8 +83,8 @@ export class RebuiltV12 extends disposable(V12) {
 @conformsTo(Engine)
 export class Supercharger {
     constructor(
-        @inject(Engine) engine,
-        @inject         boost) {
+        @inject(Engine)  engine,
+        @inject("boost") boost) {
 
         _(this).engine = engine;
         _(this).boost  = boost;
@@ -97,13 +97,14 @@ export class Supercharger {
     get horsepower() {
         return _(this).engine.horsepower * (1.0 + this.boost); 
     }
+    get diagnostics() { return _(this).engine.diagnostics; }    
 }
 
 @conformsTo(Car)
 export class Ferrari {
     constructor(
-        @inject         model,
-        @inject(Engine) engine) {
+        @inject("model") model,
+        @inject(Engine)  engine) {
 
         _(this).model  = model;
         _(this).engine = engine;
@@ -117,8 +118,8 @@ export class Ferrari {
 @conformsTo(Car)
 export class Bugatti {
     constructor(
-        @inject         model,
-        @inject(Engine) engine) {
+        @inject("model") model,
+        @inject(Engine)  engine) {
         _(this).model  = model;
         _(this).engine = engine; 
     }
@@ -162,5 +163,5 @@ export class CraigsJunk  {
 }
 
 describe("@inject", () => {
-
+ 
 });

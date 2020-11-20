@@ -1,7 +1,7 @@
 import {
     TypeFlags, $isFunction, $isNothing,
-    $isPromise, $optional, $contents,
-    $flatten, $decorate
+    $isPromise, $isPlainObject, $optional,
+    $contents, $flatten, $decorate
 } from "miruken-core";
 
 import { Command } from "./command";
@@ -241,7 +241,7 @@ Handler.implement({
      * @throws  {RejectedError} An error if before returns an unaccepted promise.
      * @for Handler
      */
-    aspect(before, after, reentrant) {
+    $aspect(before, after, reentrant) {
         return this.filter((callback, composer, proceed) => {
             if ($isFunction(before)) {
                 const test = before(callback, composer);
@@ -275,16 +275,14 @@ Handler.implement({
             const arg = args[i];
             if ($isNothing(arg)) continue;
 
-            const many     = arg.flags.hasFlag(TypeFlags.Array),
-                  inquiry  = new Inquiry(arg.type, many),
-                  resolver = arg.keyResolver || defaultKeyResolver;
+            const resolver = arg.keyResolver || defaultKeyResolver,
+                  validate = resolver.validate;
 
-            const validate = resolver.validate;
             if ($isFunction(validate)) {
-                validate.call(resolver, inquiry.key, arg);
+                validate.call(resolver, arg);
             }
             
-            const dep = resolver.resolve(inquiry, arg, this);
+            const dep = resolver.resolve(arg, this);
             if ($isNothing(dep)) return null;
             if ($optional.test(dep)) {
                 resolved[i] = $contents(dep);
@@ -320,6 +318,55 @@ Handler.implement({
         return this;
     },
     $with(...values) { return this.$provide(values); },
+    $withKeyValues(keyValues) {
+        if ($isPlainObject(keyValues)) {
+            const provider = this.decorate();
+            for (let key in keyValues) {
+                provides.addHandler(provider, key, keyValues[key]);
+            }
+            return provider;
+        }
+        if (keyValues instanceof Map) {
+            const provider = this.decorate();
+            for (let [key, value] of keyValues) {
+                provides.addHandler(provider, key, value);
+            }
+            return provider;
+        }
+        throw new TypeError("The keyValues must be an object literal or Map.");
+    },
+    $withBindings(target, keyValues) {
+        if ($isNothing(target)) {
+            throw new Error("The scope argument is required.");
+        }
+        if ($isPlainObject(keyValues)) {
+            function getValue(inquiry, context) {
+                if (inquiry.parent?.binding?.constraint === target) {
+                    const value = keyValues[inquiry.key];
+                    return $isFunction(value) ? value(inquiry, context) : value;
+                }
+            }
+            const provider = this.decorate();
+            for (let key in keyValues) {
+                provides.addHandler(provider, key, getValue);
+            }
+            return provider;
+        }
+        if (keyValues instanceof Map) {
+            function getValue(inquiry) {
+                if (inquiry.parent?.binding?.constraint === target) {
+                    const value = keyValues.get(inquiry.key);
+                    return $isFunction(value) ? value(inquiry, context) : value;
+                }
+            }            
+            const provider = this.decorate();
+            for (let [key, value] of keyValues.keys) {
+                provides.addHandler(provider, key, getValue);
+            }
+            return provider;
+        }
+        throw new TypeError("The keyValues must be an object literal or Map.");
+    },    
     /**
      * Builds a handler chain.
      * @method next
@@ -327,7 +374,7 @@ Handler.implement({
      * @returns {Handler}  chaining callback handler.
      * @for Handler
      */                                                                                
-    chain(...handlers) {
+    $chain(...handlers) {
         switch(handlers.length) {
         case 0:  return this;
         case 1:  return new CascadeHandler(this, handlers[0])
@@ -347,7 +394,7 @@ Handler.implement({
             let guarded = false;
             property = property || "guarded";
             const propExists = property in target;
-            return this.aspect(() => {
+            return this.$aspect(() => {
                 if ((guarded = target[property])) {
                     return false;
                 }
@@ -376,7 +423,7 @@ Handler.implement({
     $activity(target, ms, property) {
         property = property || "$$activity";
         const propExists = property in target;            
-        return this.aspect(() => {
+        return this.$aspect(() => {
             const state = { enabled: false };
             setTimeout(() => {
                 if ("enabled" in state) {

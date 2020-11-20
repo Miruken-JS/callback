@@ -40,7 +40,7 @@ export class BindingMetadata {
         if (!(other instanceof BindingMetadata)) {
             throw new TypeError("The other argument is not a BindingMetadata.")
         }
-        for (let [key, value] of _(this).values) {
+        for (const [key, value] of _(this).values) {
             other.set(key, value);
         }
     }

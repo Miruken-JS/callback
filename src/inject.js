@@ -1,26 +1,27 @@
 import { 
-    TypeInfo, createTypeInfoDecorator,
+    TypeFlags, createTypeInfoDecorator,
     $isNothing, createKey
 } from "miruken-core";
 
+import { Inquiry } from "./inquiry";
 import { KeyResolver } from "./key-resolver";
 
 const _ = createKey();
 
 export class InjectResolver extends KeyResolver {
     constructor(key) {
+        if ($isNothing(key)) {
+            throw new Error("The key argument is required.");
+        }
         super();
         _(this).key = key;
     }
 
     get key() { return _(this).key; }
 
-    resolveKey(inquiry, typeInfo, handler) {
-        return handler.resolve(this.key);
-    }
-
-    resolveKeyAll(inquiry, typeInfo, handler) {
-        return handler.resolveAll(this.key);
+    createInquiry(typeInfo, parent) {
+       const many = typeInfo.flags.hasFlag(TypeFlags.Array);
+       return new Inquiry(this.key, many, parent);
     }
 }
 

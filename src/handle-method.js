@@ -237,23 +237,21 @@ function resolveArgs(signature, composer) {
             continue;
         }
 
-        if (i === 0) {
+        if (i === 0 && $isNothing(arg.keyResolver)) {
             if (arg.validate(this)) {
                 resolved[0] = this;
                 continue;
             }
         }
 
-        const many     = arg.flags.hasFlag(TypeFlags.Array),
-              inquiry  = new Inquiry(arg.type, many),
-              resolver = arg.keyResolver || defaultKeyResolver;
+        const resolver = arg.keyResolver || defaultKeyResolver,
+              validate = resolver.validate;
 
-        const validate = resolver.validate;
         if ($isFunction(validate)) {
-            validate.call(resolver, inquiry.key, arg);
+            validate.call(resolver, arg);
         }
         
-        const dep = resolver.resolve(inquiry, arg, composer);
+        const dep = resolver.resolve(arg, composer);
         if ($isNothing(dep)) return null;
         if ($optional.test(dep)) {
             resolved[i] = $contents(dep);

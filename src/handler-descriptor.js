@@ -53,7 +53,7 @@ export class HandlerDescriptor extends FilteredScope {
               policyBindings = bindings.get(policy);
         if (policyBindings == null) return;
 
-        for (let binding of policyBindings) {
+        for (const binding of policyBindings) {
             if (binding.removed) {
                 binding.removed(owner);
             }
@@ -86,7 +86,7 @@ export class HandlerDescriptor extends FilteredScope {
         const index = createIndex(constraint);
 
         let dispatched = false;
-        for (let descriptor of this.getDescriptorChain(true)) {
+        for (const descriptor of this.getDescriptorChain(true)) {
             dispatched = dispatch.call(descriptor, policy, handler, callback,
                                        rawCallback, constraint, index, variance,
                                        composer, greedy, results)
@@ -113,8 +113,8 @@ export class HandlerDescriptor extends FilteredScope {
     copyMetadata(target, source, sourceKey) {
         if (sourceKey) return;
         const targetDescriptor = HandlerDescriptor.get(target, true);
-         for (let [policy, bindings] of this.bindings) {
-            for (let binding of bindings) {
+         for (const [policy, bindings] of this.bindings) {
+            for (const binding of bindings) {
                 // Base2 classes can have constructor decorators.
                 if (binding.constraint == "#constructor") {
                     const clazz           = $classOf(target),
@@ -136,8 +136,8 @@ export class HandlerDescriptor extends FilteredScope {
             throw new TypeError("mergeMetadata expects a HandlerDescriptor.");
         }
         if (sourceKey) return;
-        for (let [policy, bindings] of sourceDescriptor.bindings) {
-            for (let binding of bindings) {
+        for (const [policy, bindings] of sourceDescriptor.bindings) {
+            for (const binding of bindings) {
                 binding.owner = target;
                 addBinding.call(this, policy, binding);
             }
@@ -194,7 +194,7 @@ function dispatch(policy, target, callback, rawCallback, constraint,
                   index, variance, composer, all, results) {
     let dispatched = false;
     const bindings = this.getBindings(policy);
-    if (bindings == null) return false;;
+    if (bindings == null) return false;
     const invariant = (variance === Variance.Invariant);
     if (!invariant || index) {
         for (let binding of bindings.fromIndex(index)) {
@@ -299,9 +299,7 @@ function resolveArgs(callback, rawCallback, signature, composer) {
         return [callback];
     }
 
-    const parent   = rawCallback instanceof Inquiry ? rawCallback : null,
-          resolved = [],
-          promises = [];
+    const resolved = [], promises = [];
 
     for (let i = 0; i < args.length; ++i) {     
         const arg = args[i];
@@ -312,7 +310,7 @@ function resolveArgs(callback, rawCallback, signature, composer) {
             continue;
         }
 
-        if (i === 0) {
+        if (i === 0 && $isNothing(arg.keyResolver)) {
             if (arg.validate(callback)) {
                 resolved[0] = callback;
                 continue;
@@ -323,16 +321,15 @@ function resolveArgs(callback, rawCallback, signature, composer) {
             }
         }
 
-        const many     = arg.flags.hasFlag(TypeFlags.Array),
-              inquiry  = new Inquiry(arg.type, many, parent),
-              resolver = arg.keyResolver || defaultKeyResolver;
+        const resolver = arg.keyResolver || defaultKeyResolver,
+              validate = resolver.validate;
 
-        const validate = resolver.validate;
         if ($isFunction(validate)) {
-            validate.call(resolver, inquiry.key, arg);
+            validate.call(resolver, arg);
         }
         
-        const dep = resolver.resolve(inquiry, arg, composer);
+        const parent = rawCallback instanceof Inquiry ? rawCallback : null,
+              dep    = resolver.resolve(arg, composer, parent);
         if ($isNothing(dep)) return null;
         if ($optional.test(dep)) {
             resolved[i] = $contents(dep);

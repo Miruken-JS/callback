@@ -14,7 +14,7 @@ export class InferenceHandler extends Handler {
         super();
         const owners          = new Set(),
               inferDescriptor = HandlerDescriptor.get(this, true);
-        for (let type of types.flat()) {
+        for (const type of types.flat()) {
             addStaticBindings(type, inferDescriptor);
             addInstanceBindings(type, inferDescriptor, owners);
         }
@@ -24,8 +24,8 @@ export class InferenceHandler extends Handler {
 function addStaticBindings(type, inferDescriptor) {
     const typeDescriptor = HandlerDescriptor.get(type);
     if (!$isNothing(typeDescriptor)) {
-        for (let [policy, bindings] of typeDescriptor.bindings) {
-            for (let binding of bindings) {
+        for (const [policy, bindings] of typeDescriptor.bindings) {
+            for (const binding of bindings) {
                 const typeBinding = pcopy(binding);
                 typeBinding.handler = binding.handler.bind(type);
                 inferDescriptor.addBinding(policy, typeBinding);
@@ -37,10 +37,10 @@ function addStaticBindings(type, inferDescriptor) {
 function addInstanceBindings(type, inferDescriptor, owners) {
     const prototype = type.prototype;
     if ($isNothing(prototype) || owners.has(prototype)) return;
-    for (let descriptor of HandlerDescriptor.getChain(prototype)) {
+    for (const descriptor of HandlerDescriptor.getChain(prototype)) {
         if (!owners.add(descriptor.owner)) break;
-        for (let [policy, bindings] of descriptor.bindings) {
-            for (let binding of bindings) {
+        for (const [policy, bindings] of descriptor.bindings) {
+            for (const binding of bindings) {
                 const instanceBinding = pcopy(binding);
                 instanceBinding.handler     = infer;
                 instanceBinding.getMetadata = Undefined;

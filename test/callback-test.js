@@ -1159,7 +1159,7 @@ describe("Handler", () => {
                       }
                   },
                   bank    = new Bank(10000),
-                  handler = Handler.for(bank).chain(new BankManager());
+                  handler = Handler.for(bank).$chain(new BankManager());
             expect(handler.handle(new WireMoney(1000))).to.be.true;
             expect(bank.assets).to.equal(9000);
             expect(bank.balance).to.equal(9000);
@@ -1726,7 +1726,7 @@ describe("Handler", () => {
             const belagio  = new Casino("Belagio"),
                   venetian = new Casino("Venetian"),
                   paris    = new Casino("Paris"),
-                  strip    = belagio.chain(venetian, paris);
+                  strip    = belagio.$chain(venetian, paris);
             Promise.resolve(strip.resolveAll(Casino)).then(casinos => {
                 expect(casinos).to.eql([belagio, venetian, paris]);
                 done();
@@ -1758,7 +1758,7 @@ describe("Handler", () => {
                           return Promise.delay(50).then(() => stop3);
                       }
                   }),
-                  company = bus1.chain(bus2, bus3);
+                  company = bus1.$chain(bus2, bus3);
             Promise.resolve(company.resolveAll(PitBoss)).then(pitBosses => {
                 expect(pitBosses).to.have.members($flatten([stop1, stop2, stop3]));
                 done();
@@ -1879,7 +1879,7 @@ describe("Handler", () => {
                   casino     = new Casino("Belagio").addHandlers(cashier),
                   countMoney = new CountMoney();
             expect(() => {
-                casino.aspect(False).handle(countMoney);
+                casino.$aspect(False).handle(countMoney);
             }).to.throw(RejectedError);
         });
 
@@ -1887,7 +1887,7 @@ describe("Handler", () => {
             const guest = new Guest(21),
                   level = Handler.for(new Level1Security);
             expect(() => {
-                Security(level.aspect(False)).admit(guest);
+                Security(level.$aspect(False)).admit(guest);
             }).to.throw(RejectedError);
         });
 
@@ -1895,7 +1895,7 @@ describe("Handler", () => {
             const cashier    = new Cashier(1000000.00),
                   casino     = new Casino("Belagio").addHandlers(cashier),
                   countMoney = new CountMoney();
-            expect(casino.aspect(True, cb => cb.record(-1))
+            expect(casino.$aspect(True, cb => cb.record(-1))
                    .handle(countMoney)).to.be.true;
             expect(countMoney.total).to.equal(999999.00);
         });
@@ -1904,7 +1904,7 @@ describe("Handler", () => {
             let count = 0,
                 guest = new Guest(21),
                 level = Handler.for(new Level1Security);
-            expect(Security(level.aspect(True, () => { ++count; }))
+            expect(Security(level.$aspect(True, () => { ++count; }))
                             .admit(guest)).to.be.true;
             expect(count).to.equal(1);
         });
@@ -1913,7 +1913,7 @@ describe("Handler", () => {
             const cashier   = new Cashier(750000.00),
                   casino    = new Casino("Venetian").addHandlers(cashier),
                   wireMoney = new WireMoney(250000);
-            Promise.resolve(casino.aspect(() => Promise.resolve(false))
+            Promise.resolve(casino.$aspect(() => Promise.resolve(false))
                 .command(wireMoney)).then(handled => {
                 throw new Error("Should not get here");
             }, error => {
@@ -1924,7 +1924,7 @@ describe("Handler", () => {
 
         it("should ignore async invocation", done => {
             const level2 = Handler.for(new Level2Security);
-            Security(level2.aspect(() => {
+            Security(level2.$aspect(() => {
                 return Promise.resolve(false);
             })).scan().then(scanned => {
                 throw new Error("Should not get here");
@@ -1938,7 +1938,7 @@ describe("Handler", () => {
             const cashier   = new Cashier(750000.00),
                   casino    = new Casino("Venetian").addHandlers(cashier),
                   wireMoney = new WireMoney(250000);
-            Promise.resolve(casino.aspect(True, wire => done())
+            Promise.resolve(casino.$aspect(True, wire => done())
                 .command(wireMoney)).then(result => {
                     expect(result).to.equal(result);
                     expect(wireMoney.received).to.equal(250000);
@@ -1947,7 +1947,7 @@ describe("Handler", () => {
 
         it("should invoke async with side-effect", done => {
             const level2 = Handler.for(new Level2Security);
-            Security(level2.aspect(True, () => done())).scan().then(scanned => {
+            Security(level2.$aspect(True, () => done())).scan().then(scanned => {
                 expect(scanned).to.be.true;
             });
         });
@@ -1957,7 +1957,7 @@ describe("Handler", () => {
                   casino     = new Casino("Belagio").addHandlers(cashier),
                   countMoney = new CountMoney;
             expect(() => {
-                expect(casino.aspect(() => { throw new Error; })
+                expect(casino.$aspect(() => { throw new Error; })
                        .handle(countMoney)).to.be.false;
             }).to.throw(Error);
         });
@@ -1966,7 +1966,7 @@ describe("Handler", () => {
             const cashier    = new Cashier(1000000.00),
                   casino     = new Casino("Belagio").addHandlers(cashier),
                   countMoney = new CountMoney();
-            casino.aspect(() => {
+            casino.$aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
             }).command(countMoney).catch(error => {
@@ -1977,7 +1977,7 @@ describe("Handler", () => {
 
         it("should fail async invoke on rejection in before", done => {
             const level2 = Handler.for(new Level2Security);
-            Security(level2.aspect(() => {
+            Security(level2.$aspect(() => {
                 setTimeout(done, 2);
                 return Promise.reject(new Error("Something bad"));
             })).scan().catch(error => {
@@ -2020,7 +2020,7 @@ describe("Handler", () => {
                   baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  security = Handler.for(level1).chain(level2);
+                  security = Handler.for(level1).$chain(level2);
             expect(Security(security).admit(guest)).to.be.false;
             Security(security).trackActivity(baccarat);
         });
@@ -2029,7 +2029,7 @@ describe("Handler", () => {
             const baccarat = new Activity("Baccarat"),
                   level1   = new Level1Security(),
                   level2   = new Level2Security(),
-                  compose  = Handler.for(level1).chain(level2, baccarat),
+                  compose  = Handler.for(level1).$chain(level2, baccarat),
             countMoney = new CountMoney();
             expect(compose.handle(countMoney)).to.be.true;
         });
@@ -2474,7 +2474,7 @@ describe("Handler", () => {
     });
 
     it("should handle methods polymorphically", () => {
-        const handler = new EmailHandler().chain(new OfflineHandler());
+        const handler = new EmailHandler().$chain(new OfflineHandler());
         expect(Emailing(handler).fail("OFF")).to.equal(-1);         
     });
     
@@ -2484,7 +2484,7 @@ describe("Handler", () => {
     });
 
     it("should chain handle methods strictly", () => {
-         const handler = new OfflineHandler().chain(new EmailHandler());
+         const handler = new OfflineHandler().$chain(new EmailHandler());
          expect(Emailing(handler.$strict()).send("Hello")).to.equal("Hello");         
     });
 
@@ -2749,7 +2749,7 @@ describe("Handler", () => {
         it("should work with filters", () => {
             let   count   = 0;
             const handler = new EmailHandler(),
-                  batch   = handler.aspect(null, () => {
+                  batch   = handler.$aspect(null, () => {
                       ++count;
                   }).$batch();
             expect($using(batch, () => {

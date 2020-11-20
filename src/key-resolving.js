@@ -6,8 +6,8 @@ import {
 import { BindingConstraint } from "./bindings/binding-constraint";
 
 export const KeyResolving = StrictProtocol.extend({
-    validate(key, typeInfo) {},     
-    resolve(inquiry, typeInfo, handler) {}
+    validate(typeInfo) {},     
+    resolve(typeInfo, handler, parent) {}
 });
 
 TypeInfo.implement({

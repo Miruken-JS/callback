@@ -65,11 +65,11 @@ Handler.implement({
 
         const ordered = [], once = new Set();
 
-        for (let provider of allProviders) {
+        for (const provider of allProviders) {
             let found = false;
             const filters = provider.getFilters(binding, callback, handler);
             if (filters == null) return;
-            for (let filter of filters) {
+            for (const filter of filters) {
                 if (filter == null) return;
                 found = true;
                 const filterType      = filter.constructor,

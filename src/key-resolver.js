@@ -3,11 +3,13 @@ import {
     $isNothing, $isPromise, $optional
 } from "miruken-core";
 
+import { Inquiry } from "./inquiry";
 import { KeyResolving } from "./key-resolving";
 
 @conformsTo(KeyResolving)
 export class KeyResolver extends Base {
-    resolve(inquiry, typeInfo, handler) {
+    resolve(typeInfo, handler, parent) {
+        const inquiry = this.createInquiry(typeInfo, parent);
         if (typeInfo.flags.hasFlag(TypeFlags.Lazy)) {
             return ((created, dep) => () => {
                 if (!created) {
@@ -26,6 +28,11 @@ export class KeyResolver extends Base {
 
     resolveKeyAll(inquiry, typeInfo, handler) {
         return handler.resolveAll(inquiry, typeInfo.constraints);
+    }
+
+    createInquiry(typeInfo, parent) {
+       const many = typeInfo.flags.hasFlag(TypeFlags.Array);
+       return new Inquiry(typeInfo.type, many, parent);
     }
 }
 

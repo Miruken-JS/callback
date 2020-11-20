@@ -3,27 +3,29 @@ import {
     $isProtocol, createKey
 } from "miruken-core";
 
+import { Handler } from "./handler";
 import { CompositeHandler } from "./composite-handler";
 import { InferenceHandler } from "./inference-handler";
+import { Filtering } from "./filters/filtering";
 import { unmanaged } from "./unmanaged";
 
 const _ = createKey();
 
-export class SourceProvider {
+export class SourceBuilder {
     constructor() {
-        _(this).providers = []; 
+        _(this).sources = []; 
     }
 
     getTypes() {
-        const types = _(this).providers.flatMap(provider => provider());
+        const types = _(this).sources.flatMap(getTypes => getTypes());
         return [...new Set(types)];
     }
 
     fromModules(...modules) {
-        const providers = _(this).providers;
+        const sources = _(this).sources;
         modules.flat().forEach(module => {
             if ($isSomething(module)) {
-                providers.push(() => Object.keys(module)
+                sources.push(() => Object.keys(module)
                     .map(key => module[key])
                     .filter(managedType));
             }
@@ -32,20 +34,22 @@ export class SourceProvider {
     }
 
     fromTypes(...types) {
-        const validTypes = types.flat().filter(requiredType);
-        if (validTypes.length > 0) {
-            _(this).providers.push(() => validTypes);
+        const managedTypes = types.flat().filter(requiredType);
+        if (managedTypes.length > 0) {
+            _(this).sources.push(() => managedTypes);
         }
         return this;
     }
 }
 
-export class DecoratorProvider {
+export class DecoratorBuilder {
     constructor() {
-        _(this).decorators = []; 
+        _(this).decorators = new Set(); 
     }
     
-    get decorators() { return _(this).decorators; }
+    get decorators() {
+        return [..._(this).decorators];
+    }
 
     withDecorators(...decorators) {
         const set = _(this).decorators;
@@ -57,11 +61,11 @@ export class DecoratorProvider {
 
 export class TypeSelector {
     constructor() {
-        _(this).decorators = new DecoratorProvider();
+        _(this).decorators = new DecoratorBuilder();
     }
 
     get decorators() { 
-        return _(this).decorators;
+        return _(this).decorators.decorators;
     }
 
     acceptType(type) {
@@ -69,7 +73,7 @@ export class TypeSelector {
     }
 
     assignableTo(constraints) {
-        _(this).filters = type => constraints.flat()
+        _(this).filter = type => constraints.flat()
             .filter($isSomething)
             .some(constraint => {
                 if ($isProtocol(constraint)) {
@@ -84,6 +88,9 @@ export class TypeSelector {
     }
 
     where(predicate) {
+        if ($isNothing(predicate)) {
+            throw new Error("The predicate argument is required.");
+        }
         _(this).filter = predicate;
         return _(this).decorators;
     }
@@ -91,18 +98,21 @@ export class TypeSelector {
 
 export class HandlerBuilder {
     constructor() {
-        _(this).sources    = new SourceProvider();
+        _(this).sources    = new SourceBuilder();
         _(this).selectors  = [];
         _(this).decorators = new Set();
+        _(this).handlers   = [];
+
+        this.selectTypes(types => types.where(isDefaultType));
     }
 
     addSources(addSources) {
         if ($isNothing(addSources)) {
-            throw new Error("The addSources is required.");
+            throw new Error("The addSources argument is required.");
         }
 
         if (!$isFunction(addSources)) {
-            throw new Error("The addSources is expected to be a function.");
+            throw new Error("The addSources argument is not a function.");
         }
 
         addSources(_(this).sources);
@@ -111,11 +121,11 @@ export class HandlerBuilder {
 
     selectTypes(selectTypes) {
         if ($isNothing(selectTypes)) {
-            throw new Error("The selectTypes is required.");
+            throw new Error("The selectTypes argument is required.");
         }
 
         if (!$isFunction(selectTypes)) {
-            throw new Error("The selectTypes is expected to be a function.");
+            throw new Error("The selectTypes argument is not a function.");
         }
 
         const selector = new TypeSelector();
@@ -124,29 +134,43 @@ export class HandlerBuilder {
         return this;
     }
     
+    addHandlers(...handlers) {
+        _(this).handlers.push(...handlers.flat().filter($isSomething));
+        return this;
+    }
+
     withDecorators(...decorators) {
         const set = _(this).decorators;
         decorators.flat().filter($isSomething)
             .forEach(decorator => set.add(decorator));
+        return this;
     }
 
     build() {
-        const handler   = new CompositeHandler(),
-              selectors = _(this).selectors,
-              types     = _(this).sources.getTypes()
-                .filter(type => {
-                    if (selectors.length == 0) return true;
-                    const match = selectors.find(
-                        selector => selector.acceptType(type));
-                    if ($isSomething(match)) {
-                        return true;
-                    }
-                    return false;
-                });
+        const selectors  = _(this).selectors,
+              decorators = [..._(this).decorators],
+              types      = _(this).sources.getTypes()
+                  .filter(type => {
+                      const match = selectors.find(
+                          selector => selector.acceptType(type));
+                      if ($isSomething(match)) {
+                          Reflect.decorate(match.decorators, type);
+                          Reflect.decorate(decorators, type);
+                          return true;
+                      }
+                      return false;
+                  });
               
-        handler.addHandlers(new InferenceHandler(types));
-        return handler;
+        return new CompositeHandler()
+            .addHandlers(_(this).handlers)
+            .addHandlers(new InferenceHandler(types));
     }
+}
+
+function isDefaultType(type) {
+    return type.prototype instanceof Handler ||
+           Filtering.isAdoptedBy(type) ||
+           type.name.endsWith("Handler");
 }
 
 function managedType(type) {
