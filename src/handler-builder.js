@@ -1,15 +1,18 @@
 import { 
-    $isNothing, $isSomething, $isFunction,
-    $isProtocol, createKey
+    design, $isNothing, $isSomething,
+    $isFunction, $isProtocol, createKey
 } from "miruken-core";
 
 import { Handler } from "./handler";
 import { CompositeHandler } from "./composite-handler";
 import { InferenceHandler } from "./inference-handler";
 import { Filtering } from "./filters/filtering";
+import { provides } from "./callback-policy";
+import { singleton } from "./singleton-lifestyle";
 import { unmanaged } from "./unmanaged";
 
-const _ = createKey();
+const _ = createKey(),
+          defaultDecorators = [singleton];
 
 export class SourceBuilder {
     constructor() {
@@ -42,30 +45,33 @@ export class SourceBuilder {
     }
 }
 
-export class DecoratorBuilder {
-    constructor() {
-        _(this).decorators = new Set(); 
-    }
-    
-    get decorators() {
-        return [..._(this).decorators];
+export class ProvidesBuilder {
+    get implicit() {
+        return _(this).implicit;
     }
 
-    withDecorators(...decorators) {
-        const set = _(this).decorators;
-        decorators.flat().filter($isSomething)
-            .forEach(decorator => set.add(decorator));
-        return this;
-    }    
+    get decorators() {
+        return _(this).decorators;
+    }
+
+    provideImplicitly(...decorators) {
+        _(this).implicit   = true
+        _(this).decorators = decorators.flat().filter($isSomething); 
+    }
+
+    provideExplicitly() {
+        _(this).implicit = false;
+        delete _(this).decorators;
+    }
 }
 
 export class TypeSelector {
     constructor() {
-        _(this).decorators = new DecoratorBuilder();
+        _(this).provides = new ProvidesBuilder();
     }
 
-    get decorators() { 
-        return _(this).decorators.decorators;
+    get provides() { 
+        return _(this).provides;
     }
 
     acceptType(type) {
@@ -84,7 +90,7 @@ export class TypeSelector {
                 }
                 return false;
             });
-        return _(this).decorators;
+        return this.provides;
     }
 
     where(predicate) {
@@ -92,18 +98,19 @@ export class TypeSelector {
             throw new Error("The predicate argument is required.");
         }
         _(this).filter = predicate;
-        return _(this).decorators;
+        return this.provides;
     }
 }
 
 export class HandlerBuilder {
     constructor() {
-        _(this).sources    = new SourceBuilder();
-        _(this).selectors  = [];
-        _(this).decorators = new Set();
-        _(this).handlers   = [];
+        const _this = _(this);
+        _this.sources           = new SourceBuilder();
+        _this.selectors         = [];
+        _this.handlers          = [];
+        _this.provideImplicitly = true;
 
-        this.selectTypes(types => types.where(isDefaultType));
+        this.selectTypes(types => types.where(isStandardType));
     }
 
     addSources(addSources) {
@@ -139,27 +146,42 @@ export class HandlerBuilder {
         return this;
     }
 
-    withDecorators(...decorators) {
-        const set = _(this).decorators;
-        decorators.flat().filter($isSomething)
-            .forEach(decorator => set.add(decorator));
+    provideImplicitly(...decorators) {
+        _(this).provideImplicitly = true;
+        _(this).implicitDecorators = decorators.flat().filter($isSomething);
+        return this;
+    }
+
+    provideExplicitly() {
+        _(this).provideImplicitly = false;
+        delete _(this).implicitDecorators;
         return this;
     }
 
     build() {
         const selectors  = _(this).selectors,
-              decorators = [..._(this).decorators],
-              types      = _(this).sources.getTypes()
-                  .filter(type => {
-                      const match = selectors.find(
-                          selector => selector.acceptType(type));
-                      if ($isSomething(match)) {
-                          Reflect.decorate(match.decorators, type);
-                          Reflect.decorate(decorators, type);
-                          return true;
-                      }
-                      return false;
-                  });
+              types      = _(this).sources.getTypes().flatMap(type => {
+            const match = selectors.find(
+                selector => selector.acceptType(type));
+            if ($isSomething(match)) {
+                if (!provides.isDefined(type)) {
+                    const provideOptions = match.provides;
+                    let provideImplicitly = _(this).provideImplicitly;
+                    if ($isSomething(provideOptions.implicit)) {
+                        provideImplicitly = provideOptions.implicit;
+                    }
+                    if (provideImplicitly) {
+                        const decorators = match.decorators 
+                                        || _(this).implicitDecorators
+                                        || defaultDecorators;
+                        return [createFactory(type, decorators)];
+                    }
+                } else {
+                    return [type];
+                }
+            }
+            return [];
+        });
               
         return new CompositeHandler()
             .addHandlers(_(this).handlers)
@@ -167,7 +189,22 @@ export class HandlerBuilder {
     }
 }
 
-function isDefaultType(type) {
+function createFactory(type, decorators) {
+    class Factory {
+        @provides(type) static create(...args) {
+            return Reflect.construct(type, args);
+        }
+    }
+    const signature = design.get(type, "constructor");
+    if ($isSomething(signature)) {
+        design.getOrCreateOwn(Factory, "create", () => signature);
+    }
+    Reflect.decorate(decorators, Factory, "create",
+        Reflect.getOwnPropertyDescriptor(Factory, "create"));
+    return Factory;
+}
+
+function isStandardType(type) {
     return type.prototype instanceof Handler ||
            Filtering.isAdoptedBy(type) ||
            type.name.endsWith("Handler");

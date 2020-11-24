@@ -114,14 +114,14 @@ export class CallbackPolicy extends FilteredScope {
     /**
      * Creates a decorator for the implied policy.
      * @method createDecorator
-     * @param  {Object}    [allowGets]  -  true to allow property handlers
-     * @param  {Function}  [filter]     -  optional callback filter
+     * @param  {String}  name       -  the name of the policy
+     * @param  {Object}  [options]  -  true to allow property handlers
      */
-    static createDecorator(name, allowGets, filter) {
-        const policy = new this(name);
+    static createDecorator(name, options) {
+        const policy  = new this(name),
+              members = options?.allowClasses === true ? new WeakSet() : null;
         function decorator(...args) {
-            return decorate(registerHandlers(
-                name, policy, allowGets, filter), args);
+            return decorate(registerHandlers(name, policy, members, options), args);
         }
         decorator.policy     = policy;
         decorator.addHandler = function (...args) {
@@ -130,6 +130,11 @@ export class CallbackPolicy extends FilteredScope {
         decorator.dispatch = function (...args) {
             return policy.dispatch.apply(policy, args);
         }; 
+        if (!$isNothing(members)) {
+            decorator.isDefined = function (target) {
+                return members.has(target);
+            }
+        }
         return decorator;
     }
 
@@ -230,10 +235,12 @@ function validateComparer(binding, otherBinding) {
  * @method registerHandlers
  * @param  {String}         name          -  policy name
  * @param  {CallbackPolicy} policy        -  the policy
- * @param  {Object}         [allowGets]   -  true to allow property handlers
- * @param  {Function}       [filter]      -  optional callback filter
+ * @param  {WeakSet}        members       -  the set of registered classes
+ * @param  {Boolean}        allowClasses  -  true to allow on classes
+ * @param  {Boolean}        allowGets     -  true to allow property handlers
+ * @param  {Function}       filter        -  optional callback filter
  */
-function registerHandlers(name, policy, allowGets, filter) {
+function registerHandlers(name, policy, members, { allowClasses, allowGets, filter } = {}) {
     if ($isNothing(policy)) {
         throw new Error(`The policy for @${name} is required.`);
     }
@@ -241,17 +248,29 @@ function registerHandlers(name, policy, allowGets, filter) {
         // Base2 classes can have constructor decorators, but real classes
         // can't.  Therefore, we must allow decorators on classes too.
         if ($isNothing(descriptor)) {
+            if (!allowClasses) {
+                throw new SyntaxError(`@${name} is not allowed on classes.`);
+            }
             if (constraints.length > 0) {
                 throw new SyntaxError(`@${name} expects no arguments if applied to a class.`);
             }
-            policy.addHandler(target, target, instantiate, "constructor");
+            if (members?.has(target) !== true) {
+                policy.addHandler(target, target, instantiate, "constructor");
+                members?.add(target);
+            }
             return;
         }
         if (key === "constructor") {
+            if (!allowClasses) {
+                throw new SyntaxError(`@${name} is not allowed on constructors.`);
+            }    
             if (constraints.length > 0) {
-                 throw new SyntaxError(`@${name} expects no arguments if applied to a constructor.`);
+                throw new SyntaxError(`@${name} expects no arguments if applied to a constructor.`);
             }
-            policy.addHandler(target, "#constructor", instantiate, key);
+            if (members?.has(target) !== true) {
+                policy.addHandler(target, "#constructor", instantiate, key);
+                members?.add(target);
+            }
             return;
         }
         const { get, value } = descriptor;
@@ -310,13 +329,19 @@ export const handles = ContravariantPolicy.createDecorator("handles");
  * Policy for providing instnces covariantly.
  * @property {Function} provides
  */        
-export const provides = CovariantPolicy.createDecorator("provides", true);
+export const provides = CovariantPolicy.createDecorator("provides", {
+    allowClasses: true,
+    allowGets:    true
+});
 
 /**
  * Policy for matching instances invariantly.
  * @property {Function} looksup
  */                
-export const looksup = InvariantPolicy.createDecorator("looksup", true);
+export const looksup = InvariantPolicy.createDecorator("looksup", {
+    allowClasses: true,
+    allowGets:    true
+});
 
 /**
  * Policy for creating instnces covariantly.

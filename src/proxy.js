@@ -1,14 +1,24 @@
 import { 
-    TypeInfo, TypeFlags, createTypeInfoDecorator,
-    $createQualifier
+    TypeInfo, TypeFlags, conformsTo,
+    createTypeInfoDecorator, $createQualifier
 } from "miruken-core";
 
-import { KeyResolver } from "./key-resolver";
+import { KeyResolving } from "./key-resolving";
 
 export const $proxy = $createQualifier();
 
-export class ProxyResolver extends KeyResolver {
-    resolveKey(inquiry, typeInfo, handler) {
+@conformsTo(KeyResolving)
+export class ProxyResolver {
+    validate(typeInfo) {
+        if (!typeInfo.flags.hasFlag(TypeFlags.Protocol)) {
+            throw new TypeError("@proxy requires a Protocol argument.");
+        }
+        if (typeInfo.flags.hasFlag(TypeFlags.Array)) {
+            throw new TypeError("@proxy arguments cannot be collections.");
+        }
+    }  
+
+    resolve(typeInfo, handler) {
         return handler.proxy(typeInfo.type);
     }
 }
@@ -21,11 +31,5 @@ export const proxy = createTypeInfoDecorator((key, typeInfo, [type]) => {
     const protocol = TypeInfo.parse(type);
     protocol.keyResolver = proxyResolver;
     typeInfo.merge(protocol);
-    if (!typeInfo.flags.hasFlag(TypeFlags.Protocol)) {
-        throw new TypeError("@proxy requires a Protocol argument.");
-    }
-    if (typeInfo.flags.hasFlag(TypeFlags.Array)) {
-        throw new TypeError("@proxy arguments cannot be collections.");
-    }
 });
 

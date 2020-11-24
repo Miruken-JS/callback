@@ -1,12 +1,11 @@
 import { 
     Base, Protocol, conformsTo,
-    disposable, all, optional,
+    disposable, type, all, optional,
     createKey
 } from "miruken-core";
 
 import { inject } from "../src/inject";
 import { initialize } from "../src/initializer";
-import { expect } from "chai";
 
 const _ = createKey();
 
@@ -37,7 +36,7 @@ export class V12 {
     constructor(
         @inject("horsepower")   horsepower,
         @inject("displacement") displacement,
-        @inject(Diagnostics) @optional diagnostics) {
+        @type(Diagnostics) @optional diagnostics) {
 
         _(this).horsepower   = horsepower;
         _(this).displacement = displacement;
@@ -69,7 +68,7 @@ export class RebuiltV12 extends disposable(V12) {
         @inject("horsepower")   horsepower,
         @inject("displacement") displacement,
         @inject("diagnostics")  diagnostics,
-        @inject(Junkyard)       junkyard) {
+        @type(Junkyard)         junkyard) {
 
         super(horsepower, displacement, diagnostics);
         _(this).junkyard = junkyard;
@@ -104,7 +103,7 @@ export class Supercharger {
 export class Ferrari {
     constructor(
         @inject("model") model,
-        @inject(Engine)  engine) {
+        @type(Engine)    engine) {
 
         _(this).model  = model;
         _(this).engine = engine;
@@ -119,7 +118,7 @@ export class Ferrari {
 export class Bugatti {
     constructor(
         @inject("model") model,
-        @inject(Engine)  engine) {
+        @type(Engine)    engine) {
         _(this).model  = model;
         _(this).engine = engine; 
     }
@@ -130,7 +129,7 @@ export class Bugatti {
 }
 
 export class Auction {
-    constructor(@inject(Car) @all cars) {
+    constructor(@type(Car) @all cars) {
         const inventory = {};
         cars.forEach(car => {
             const make   = car.make;
