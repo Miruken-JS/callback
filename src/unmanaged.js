@@ -12,4 +12,4 @@ const unmanagedMetadata = Metadata.decorator(unmanagedMetadataKey,
 
 export const unmanaged = unmanagedMetadata();
 
-unmanaged.isDefined = type => unmanagedMetadata.get(type) === true;
+unmanaged.isDefined = type => unmanagedMetadata.getOwn(type) === true;

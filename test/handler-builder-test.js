@@ -3,6 +3,7 @@ import { Handler } from "../src/handler";
 import { HandlerBuilder } from "../src/handler-builder";
 import { provides } from "../src/callback-policy";
 import * as cars from "./cars";
+import * as casino from "./callback-test";
 import { expect } from "chai";
 
 describe("HandlerBuilder", () => {
@@ -15,8 +16,8 @@ describe("HandlerBuilder", () => {
 
     it("should provide types explicitly", () => {
         const handler = new HandlerBuilder()
-            .addSources(sources => sources.fromTypes(Mechanic))
-            .selectTypes(types => types.where(True))
+            .addTypes(from => from.types(Mechanic))
+            .takeTypes(that => that.satisfy(True))
             .build();
         expect(handler).to.be.instanceOf(Handler);
         expect(handler.resolve(Mechanic)).to.be.instanceOf(Mechanic);
@@ -24,8 +25,8 @@ describe("HandlerBuilder", () => {
 
     it("should provide types implicitly from modules", () => {
         const handler = new HandlerBuilder()
-            .addSources(sources => sources.fromModules(cars))
-            .selectTypes(types => types.where(True))
+            .addTypes(from => from.modules(cars))
+            .takeTypes(that => that.satisfy(True))
             .build();
         expect(handler).to.be.instanceOf(Handler);
         expect(handler.resolve(cars.Junkyard)).to.be.instanceOf(cars.CraigsJunk);
@@ -33,8 +34,8 @@ describe("HandlerBuilder", () => {
 
     it("should provide types implicitly with explicit dependencies", () => {
         const handler = new HandlerBuilder()
-            .addSources(sources => sources.fromModules(cars))
-            .selectTypes(types => types.where(True))
+            .addTypes(from => from.modules(cars))
+            .takeTypes(that => that.satisfy(True))
             .build();
         const engine = handler.$withKeyValues({
             horsepower:   205,
@@ -48,8 +49,8 @@ describe("HandlerBuilder", () => {
 
     it("should provide types implicitly with target bindings", () => {
         const handler = new HandlerBuilder()
-            .addSources(sources => sources.fromModules(cars))
-            .selectTypes(types => types.where(True))
+            .addTypes(from => from.modules(cars))
+            .takeTypes(that => that.satisfy(True))
             .build();
         const engine = handler.$withBindings(cars.V12, {
             horsepower:   205,
@@ -63,8 +64,8 @@ describe("HandlerBuilder", () => {
 
     it("should provide decorated types with target bindings", () => {
         const handler = new HandlerBuilder()
-            .addSources(sources => sources.fromModules(cars))
-            .selectTypes(types => types.where(True))
+            .addTypes(from => from.modules(cars))
+            .takeTypes(that => that.satisfy(True))
             .build();
         const engines = handler
             .$withBindings(cars.V12, {
@@ -76,7 +77,7 @@ describe("HandlerBuilder", () => {
             })            
             .resolveAll(cars.Engine);
         
-        expect(2).to.equal(engines.length);
+        expect(engines.length).to.equal(2);
         const engine  = engines.find(e => e instanceof cars.Supercharger);
         expect(engine.boost).to.equal(20);
         expect(engine.horsepower).to.equal(4305);
@@ -86,20 +87,69 @@ describe("HandlerBuilder", () => {
 
     it("should require explicitly provided types", () => {
         const handler = new HandlerBuilder()
-            .addSources(sources => sources.fromModules(cars))
-            .selectTypes(types => types.where(True))
-            .provideExplicitly()
+            .addTypes(from => from.modules(cars).types(Mechanic))
+            .takeTypes(that => that.satisfy(True))
+            .explicitConstructors()
             .build();
+        expect(handler.resolve(Mechanic)).to.be.instanceOf(Mechanic);
         expect(handler.resolve(cars.Junkyard)).to.be.undefined;
+    });
+
+    it("should construct implicity if arguments known", () => {
+        const handler = new HandlerBuilder()
+            .addTypes(from => from.modules(casino))
+            .build();
+        expect(handler.resolve(casino.Casino)).to.be.undefined;
+    });
+
+    it("should select types that conform to protocols", () => {
+        const handler = new HandlerBuilder()
+            .addTypes(from => from.modules(casino))
+            .takeTypes(that => that.conformTo(casino.Security))
+            .build();
+        const security = handler.resolveAll(casino.Security);
+        expect(security.length).to.equal(2);
+        expect(security.map(s => s.constructor))
+            .to.include(casino.Level1Security, casino.Level2Security);
+    });
+
+    it("should select types that derive from a class exclusive", () => {
+        const handler = new HandlerBuilder()
+            .addTypes(from => from.modules(casino))
+            .takeTypes(that => that.extendFrom(casino.Accountable))
+            .build();
+        const accountable = handler.resolveAll(casino.Accountable);
+        expect(accountable.length).to.equal(1);
+        expect(accountable.map(s => s.constructor)).to.include(casino.Cashier);
+    });
+
+    it("should select types that derive from a class inclusive", () => {
+        const handler = new HandlerBuilder()
+            .addTypes(from => from.modules(casino))
+            .takeTypes(that => that.extendFrom(casino.Accountable, true))
+            .build();
+        const accountable = handler.resolveAll(casino.Accountable);
+        expect(accountable.length).to.equal(1);
+        expect(accountable.map(s => s.constructor)).to.include(casino.Cashier);
     });
 
     it("should provide singleton types implicitly by default", () => {
         const handler = new HandlerBuilder()
-            .addSources(sources => sources.fromModules(cars))
-            .selectTypes(types => types.where(True))
+            .addTypes(from => from.modules(cars))
+            .takeTypes(that => that.satisfy(True))
             .build();
         const junkyard = handler.resolve(cars.Junkyard);
         expect(junkyard).to.be.instanceOf(cars.CraigsJunk);
         expect(handler.resolve(cars.Junkyard)).to.equal(junkyard);
     });
+
+    it("should provide types implicitly with lifestyle override", () => {
+        const handler = new HandlerBuilder()
+            .addTypes(from => from.modules(cars))
+            .takeTypes(that => that.satisfy(True).implicitConstructors([]))
+            .build();
+        const junkyard = handler.resolve(cars.Junkyard);
+        expect(junkyard).to.be.instanceOf(cars.CraigsJunk);
+        expect(handler.resolve(cars.Junkyard)).to.not.equal(junkyard);
+    });    
 });

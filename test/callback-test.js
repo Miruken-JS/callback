@@ -39,45 +39,45 @@ import { expect } from "chai";
 
 const _ = createKeyChain();
 
-class Guest {
+export class Guest {
     constructor(age) {
         this.age = age;
     }
 }
 
-class Dealer {
+export class Dealer {
     shuffle(cards) {
         return cards.sort(() => 0.5 - Math.random());
     }
 }
 
-class PitBoss {
+export class PitBoss {
     constructor(name) {
         this.name = name;
     }
 }
 
-class DrinkServer {}
+export class DrinkServer {}
 
-const Game = Protocol.extend({
+export const Game = Protocol.extend({
     open(numPlayers) {}
 });
 
-const Security = Protocol.extend({
+export const Security = Protocol.extend({
     admit(guest) {},
     trackActivity(activity) {},
     scan() {}
 });
 
 @conformsTo(Security)
-class Level1Security {
+export class Level1Security {
     admit(guest) {
         return guest.age >= 21;
     }
 }
 
 @conformsTo(Security)
-class Level2Security {
+export class Level2Security {
     trackActivity(activity) {
         console.log(`Tracking '${activity.name}'`);
     }
@@ -87,13 +87,13 @@ class Level2Security {
     }
 }
 
-class WireMoney {
+export class WireMoney {
     constructor(requested) {
         this.requested = requested;
     }
 }
 
-class CountMoney {
+export class CountMoney {
     constructor() {
         _(this).total = 0.0;
     }
@@ -102,7 +102,7 @@ class CountMoney {
     record(amount) { _(this).total += amount; }
 }
 
-class Accountable {
+export class Accountable {
     constructor(assets, liabilities) {
         _(this).assets      = Number(assets || 0);
         _(this).liabilities = Number(liabilities || 0);
@@ -141,7 +141,7 @@ class Accountable {
     }
 }
 
-class Cashier extends Accountable {
+export class Cashier extends Accountable {
     @handles(WireMoney)
     wireMoney(wireMoney) {
         const amount = wireMoney.requested;
@@ -156,7 +156,7 @@ class Cashier extends Accountable {
     toString() { return "Cashier $" + this.balance; }
 }
 
-class Activity extends Accountable {
+export class Activity extends Accountable {
     constructor(name) {
         super();
         this.name = name;
@@ -166,7 +166,7 @@ class Activity extends Accountable {
 }
 
 @conformsTo(Game)
-class CardTable extends Activity {
+export class CardTable extends Activity {
     constructor(name, minPlayers, maxPlayers) {
         super(name);
         _(this).minPlayers = minPlayers;
@@ -180,7 +180,7 @@ class CardTable extends Activity {
     }    
 }
 
-class Casino extends CompositeHandler {
+export class Casino extends CompositeHandler {
     constructor(name) {
         super();
         this.name = name;

@@ -73,14 +73,14 @@ export class Inquiry extends Base {
 
     isSatisfied(resolution, greedy, composer) { return true; }
 
-    resolve(resolution, greedy, composer) {
+    resolve(resolution, strict, greedy, composer) {
         let resolved;
         if ($isNothing(resolution)) return false;
-        if (Array.isArray(resolution)) {
+        if (!strict && Array.isArray(resolution)) {
             resolved = $flatten(resolution, true).reduce(
-                (s, r) => include.call(this, r, greedy, composer) || s, false);  
+                (s, r) => include.call(this, r, false, greedy, composer) || s, false);  
         } else {
-            resolved = include.call(this, resolution, greedy, composer);
+            resolved = include.call(this, resolution, strict, greedy, composer);
         }
         if (resolved) {
             _(this).result = undefined;
@@ -116,7 +116,7 @@ export class Inquiry extends Base {
             // check if handler implicitly satisfies key
             const implied = Binding.create(this.key);
             if (implied.match($classOf(handler), Variance.Contravariant)) {
-                resolved = this.resolve(handler, greedy, composer);
+                resolved = this.resolve(handler, false, greedy, composer);
                 if (resolved && !greedy) return true;
             }
         }
@@ -125,22 +125,23 @@ export class Inquiry extends Base {
               count       = resolutions.length + promises.length;
 
         let   resolved = provides.dispatch(handler, this, this, this.key,
-            composer, this.isMany, (r, c) => this.resolve(r, greedy, c))
+            composer, this.isMany, (r, s, c) => this.resolve(r, s, greedy, c))
             || resolved;
 
         return resolved || (resolutions.length + promises.length > count);
     }
+
     toString() {
         return `Inquiry ${this.isMany ? "many ": ""}| ${this.key}`;
     }          
 }
 
-function include(resolution, greedy, composer) {
+function include(resolution, strict, greedy, composer) {
     if ($isNothing(resolution)) return false;
     if ($isPromise(resolution)) {
         if (_(this).instant) return false;
-        const resolutions = this.resolutions;
-        const promise = this.acceptPromise(resolution.then(res => {
+        const resolutions = this.resolutions,
+              promise     = this.acceptPromise(resolution.then(res => {
             if (Array.isArray(res)) {
                 const satisfied = res
                     .filter(r => r && this.isSatisfied(r, greedy, composer));
@@ -154,6 +155,12 @@ function include(resolution, greedy, composer) {
         }
     } else if (!this.isSatisfied(resolution, greedy, composer)) {
         return false;
+    } else if (strict) {
+        this.resolutions.push(resolution);
+    } else if (Array.isArray(resolution)) {
+        const satisfied = res
+            .filter(r => r && this.isSatisfied(r, greedy, composer));
+        resolutions.push(...satisfied);
     } else {
         this.resolutions.push(resolution);
     }

@@ -6,6 +6,7 @@ import {
 import { Handler } from "./handler";
 import { CompositeHandler } from "./composite-handler";
 import { InferenceHandler } from "./inference-handler";
+import { HandlerDescriptor } from "./handler-descriptor";
 import { Filtering } from "./filters/filtering";
 import { provides } from "./callback-policy";
 import { singleton } from "./singleton-lifestyle";
@@ -24,7 +25,7 @@ export class SourceBuilder {
         return [...new Set(types)];
     }
 
-    fromModules(...modules) {
+    modules(...modules) {
         const sources = _(this).sources;
         modules.flat().forEach(module => {
             if ($isSomething(module)) {
@@ -36,7 +37,7 @@ export class SourceBuilder {
         return this;
     }
 
-    fromTypes(...types) {
+    types(...types) {
         const managedTypes = types.flat().filter(requiredType);
         if (managedTypes.length > 0) {
             _(this).sources.push(() => managedTypes);
@@ -45,98 +46,148 @@ export class SourceBuilder {
     }
 }
 
-export class ProvidesBuilder {
-    get implicit() {
-        return _(this).implicit;
+export class ProvideBuilder {
+    constructor(owner) {
+        _(this).owner = owner;
     }
 
-    get decorators() {
-        return _(this).decorators;
+    implicitConstructors(...decorators) {
+        _(this).owner.implicitConstructors = true
+        _(this).owner.implicitDecorators = decorators.flat().filter($isSomething); 
     }
 
-    provideImplicitly(...decorators) {
-        _(this).implicit   = true
-        _(this).decorators = decorators.flat().filter($isSomething); 
-    }
-
-    provideExplicitly() {
-        _(this).implicit = false;
-        delete _(this).decorators;
+    explicitConstructors() {
+        _(this).owner.implicitConstructors = false;
+        delete _(this).owner.implicitDecorators;
     }
 }
 
-export class TypeSelector {
-    constructor() {
-        _(this).provides = new ProvidesBuilder();
+export class DeriveTypesBuilder {
+    constructor(owner) {
+        _(this).owner = owner;
     }
 
-    get provides() { 
-        return _(this).provides;
+    deriveTypes(deriveTypes) {
+        if ($isNothing(deriveTypes)) {
+            throw new Error("The deriveTypes argument is required.");
+        }
+        if (!$isFunction(deriveTypes)) {
+            throw new TypeError("The deriveTypes argument must be a function.");
+        }        
+        _(this).owner.deriveTypes = deriveTypes;
     }
+}
+
+class TypeDetailsBuilder {
+    constructor(owner) {
+        _(this).owner = owner;
+    }
+
+    implicitConstructors(...decorators) {
+        new ProvideBuilder(_(this).owner).implicitConstructors(...decorators);
+        return new DeriveTypesBuilder(_(this).owner);
+    }
+
+    explicitConstructors() {
+        new ProvideBuilder(_(this).owner).explicitConstructors();
+        return new DeriveTypesBuilder(_(this).owner);
+    }
+
+    deriveTypes(deriveTypes) {
+        new DeriveTypesBuilder(_(this).owner).deriveTypes(deriveTypes);
+        return new ProvideBuilder(_(this).owner);
+    }
+}
+
+export class SelectTypesBuilder {
+    get implicitConstructors() {
+        return _(this).implicitConstructors;
+    }
+
+    get implicitDecorators() {
+        return _(this).implicitDecorators;
+     }
 
     acceptType(type) {
-        return _(this).filter?.(type) === true;
+        return _(this).condition?.(type) === true;
     }
 
-    assignableTo(constraints) {
-        _(this).filter = type => constraints.flat()
-            .filter($isSomething)
-            .some(constraint => {
-                if ($isProtocol(constraint)) {
-                    return constraint.isAdoptedBy(type);
-                }
-                if ($isFunction(constraint)) {
-                    return type.prototype instanceof constraint;
-                }
-                return false;
-            });
-        return this.provides;
+    deriveTypes(type) {
+        const deriveTypes = _(this).deriveTypes;
+        return $isNothing(deriveTypes) ? [type] : deriveTypes(type);
     }
 
-    where(predicate) {
+    extendFrom(clazz, includeSelf) {
+        if ($isNothing(clazz)) {
+            throw new Error("The clazz argument is required.");
+        }     
+        if (!$isFunction(clazz)) {
+            throw new TypeError("The clazz argument is not a class.");
+        }   
+        _(this).condition = type =>
+            type.prototype instanceof clazz ||
+            (type === clazz && includeSelf);
+        return new TypeDetailsBuilder(_(this));
+    }
+
+    conformTo(protocol) {
+        if ($isNothing(protocol)) {
+            throw new Error("The protocol argument is required.");
+        }
+        if (!$isProtocol(protocol)) {
+            throw new TypeError("The protocol argument is not a Protocol.");
+        } 
+        _(this).condition = type => protocol.isAdoptedBy(type);
+        return new TypeDetailsBuilder(_(this));
+    }
+
+    satisfy(predicate) {
         if ($isNothing(predicate)) {
             throw new Error("The predicate argument is required.");
         }
-        _(this).filter = predicate;
-        return this.provides;
+        if (!$isFunction(predicate)) {
+            throw new TypeError("The predicate argument must be a function.");
+        }
+        _(this).condition = predicate;
+        return new TypeDetailsBuilder(_(this));
     }
 }
 
 export class HandlerBuilder {
     constructor() {
         const _this = _(this);
-        _this.sources           = new SourceBuilder();
-        _this.selectors         = [];
-        _this.handlers          = [];
-        _this.provideImplicitly = true;
+        _this.sources              = new SourceBuilder();
+        _this.selectors            = [];
+        _this.handlers             = [];
+        _this.implicitConstructors = true;
 
-        this.selectTypes(types => types.where(isStandardType));
+        this.takeTypes(that => that.satisfy(defaultTypeSelector));
     }
 
-    addSources(addSources) {
-        if ($isNothing(addSources)) {
-            throw new Error("The addSources argument is required.");
+    addTypes(from) {
+        if ($isNothing(from)) {
+            throw new Error("The from argument is required.");
         }
 
-        if (!$isFunction(addSources)) {
-            throw new Error("The addSources argument is not a function.");
+        if (!$isFunction(from)) {
+            throw new Error("The from argument is not a function.");
         }
 
-        addSources(_(this).sources);
+        from(_(this).sources);
         return this;
     }
 
-    selectTypes(selectTypes) {
-        if ($isNothing(selectTypes)) {
-            throw new Error("The selectTypes argument is required.");
+    takeTypes(that) {
+        if ($isNothing(that)) {
+            throw new Error("The that argument is required.");
         }
 
-        if (!$isFunction(selectTypes)) {
-            throw new Error("The selectTypes argument is not a function.");
+        if (!$isFunction(that)) {
+            throw new Error("The that argument is not a function.");
         }
 
-        const selector = new TypeSelector();
-        selectTypes(selector);
+        const selector = new SelectTypesBuilder();
+        that(selector);
         _(this).selectors.push(selector);
         return this;
     }
@@ -146,14 +197,14 @@ export class HandlerBuilder {
         return this;
     }
 
-    provideImplicitly(...decorators) {
-        _(this).provideImplicitly = true;
+    implicitConstructors(...decorators) {
+        _(this).implicitConstructors = true;
         _(this).implicitDecorators = decorators.flat().filter($isSomething);
         return this;
     }
 
-    provideExplicitly() {
-        _(this).provideImplicitly = false;
+    explicitConstructors() {
+        _(this).implicitConstructors = false;
         delete _(this).implicitDecorators;
         return this;
     }
@@ -161,41 +212,45 @@ export class HandlerBuilder {
     build() {
         const selectors  = _(this).selectors,
               types      = _(this).sources.getTypes().flatMap(type => {
-            const match = selectors.find(
-                selector => selector.acceptType(type));
+            const match = selectors.find(selector => selector.acceptType(type));
             if ($isSomething(match)) {
-                if (!provides.isDefined(type)) {
-                    const provideOptions = match.provides;
-                    let provideImplicitly = _(this).provideImplicitly;
-                    if ($isSomething(provideOptions.implicit)) {
-                        provideImplicitly = provideOptions.implicit;
+                return match.deriveTypes(type).flatMap(t => {
+                    if (provides.isDefined(t)) return [t]; 
+                    let implicitConstructors = _(this).implicitConstructors;
+                    if ($isSomething(match.implicitConstructors)) {
+                        implicitConstructors = match.implicitConstructors;
                     }
-                    if (provideImplicitly) {
-                        const decorators = match.decorators 
-                                        || _(this).implicitDecorators
-                                        || defaultDecorators;
-                        return [createFactory(type, decorators)];
+                    if (implicitConstructors) {
+                        const signature = design.get(t, "constructor");
+                        if (t.length === 0 || $isSomething(signature)) {
+                            const decorators = match.implicitDecorators 
+                                            || _(this).implicitDecorators
+                                            || defaultDecorators;
+                            return [createFactory(t, signature, decorators)];
+                        }
                     }
-                } else {
-                    return [type];
-                }
+                    return [];
+                });
             }
             return [];
         });
               
+        return this.createHandler(types, _(this).handlers);
+    }
+
+    createHandler(selectedTypes, explicitHandlers) {
         return new CompositeHandler()
-            .addHandlers(_(this).handlers)
-            .addHandlers(new InferenceHandler(types));
+            .addHandlers(explicitHandlers)
+            .addHandlers(new InferenceHandler(selectedTypes));
     }
 }
 
-function createFactory(type, decorators) {
+function createFactory(type, signature, decorators) {
     class Factory {
         @provides(type) static create(...args) {
             return Reflect.construct(type, args);
         }
     }
-    const signature = design.get(type, "constructor");
     if ($isSomething(signature)) {
         design.getOrCreateOwn(Factory, "create", () => signature);
     }
@@ -204,10 +259,10 @@ function createFactory(type, decorators) {
     return Factory;
 }
 
-function isStandardType(type) {
+function defaultTypeSelector(type) {
     return type.prototype instanceof Handler ||
            Filtering.isAdoptedBy(type) ||
-           type.name.endsWith("Handler");
+           $isSomething(HandlerDescriptor.get(type));
 }
 
 function managedType(type) {
