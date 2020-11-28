@@ -11,6 +11,8 @@ import { Stash } from "../../src/api/stash";
 import { NotHandledError } from "../../src/errors";
 import "../../src/api/handler-stash";
 
+import { expect } from "chai";
+
 const _ = createKey();
 
 const OrderStatus = Enum({
