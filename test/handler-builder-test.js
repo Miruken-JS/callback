@@ -151,5 +151,5 @@ describe("HandlerBuilder", () => {
         const junkyard = handler.resolve(cars.Junkyard);
         expect(junkyard).to.be.instanceOf(cars.CraigsJunk);
         expect(handler.resolve(cars.Junkyard)).to.not.equal(junkyard);
-    });    
+    });
 });

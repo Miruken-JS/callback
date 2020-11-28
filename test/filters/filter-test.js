@@ -5,29 +5,29 @@ import {
 
 import {
     handles, provides, looksup, creates
-} from "../src/callback-policy";
+} from "../../src/callback-policy";
 
-import { Command } from "../src/command";
-import { Handler } from "../src/handler";
-import { CompositeHandler } from "../src/composite-handler";
-import { InferenceHandler } from "../src/inference-handler";
-import { Filtering } from "../src/filters/filtering";
-import { FilterSpec } from "../src/filters/filter-spec";
-import { FilteredScope } from "../src/filters/filtered-scope";
-import { FilterSpecProvider } from "../src/filters/filter-spec-provider";
-import { FilterInstanceProvider } from "../src/filters/filter-instance-provider";
-import { FilterOptions } from "../src/filters/filter-options";
+import { Command } from "../../src/command";
+import { Handler } from "../../src/handler";
+import { HandleMethod } from "../../src/handle-method";
+import { CompositeHandler } from "../../src/composite-handler";
+import { InferenceHandler } from "../../src/inference-handler";
+import { Filtering } from "../../src/filters/filtering";
+import { FilterSpec } from "../../src/filters/filter-spec";
+import { FilteredScope } from "../../src/filters/filtered-scope";
+import { FilterSpecProvider } from "../../src/filters/filter-spec-provider";
+import { FilterInstanceProvider } from "../../src/filters/filter-instance-provider";
+import { FilterOptions } from "../../src/filters/filter-options";
 import { 
     filter, skipFilters, createFilterSpecDecorator 
-} from "../src/filters/filter";
+} from "../../src/filters/filter";
 
-import { singleton } from "../src/singleton-lifestyle";
-import { initialize } from "../src/initializer";
+import { singleton } from "../../src/singleton-lifestyle";
+import { initialize } from "../../src/initializer";
 
-import "../src/filters/filter-helper";
+import "../../src/filters/filter-helper";
 
 import { expect } from "chai";
-import { HandleMethod } from "../src/handle-method";
 
 class Capture extends Base {
     handled     = 0                                                                                                        
@@ -56,6 +56,7 @@ const Logging = Protocol.extend({
 @provides() class ConsoleLogger {
     log(msg) { console.log(msg); }
 }
+
 @conformsTo(Filtering)
 @provides() class NullFilter {
     next(callback, { next }) {

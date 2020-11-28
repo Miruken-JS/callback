@@ -161,7 +161,7 @@ export class HandlerBuilder {
         _this.handlers             = [];
         _this.implicitConstructors = true;
 
-        this.takeTypes(that => that.satisfy(defaultTypeSelector));
+        this.takeTypes(that => that.satisfy(defaultTypes));
     }
 
     addTypes(from) {
@@ -259,7 +259,7 @@ function createFactory(type, signature, decorators) {
     return Factory;
 }
 
-function defaultTypeSelector(type) {
+function defaultTypes(type) {
     return type.prototype instanceof Handler ||
            Filtering.isAdoptedBy(type) ||
            $isSomething(HandlerDescriptor.get(type));

@@ -4,9 +4,9 @@ import {
 } from "miruken-core";
 
 export class Options extends Base {
-    get canBatch()  { return false }
-    get canFilter() { return false }
-    get canInfer()  { return false }
+    get canBatch()  { return false; }
+    get canFilter() { return false; }
+    get canInfer()  { return false; }
 
     /**
      * Merges this options data into `options`.
