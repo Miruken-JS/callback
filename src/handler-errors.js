@@ -3,6 +3,7 @@ import {
 } from "miruken-core";
 
 import { Handler, $composer } from "./handler";
+import { provides } from "./callback-policy";
 
 /**
  * Protocol for handling and reporting errors.
@@ -55,7 +56,8 @@ export const Errors = DuckTyping.extend({
  * @class ErrorHandler
  * @extends Handler
  * @uses Errors
- */    
+ */
+@provides()
 @conformsTo(Errors)
 export class ErrorHandler extends Handler {
     handleError(error, context) {

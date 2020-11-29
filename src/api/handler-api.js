@@ -1,5 +1,6 @@
 import { Handler } from "../handler";
 import { Command } from "../command";
+import { Stash } from "../api/stash";
 import { NotHandledError } from "../errors";
 
 Handler.implement({

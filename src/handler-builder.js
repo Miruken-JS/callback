@@ -7,6 +7,8 @@ import { Handler } from "./handler";
 import { CompositeHandler } from "./composite-handler";
 import { InferenceHandler } from "./inference-handler";
 import { HandlerDescriptor } from "./handler-descriptor";
+import { ErrorHandler } from "./handler-errors";
+import { CachedHandler } from "./api/cache/cached-handler";
 import { Filtering } from "./filters/filtering";
 import { provides } from "./callback-policy";
 import { singleton } from "./singleton-lifestyle";
@@ -17,7 +19,8 @@ const _ = createKey(),
 
 export class SourceBuilder {
     constructor() {
-        _(this).sources = []; 
+        _(this).sources = [];
+        this.types(ErrorHandler, CachedHandler);
     }
 
     getTypes() {
@@ -226,7 +229,7 @@ export class HandlerBuilder {
                             const decorators = match.implicitDecorators 
                                             || _(this).implicitDecorators
                                             || defaultDecorators;
-                            return [createFactory(t, signature, decorators)];
+                            return [t, createFactory(t, signature, decorators)];
                         }
                     }
                     return [];
