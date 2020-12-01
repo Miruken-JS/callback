@@ -5,8 +5,8 @@ import {
 import { Handler } from "../../src/handler";
 import { InferenceHandler } from "../../src/inference-handler";
 import { handles, provides } from "../../src/callback-policy";
-import { Filtering } from "../../src/filters/filtering";
-import { filter } from "../../src/filters/filter";
+import { Filtering } from "../../src/filter/filtering";
+import { filter } from "../../src/filter/filter";
 import { Stash } from "../../src/api/stash";
 import { NotHandledError } from "../../src/errors";
 import "../../src/api/handler-stash";

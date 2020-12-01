@@ -14,7 +14,7 @@ import { InferenceHandler } from "../src/inference-handler";
 import { HandleMethod } from "../src/handle-method";
 import { Batching } from "../src/batch";
 import { Options } from "../src/options";
-import { Binding } from "../src/bindings/binding";
+import { Binding } from "../src/binding/binding";
 
 import {
     CallbackPolicy, handles, provides,

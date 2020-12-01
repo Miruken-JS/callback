@@ -1,8 +1,7 @@
 import {
-    $isNothing, assignID, createKeyChain 
+    Base, $isNothing, assignID,
+    createKeyChain 
 } from "miruken-core";
-
-import { Base } from "miruken-core";
 
 const _ = createKeyChain();
 

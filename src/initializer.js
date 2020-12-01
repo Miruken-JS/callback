@@ -8,10 +8,10 @@ import { Creation } from "./creation";
 
 import { 
     Filtering, FilteringProvider
-} from "./filters/filtering";
+} from "./filter/filtering";
 
-import { FilteredScope } from "./filters/filtered-scope";
-import { filter } from "./filters/filter";
+import { FilteredScope } from "./filter/filtered-scope";
+import { filter } from "./filter/filter";
 
 const _ = createKey();
 

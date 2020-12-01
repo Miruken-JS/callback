@@ -9,7 +9,7 @@ import { InferenceHandler } from "./inference-handler";
 import { HandlerDescriptor } from "./handler-descriptor";
 import { ErrorHandler } from "./handler-errors";
 import { CachedHandler } from "./api/cache/cached-handler";
-import { Filtering } from "./filters/filtering";
+import { Filtering } from "./filter/filtering";
 import { provides } from "./callback-policy";
 import { singleton } from "./singleton-lifestyle";
 import { unmanaged } from "./unmanaged";

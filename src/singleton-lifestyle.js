@@ -6,7 +6,7 @@ import {
     Lifestyle, LifestyleProvider
 } from "./lifestyle";
 
-import { createFilterDecorator } from "./filters/filter";
+import { createFilterDecorator } from "./filter/filter";
 
 const _ = createKey();
 

@@ -2,8 +2,8 @@ import {
     conformsTo, $isNothing, createKey
 } from "miruken-core";
 
-import { FilteringProvider } from "../filters/filtering";
-import { Filtering } from "../filters/filtering";
+import { FilteringProvider } from "../filter/filtering";
+import { Filtering } from "../filter/filtering";
 import { Stage } from "../stage";
 
 import { BindingMetadata } from "./binding-metadata";

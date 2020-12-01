@@ -6,9 +6,9 @@ import {
 import { provides } from "../src/callback-policy";
 import { InferenceHandler } from "../src/inference-handler";
 
-import { named } from "../src/bindings/named";
-import { metadata } from "../src/bindings/metadata";
-import { createQualifier } from "../src/bindings/qualifier-constraint";
+import { named } from "../src/binding/named";
+import { metadata } from "../src/binding/metadata";
+import { createQualifier } from "../src/binding/qualifier-constraint";
 
 import { expect } from "chai";
 

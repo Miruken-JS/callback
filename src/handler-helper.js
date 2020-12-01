@@ -17,7 +17,7 @@ import { Handler } from "./handler";
 import { Composition } from "./composition";
 import { CascadeHandler } from "./cascade-handler";
 import { CompositeHandler } from "./composite-handler";
-import { ConstraintBuilder } from "./bindings/constraint-builder";
+import { ConstraintBuilder } from "./binding/constraint-builder";
 import { KeyResolver } from "./key-resolver";
 
 import { 

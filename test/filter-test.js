@@ -5,27 +5,27 @@ import {
 
 import {
     handles, provides, looksup, creates
-} from "../../src/callback-policy";
+} from "../src/callback-policy";
 
-import { Command } from "../../src/command";
-import { Handler } from "../../src/handler";
-import { HandleMethod } from "../../src/handle-method";
-import { CompositeHandler } from "../../src/composite-handler";
-import { InferenceHandler } from "../../src/inference-handler";
-import { Filtering } from "../../src/filters/filtering";
-import { FilterSpec } from "../../src/filters/filter-spec";
-import { FilteredScope } from "../../src/filters/filtered-scope";
-import { FilterSpecProvider } from "../../src/filters/filter-spec-provider";
-import { FilterInstanceProvider } from "../../src/filters/filter-instance-provider";
-import { FilterOptions } from "../../src/filters/filter-options";
+import { Command } from "../src/command";
+import { Handler } from "../src/handler";
+import { HandleMethod } from "../src/handle-method";
+import { CompositeHandler } from "../src/composite-handler";
+import { InferenceHandler } from "../src/inference-handler";
+import { Filtering } from "../src/filter/filtering";
+import { FilterSpec } from "../src/filter/filter-spec";
+import { FilteredScope } from "../src/filter/filtered-scope";
+import { FilterSpecProvider } from "../src/filter/filter-spec-provider";
+import { FilterInstanceProvider } from "../src/filter/filter-instance-provider";
+import { FilterOptions } from "../src/filter/filter-options";
 import { 
     filter, skipFilters, createFilterSpecDecorator 
-} from "../../src/filters/filter";
+} from "../src/filter/filter";
 
-import { singleton } from "../../src/singleton-lifestyle";
-import { initialize } from "../../src/initializer";
+import { singleton } from "../src/singleton-lifestyle";
+import { initialize } from "../src/initializer";
 
-import "../../src/filters/filter-helper";
+import "../src/filter/filter-helper";
 
 import { expect } from "chai";
 

@@ -4,8 +4,8 @@ import {
 
 } from "miruken-core";
 
-import { createFilterDecorator } from "../filters/filter";
-import { ConstraintProvider } from "../bindings/constraint-filter";
+import { createFilterDecorator } from "../filter/filter";
+import { ConstraintProvider } from "./constraint-filter";
 import { BindingConstraint } from "./binding-constraint";
 
 export function createConstraintDecorator(createConstraint) {

@@ -6,9 +6,9 @@ import {
 } from "miruken-core";
 
 import { CallbackControl } from "./callback-control";
-import { Binding } from "./bindings/binding";
-import { BindingScope } from "./bindings/binding-scope";
-import { BindingMetadata } from "./bindings/binding-metadata";
+import { Binding } from "./binding/binding";
+import { BindingScope } from "./binding/binding-scope";
+import { BindingMetadata } from "./binding/binding-metadata";
 import { provides } from "./callback-policy";
 
 const _ = createKeyChain();

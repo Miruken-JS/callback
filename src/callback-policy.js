@@ -6,7 +6,7 @@ import {
 } from "miruken-core";
 
 import { HandlerDescriptor } from "./handler-descriptor";
-import { FilteredScope } from "./filters/filtered-scope";
+import { FilteredScope } from "./filter/filtered-scope";
 
 const _ = createKey();
 

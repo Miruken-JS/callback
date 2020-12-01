@@ -6,13 +6,13 @@ import {
     assignID, pcopy, createKey
 } from "miruken-core";
 
-import { Binding } from "./bindings/binding";
+import { Binding } from "./binding/binding";
 import { Inquiry } from "./inquiry";
 import { KeyResolver } from "./key-resolver";
-import { Filtering } from "./filters/filtering";
-import { FilteredScope } from "./filters/filtered-scope";
-import { FilterInstanceProvider } from "./filters/filter-instance-provider";
-import { filter } from "./filters/filter";
+import { Filtering } from "./filter/filtering";
+import { FilteredScope } from "./filter/filtered-scope";
+import { FilterInstanceProvider } from "./filter/filter-instance-provider";
+import { filter } from "./filter/filter";
 import { NotHandledError } from "./errors";
 
 const _ = createKey(),

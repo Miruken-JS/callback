@@ -9,12 +9,12 @@ import { Trampoline } from "./trampoline";
 import { Resolving } from "./resolving";
 import { Inquiry } from "./inquiry";
 import { KeyResolver } from "./key-resolver";
-import { filter } from "./filters/filter";
-import { FilteredScope } from "./filters/filtered-scope";
+import { filter } from "./filter/filter";
+import { FilteredScope } from "./filter/filtered-scope";
 import { CallbackControl } from "./callback-control";
 import { HandlerDescriptor } from "./handler-descriptor";
 import { CallbackOptions, CallbackSemantics } from "./callback-semantics"
-import { Binding } from "./bindings/binding";
+import { Binding } from "./binding/binding";
 import { $unhandled } from "./callback-policy";
 import { NotHandledError } from "./errors";
 

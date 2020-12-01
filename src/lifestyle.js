@@ -7,7 +7,7 @@ import { Inquiry } from "./inquiry";
 
 import { 
     Filtering, FilteringProvider
-} from "./filters/filtering";
+} from "./filter/filtering";
 
 const _ = createKey();
 
