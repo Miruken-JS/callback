@@ -1,5 +1,5 @@
 import { 
-    design, $isNothing, $isSomething,
+    Base, design, $isNothing, $isSomething,
     $isFunction, $isProtocol, createKey
 } from "miruken-core";
 
@@ -15,10 +15,11 @@ import { singleton } from "./singleton-lifestyle";
 import { unmanaged } from "./unmanaged";
 
 const _ = createKey(),
-          defaultDecorators = [singleton];
+      defaultDecorators = [singleton];
 
-export class SourceBuilder {
+export class SourceBuilder extends Base {
     constructor() {
+        super();
         _(this).sources = [];
         this.types(ErrorHandler, CachedHandler);
     }
@@ -49,8 +50,9 @@ export class SourceBuilder {
     }
 }
 
-export class ProvideBuilder {
+export class ProvideBuilder extends Base {
     constructor(owner) {
+        super();
         _(this).owner = owner;
     }
 
@@ -65,8 +67,9 @@ export class ProvideBuilder {
     }
 }
 
-export class DeriveTypesBuilder {
+export class DeriveTypesBuilder extends Base {
     constructor(owner) {
+        super();
         _(this).owner = owner;
     }
 
@@ -81,8 +84,9 @@ export class DeriveTypesBuilder {
     }
 }
 
-class TypeDetailsBuilder {
+class TypeDetailsBuilder extends Base {
     constructor(owner) {
+        super();
         _(this).owner = owner;
     }
 
@@ -102,7 +106,7 @@ class TypeDetailsBuilder {
     }
 }
 
-export class SelectTypesBuilder {
+export class SelectTypesBuilder extends Base {
     get implicitConstructors() {
         return _(this).implicitConstructors;
     }
@@ -156,8 +160,9 @@ export class SelectTypesBuilder {
     }
 }
 
-export class HandlerBuilder {
+export class HandlerBuilder extends Base {
     constructor() {
+        super();
         const _this = _(this);
         _this.sources              = new SourceBuilder();
         _this.selectors            = [];
