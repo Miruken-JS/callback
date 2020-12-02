@@ -3,7 +3,7 @@ import { Request } from "../../src/api/request";
 import { NotHandledError } from "../../src/errors";
 import { format } from "../../src/map/maps";
 import { 
-    TypeMapping, TypeIdFormat, typeId, getTypeId
+    TypeMapping, TypeIdFormat, typeId
 } from "../../src/map/type-mapping";
 
 import "../../src/map/handler-map";
@@ -20,7 +20,7 @@ class CreateDetails extends Request {
     id = undefined
 }
 
-class UpdateDetails extends Base {
+class UpdateDetails {
     id      = undefined
     details = undefined
 }
@@ -35,48 +35,48 @@ class Oneway {
     }
     @typeId
     get typeId() {
-        return `Oneway:${getTypeId(this.request)}`;
+        return `Oneway:${typeId.get(this.request)}`;
     }
 }
 
 describe("typeId", () => {
     it("should set class type id", () => {
-        expect(getTypeId(GetDetails)).to.equal("GetDetails");
-        expect(getTypeId(new GetDetails())).to.equal("GetDetails");
+        expect(typeId.get(GetDetails)).to.equal("GetDetails");
+        expect(typeId.get(new GetDetails())).to.equal("GetDetails");
     });
 
     it("should set class type id on base2 class", () => {
         const Foo = Base.extend(typeId("Foo"));
-        expect(getTypeId(Foo)).to.equal("Foo");
-        expect(getTypeId(new Foo())).to.equal("Foo");
+        expect(typeId.get(Foo)).to.equal("Foo");
+        expect(typeId.get(new Foo())).to.equal("Foo");
     });
 
     it("should normalize type id", () => {
-        expect(getTypeId(CreateDetails)).to.equal("CreateDetails");
-        expect(getTypeId(new CreateDetails())).to.equal("CreateDetails");
+        expect(typeId.get(CreateDetails)).to.equal("CreateDetails");
+        expect(typeId.get(new CreateDetails())).to.equal("CreateDetails");
     });
 
     it("should use class name if missing type id", () => {
         @typeId() class Bar {}
-        expect(getTypeId(Bar)).to.equal("Bar");
-        expect(getTypeId(new Bar())).to.equal("Bar");
+        expect(typeId.get(Bar)).to.equal("Bar");
+        expect(typeId.get(new Bar())).to.equal("Bar");
     });
 
     it("should use class name if empty type id", () => {
         @typeId("") class Bar {}
-        expect(getTypeId(Bar)).to.equal("Bar");
-        expect(getTypeId(new Bar())).to.equal("Bar");
+        expect(typeId.get(Bar)).to.equal("Bar");
+        expect(typeId.get(new Bar())).to.equal("Bar");
     });
 
     it("should set method type id", () => {
-        expect(getTypeId(Oneway)).to.be.undefined;
-        expect(getTypeId(new Oneway(new GetDetails()))).to.equal("Oneway:GetDetails");
+        expect(typeId.get(Oneway)).to.be.undefined;
+        expect(typeId.get(new Oneway(new GetDetails()))).to.equal("Oneway:GetDetails");
         expect(new Oneway(new GetDetails()).typeId).to.equal("Oneway:GetDetails");
     });
 
     it("should inherit class type id", () => {
-        expect(getTypeId(CreateDetails2)).to.equal("CreateDetails");
-        expect(getTypeId(new CreateDetails2())).to.equal("CreateDetails");
+        expect(typeId.get(CreateDetails2)).to.equal("CreateDetails");
+        expect(typeId.get(new CreateDetails2())).to.equal("CreateDetails");
     });
 
     it("should fail if type id is not a string", () => {
@@ -92,12 +92,11 @@ describe("typeId", () => {
     });
 
     it("should fail if @typeId applied to a method", () => {
-        expect(() => {
-            class Bar {
-                @typeId
-                foo() {}
-            }
-        }).to.throw(Error, "@typeId can only be applied to classes or properties.");
+        class Bar {
+            @typeId
+            foo() { return "foo"; }
+        }
+        expect(typeId.get(Bar.prototype)).to.equal("foo");
     });
 
     it("should fail if @typeId applied to a setter", () => {
@@ -106,7 +105,7 @@ describe("typeId", () => {
                 @typeId
                 set foo(value) {}
             }
-        }).to.throw(Error, "@typeId can only be applied to classes or properties.");
+        }).to.throw(Error, "@typeId can only be applied to classes, getters or methods.");
     });
 
     it("should fail if dynamic type id is not a string", () => {
@@ -115,7 +114,7 @@ describe("typeId", () => {
             get typeId() { return 22; } 
         }
         expect(() => {
-            getTypeId(new Bar());
+            typeId.get(new Bar());
         }).to.throw(Error, "@typeId getter 'typeId' returned invalid identifier 22.");
     });
 });

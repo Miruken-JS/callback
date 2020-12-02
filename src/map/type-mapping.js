@@ -4,7 +4,7 @@ import {
 } from "miruken-core";
 
 import { Handler } from "../handler";
-import { mapping } from  "./mapping";
+import { ignore } from  "./mapping";
 import { mapsTo, format } from "./maps";
 
 export const TypeIdFormat = Symbol("type");
@@ -35,28 +35,34 @@ export function typeId(...args) {
             } else {
                 id = id.replace(/\s+/g, '')
             }
+            function getter() { return id; }
             Object.defineProperty(target, TypeIdResolver, {
                 configurable: false,
                 enumerable:   false,
-                value:        id
+                value:        getter
             });
             Object.defineProperty(target.prototype, TypeIdResolver, {
                 configurable: false,
                 enumerable:   false,
-                value:        id
+                value:        getter
             });
             addTypeMapping(target, id);
         } else {
-            const { get } = descriptor;
-            if (!$isFunction(get)) {
-                throw new SyntaxError("@typeId can only be applied to classes or properties.");
-            }
-            mapping.getOrCreateOwn(target, () => ({})).ignore = true;
+            let getter;
+            const { get, value } = descriptor;
+            if ($isFunction(get)) {
+                getter = get;
+                ignore(target, key, descriptor);
+            } else if ($isFunction(value)) {
+                getter = value;
+            } else {
+                throw new SyntaxError("@typeId can only be applied to classes, getters or methods.");
+            } 
             Object.defineProperty(target, TypeIdResolver, {
                 configurable: false,
                 enumerable:   false,
-                get:          function () { 
-                    const id = this[key];
+                value:        function () { 
+                    const id = getter.call(this);
                     if (!$isString(id)) {
                         throw new Error(`@typeId getter '${key}' returned invalid identifier ${id}.`);
                     }
@@ -65,6 +71,10 @@ export function typeId(...args) {
             });
         }
     }, args);
+}
+
+typeId.get = function (target) {
+    return target?.[TypeIdResolver]?.();
 }
 
 /**
@@ -82,10 +92,6 @@ export const typeInfo = Metadata.decorator(typeInfoMetadataKey,
         }
         typeInfo.getOrCreateOwn(target, () => ({})).typeIdProperty = typeIdProperty;
     });
-
-export function getTypeId(target) {
-    return target?.[TypeIdResolver];
-}
 
 Handler.implement({
     getTypeFromId(typeId) {

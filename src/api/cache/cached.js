@@ -1,5 +1,10 @@
-import { Enum, createKey } from "miruken-core";
+import { 
+    Enum, $isNothing, createKey
+} from "miruken-core";
+
 import { Request, RequestWrapper } from "../request";
+import { typeId } from "../../map/type-mapping";
+import { response } from "../response";
 
 const _ = createKey();
 
@@ -18,6 +23,15 @@ export class Cached extends RequestWrapper {
 
     get timeToLive() { return _(this).timeToLive; }
     set timeToLive(value) { _(this).timeToLive = value; }
+
+    @typeId
+    get typeId() {
+        const responseType = response.get(this.request);
+        if ($isNothing(responseType)) return;
+        const responseTypeId = typeId.get(responseType);
+        if ($isNothing(responseTypeId)) return;
+        return `Miruken.Api.Cache.Cached\`1[[${responseTypeId}]], Miruken`;
+    }
 }
 
 Request.implement({

@@ -2,9 +2,12 @@ import { Base, createKey } from "miruken-core";
 import { Handler } from "../../src/handler";
 import { handles } from "../../src/callback-policy";
 import { Request } from "../../src/api/request";
+import { typeId } from "../../src/map/type-mapping";
+import { response } from "../../src/api/response";
 
 const _ = createKey();
 
+@typeId("StockQuote")
 export class StockQuote extends Base {
     get symbol() { return _(this).symbol; }
     set symbol(value) { _(this).symbol = value; }
@@ -13,6 +16,8 @@ export class StockQuote extends Base {
     set value(value) { _(this).value = value; }
 }
 
+@response(StockQuote)
+@typeId("GetStockQuote")
 export class GetStockQuote extends Request {
     constructor(symbol) {
         super();

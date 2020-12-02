@@ -9,7 +9,7 @@ import { AbstractMapping } from "./abstract-mapping";
 import { mapsFrom, mapsTo, format } from "./maps";
 
 import { 
-    TypeIdHandling, TypeIdFormat, typeInfo, getTypeId
+    TypeIdHandling, TypeIdFormat, typeInfo, typeId
 } from "./type-mapping";
 
 /**
@@ -72,12 +72,12 @@ export class JsonMapping extends AbstractMapping {
               json = {};
 
         if (shouldEmitTypeId(object, type, typeIdHandling)) {
-            const typeId = getTypeId(object);
-            if (!$isNothing(typeId)) {
+            const id = typeId.get(object);
+            if (!$isNothing(id)) {
                 const type = object.constructor,
                 typeIdProp = typeInfo.get(type)?.typeIdProperty 
                           || DefaultTypeIdProperty;
-                json[typeIdProp] = typeId;
+                json[typeIdProp] = id;
             }
         }
 
