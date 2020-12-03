@@ -88,7 +88,7 @@ describe("Cached", () => {
         expect(getQuote.called).to.equal(2);
     });
 
-    it.only("should generate type identifier", () => {
+    it("should generate type identifier", () => {
         const getQuote = new GetStockQuote("APPL").cached(),
               id       = typeId.get(getQuote);
         expect(id).to.equal("Miruken.Api.Cache.Cached`1[[StockQuote]], Miruken");
