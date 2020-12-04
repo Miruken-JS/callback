@@ -7,12 +7,14 @@ import { Handler } from "./handler";
 import { CompositeHandler } from "./composite-handler";
 import { InferenceHandler } from "./inference-handler";
 import { HandlerDescriptor } from "./handler-descriptor";
-import { ErrorHandler } from "./handler-errors";
-import { CachedHandler } from "./api/cache/cached-handler";
 import { Filtering } from "./filter/filtering";
 import { provides } from "./callback-policy";
 import { singleton } from "./singleton-lifestyle";
 import { unmanaged } from "./unmanaged";
+
+import { ErrorHandler } from "./handler-errors";
+import { CachedHandler } from "./api/cache/cached-handler";
+import { Scheduler } from "./api/schedule/scheduler";
 
 const _ = createKey(),
       defaultDecorators = [singleton];
@@ -21,7 +23,7 @@ export class SourceBuilder extends Base {
     constructor() {
         super();
         _(this).sources = [];
-        this.types(ErrorHandler, CachedHandler);
+        this.types(ErrorHandler, CachedHandler, Scheduler);
     }
 
     getTypes() {

@@ -1,12 +1,7 @@
-import { 
-    Enum, $isNothing, createKey
-} from "miruken-core";
-
+import { Enum, $isNothing } from "miruken-core";
 import { Request, RequestWrapper } from "../request";
 import { typeId } from "../../map/type-mapping";
 import { response } from "../response";
-
-const _ = createKey();
 
 export const CacheAction = Enum({
     Refresh:    0,
@@ -18,11 +13,8 @@ export class Cached extends RequestWrapper {
         super(request);
     }
 
-    get action() { return _(this).action; }
-    set action(value) { _(this).action = value; }
-
-    get timeToLive() { return _(this).timeToLive; }
-    set timeToLive(value) { _(this).timeToLive = value; }
+    action;
+    timeToLive;
 
     @typeId
     get typeId() {

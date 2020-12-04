@@ -1,13 +1,14 @@
 import { Cached } from "../../src/api/cache/cached";
 import { CachedHandler } from "../../src/api/cache/cached-handler";
 import { typeId } from "../../src/map/type-mapping";
+import { HandlerBuilder } from "../../src/handler-builder";
+import "../../src/api/handler-api";
 
 import { 
     StockQuote, GetStockQuote, StockQuoteHandler
 } from "./stock-quote-handler";
 
-import { HandlerBuilder } from "../../src/handler-builder";
-import "../../src/api/handler-api";
+import { expect } from "chai";
 
 describe("Cached", () => {
     let handler;

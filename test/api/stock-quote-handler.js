@@ -1,19 +1,14 @@
-import { Base, createKey } from "miruken-core";
+import { Base } from "miruken-core";
 import { Handler } from "../../src/handler";
 import { handles } from "../../src/callback-policy";
 import { Request } from "../../src/api/request";
 import { typeId } from "../../src/map/type-mapping";
 import { response } from "../../src/api/response";
 
-const _ = createKey();
-
 @typeId("StockQuote")
 export class StockQuote extends Base {
-    get symbol() { return _(this).symbol; }
-    set symbol(value) { _(this).symbol = value; }
-
-    get value() { return _(this).value; }
-    set value(value) { _(this).value = value; }
+    symbol;
+    value;
 }
 
 @response(StockQuote)
@@ -22,22 +17,29 @@ export class GetStockQuote extends Request {
     constructor(symbol) {
         super();
         this.symbol = symbol;
-        _(this).called = 0;
     }
 
-    get symbol() { return _(this).symbol; }
-    set symbol(value) { _(this).symbol = value; }
+    symbol;
+    called = 0;
 
     getCacheKey() { return this.symbol; }
+}
 
-    get called() { return _(this).called; }
-    incrementCalled() { ++_(this).called; }
+@typeId("SellStock")
+export class SellStock {
+    constructor(symbol, numShares) {
+        this.symbol    = symbol;
+        this.numShares = numShares;
+    }
+
+    symbol;
+    numShares;
 }
 
 export class StockQuoteHandler extends Handler {
     @handles(GetStockQuote)
     getQuote(getQuote) {
-        getQuote.incrementCalled();
+        ++getQuote.called;
         
         if (getQuote.symbol == "EX")
             throw new Error("Stock Exchange is down");
@@ -46,5 +48,11 @@ export class StockQuoteHandler extends Handler {
             symbol: getQuote.symbol,
             value:  Math.random() * 10
         }));
+    }
+
+    @handles(SellStock)
+    sellStock(sellStock) {
+        if (sellStock.Symbol == "EX")
+            throw new Error("Stock Exchange is down");
     }
 }

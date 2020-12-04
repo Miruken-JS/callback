@@ -1,9 +1,6 @@
 import {
-    Base, $isNothing, assignID,
-    createKeyChain 
+    Base, $isNothing, assignID 
 } from "miruken-core";
-
-const _ = createKeyChain();
 
 export class Request extends Base {}
 
@@ -13,8 +10,7 @@ export class RequestWrapper extends Request {
         this.request = request;
     }
 
-    get request() { return _(this).request; }
-    set request(value) { _(this).request = value; }
+    request;
 
     getCacheKey() { 
         const request  = this.request,

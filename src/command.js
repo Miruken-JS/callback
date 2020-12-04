@@ -44,7 +44,7 @@ export class Command extends Base {
         return this.callback.canInfer !== false;
     }
     get callbackResult() {
-        let { result, results, promises} = _(this);
+        let { result, results, promises } = _(this);
         if (result === undefined) {
             if (promises.length == 0) {
                 _(this).result = result = this.isMany ? results : results[0];
