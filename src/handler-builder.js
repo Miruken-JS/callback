@@ -270,9 +270,10 @@ function createFactory(type, signature, decorators) {
 }
 
 function defaultTypes(type) {
-    return type.prototype instanceof Handler ||
-           Filtering.isAdoptedBy(type) ||
-           $isSomething(HandlerDescriptor.get(type));
+    const prototype = type.prototype;
+    return prototype instanceof Handler || Filtering.isAdoptedBy(type) ||
+        $isSomething(HandlerDescriptor.getChain(type).next().value)    ||
+        $isSomething(HandlerDescriptor.getChain(prototype).next().value);
 }
 
 function managedType(type) {

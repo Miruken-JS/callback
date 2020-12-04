@@ -32,8 +32,9 @@ import { proxy } from "../src/proxy";
 import { unmanaged } from "../src/unmanaged";
 
 import "../src/handler-helper";
-import "../src/handler-options"
-import "../src/handler-protocol"
+import "../src/handler-options";
+import "../src/handler-protocol";
+import "../src/handler-batch";
 
 import { expect } from "chai";
 

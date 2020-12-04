@@ -2,6 +2,7 @@ import { Base } from "miruken-core";
 import { Handler } from "../../src/handler";
 import { handles } from "../../src/callback-policy";
 import { Request } from "../../src/api/request";
+import { Message } from "../../src/api/message";
 import { typeId } from "../../src/map/type-mapping";
 import { response } from "../../src/api/response";
 
@@ -26,8 +27,9 @@ export class GetStockQuote extends Request {
 }
 
 @typeId("SellStock")
-export class SellStock {
+export class SellStock extends Message {
     constructor(symbol, numShares) {
+        super();
         this.symbol    = symbol;
         this.numShares = numShares;
     }

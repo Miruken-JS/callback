@@ -5,7 +5,7 @@ import { HandlerBuilder } from "../../src/handler-builder";
 import "../../src/api/handler-api";
 
 import { 
-    StockQuote, GetStockQuote, StockQuoteHandler
+    StockQuote, GetStockQuote, StockQuoteHandler, SellStock
 } from "./stock-quote-handler";
 
 import { expect } from "chai";
@@ -93,5 +93,5 @@ describe("Cached", () => {
         const getQuote = new GetStockQuote("APPL").cached(),
               id       = typeId.get(getQuote);
         expect(id).to.equal("Miruken.Api.Cache.Cached`1[[StockQuote]], Miruken");
-    });  
+    });     
 });
