@@ -18,14 +18,6 @@ export class Routed extends MessageWrapper {
         if ($isNothing(responseTypeId)) return;
         return `Miruken.Api.Route.Routed\`1[[${responseTypeId}]], Miruken`;
     }
-
-    getCacheKey() { 
-      const message  = this.message,
-            cacheKey = message?.getCacheKey?.();
-        if (!$isNothing(cacheKey)) {
-            return `${this.route}#${this.tag}${assignID(message.constructor)}|${cacheKey}`;
-        }        
-    }
 }
 
 export class BatchRouted {

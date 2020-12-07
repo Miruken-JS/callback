@@ -2389,7 +2389,7 @@ describe("Handler", () => {
         }
 
         ensureBatch() {
-            const batch = $composer.getBatch(Emailing);
+            const batch = $composer.$getBatch(Emailing);
             if (batch) {
                 const emailBatch = new EmailBatch();
                 batch.addHandlers(emailBatch);
@@ -2742,7 +2742,7 @@ describe("Handler", () => {
         it("should suppress batching", done => {
             const handler = new EmailHandler();
             expect($using(handler.$batch(), batch => {
-                expect(Emailing(batch.noBatch()).send("Hello")).to.equal("Hello");
+                expect(Emailing(batch.$noBatch()).send("Hello")).to.equal("Hello");
                 done();
             })).to.eql([]);
         });

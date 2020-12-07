@@ -1,5 +1,6 @@
 import { 
-    emptyArray, $isFunction, $isNothing
+    emptyArray, $isFunction, $isNothing,
+    $classOf
 } from "miruken-core";
 
 import { Binding } from "../binding/binding";
@@ -13,27 +14,27 @@ import "../handler-options";
 Handler.registerOptions(FilterOptions, "filterOptions");
 
 Handler.implement({
-    skipFilters(skip = true) {
+    $skipFilters(skip = true) {
         return this.filterOptions({
             skipFilters: skip
         });
     },
-    enableFilters(enable = true) {
+    $enableFilters(enable = true) {
         return this.filterOptions({
             skipFilters: !enable
         });
     },
-    withFilters(filters) {
+    $withFilters(filters) {
         return filters ? this.filterOptions({
             providers: [new FilterInstanceProvider(filters.flat())]
         }) : this;
     },
-    withFilterProviders(providers) {
+    $withFilterProviders(providers) {
         return providers ? this.filterOptions({
             providers: providers.flat()
         }) : this;
     },
-    getOrderedFilters(binding, callback, providers) {
+    $getOrderedFilters(binding, callback, providers) {
         const options        = this.getOptions(FilterOptions),
               extraProviders = options && options.providers;
 
@@ -56,10 +57,10 @@ Handler.implement({
                 if (binding.skipFilters || binding.getMetadata(skipFilters)) {
                     allProviders = allProviders.filter(p => p.required);
                 }
-                handler = this.skipFilters();
+                handler = this.$skipFilters();
                 break;
             case false:
-                handler = this.skipFilters();
+                handler = this.$skipFilters();
                 break;
         }
 
@@ -72,7 +73,7 @@ Handler.implement({
             for (const filter of filters) {
                 if (filter == null) return;
                 found = true;
-                const filterType      = filter.constructor,
+                const filterType      = $classOf(filter),
                       multipleAllowed = allowMultiple.get(filterType);
                 if (!($isNothing(multipleAllowed) || multipleAllowed)) {
                     if (once.has(filterType)) continue;

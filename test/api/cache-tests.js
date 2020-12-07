@@ -10,6 +10,8 @@ import {
 
 import { expect } from "chai";
 
+mocha.timeout(10000);
+
 describe("Cached", () => {
     let handler;
     beforeEach(async () => {
@@ -17,6 +19,7 @@ describe("Cached", () => {
             .addTypes(from => from.types(StockQuoteHandler))
             .build();
         await handler.send(new GetStockQuote("AAPL").invalidate());
+        StockQuoteHandler.called = 0;
     });
 
     it("should make initial request", async () => {
@@ -24,7 +27,7 @@ describe("Cached", () => {
               quote    = await handler.send(getQuote.cached());
         expect(quote).to.be.instanceOf(StockQuote);
         expect(quote.symbol).to.equal("AAPL");
-        expect(getQuote.called).to.equal(1);
+        expect(StockQuoteHandler.called).to.equal(1);
     });
 
     it("should cache initial response", async () => {
@@ -35,7 +38,7 @@ describe("Cached", () => {
         expect(quote1).to.be.instanceOf(StockQuote);
         expect(quote2).to.equal(quote1);
         expect(quote3).to.not.equal(quote1);
-        expect(getQuote.called).to.equal(2);
+        expect(StockQuoteHandler.called).to.equal(2);
     });   
 
     it("should refresh response", async () => {
@@ -46,7 +49,7 @@ describe("Cached", () => {
         expect(quote1).to.be.instanceOf(StockQuote);
         expect(quote2).to.equal(quote1);
         expect(quote3).to.not.equal(quote1);
-        expect(getQuote.called).to.equal(2);
+        expect(StockQuoteHandler.called).to.equal(2);
     });
 
     it("should refresh stale response", async () => {
@@ -86,7 +89,7 @@ describe("Cached", () => {
             expect(ex.message).to.equal("Stock Exchange is down");
         }
 
-        expect(getQuote.called).to.equal(2);
+        expect(StockQuoteHandler.called).to.equal(2);
     });
 
     it("should generate type identifier", () => {

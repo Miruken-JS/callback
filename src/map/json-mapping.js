@@ -1,7 +1,7 @@
 import {
     Enum, design, instanceOf, $isNothing,
     $isFunction, $isSymbol, $isPlainObject,
-    getPropertyDescriptors, emptyArray
+    $classOf, getPropertyDescriptors, emptyArray
 } from "miruken-core";
 
 import { mapping } from "./mapping";
@@ -74,7 +74,7 @@ export class JsonMapping extends AbstractMapping {
         if (shouldEmitTypeId(object, type, typeIdHandling)) {
             const id = typeId.get(object);
             if (!$isNothing(id)) {
-                const type = object.constructor,
+                const type = $classOf(object),
                 typeIdProp = typeInfo.get(type)?.typeIdProperty 
                           || DefaultTypeIdProperty;
                 json[typeIdProp] = id;
@@ -206,12 +206,12 @@ function canMapJson(value) {
 function shouldEmitTypeId(object, type, typeIdHandling) {
     return typeIdHandling === TypeIdHandling.Always ||
            (typeIdHandling === TypeIdHandling.Auto  &&
-            object.constructor !== type);
+            $classOf(object) !== type);
 }
 
 function createInstance(value, classOrInstance, composer) {
     const isClass        = $isFunction(classOrInstance),
-          type           = isClass ? classOrInstance : classOrInstance.constructor,
+          type           = isClass ? classOrInstance : $classOf(classOrInstance),
           typeIdProperty = typeInfo.get(type) || DefaultTypeIdProperty,
           typeId         = value[typeIdProperty];
     if ($isNothing(typeId)) {

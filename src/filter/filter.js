@@ -10,22 +10,35 @@ const filterMetadataKey        = Symbol("filter-metadata"),
       skipFilterMetadataKey    = Symbol("skipFilter-metadata"),
       allowMultipleMetadataKey = Symbol("allowMultiple");
 
-export function createFilterDecorator(createFilterProvider) {
+export function createFilterDecorator(createFilterProvider, addAll) {
     if (!$isFunction(createFilterProvider)) {
         throw new Error("The createFilterProvider argument must be a function.");
     }
-    return Metadata.decorator(filterMetadataKey, (target, key, descriptor, args) => {
+    const decorator = Metadata.decorator(filterMetadataKey, (target, key, descriptor, args) => {
         const provider = createFilterProvider(target, key, descriptor, args);
         if ($isNothing(provider)) return;
         if ($isNothing(descriptor)) {
-            const filters = filter.getOrCreateOwn(target, "constructor", () => new FilteredScope());
-            filter.getOrCreateOwn(target.prototype, "constructor", () => filters);
+            const filters = decorator.getOrCreateOwn(target, "constructor", () => new FilteredScope());
+            decorator.getOrCreateOwn(target.prototype, "constructor", () => filters);
             filters.addFilters(provider);
         } else {
-            const filters = filter.getOrCreateOwn(target, key, () => new FilteredScope());
+            const filters = decorator.getOrCreateOwn(target, key, () => new FilteredScope());
             filters.addFilters(provider);
         }
     });
+    if (addAll === true) {
+        decorator.all = Metadata.decorator(filterMetadataKey, (target, key, descriptor, args) => {
+            const provider = createFilterProvider(target, key, descriptor, args);
+            if ($isNothing(provider)) return;
+            if ($isNothing(descriptor)) {
+                const filters = decorator.getOrCreateOwn(target, () => new FilteredScope());
+                filters.addFilters(provider);
+            } else {
+                throw new SyntaxError("Filters with the all modifier can only be applied to classes.");
+            }
+        });
+    }
+    return decorator;
 }
 
 export function createFilterSpecDecorator(filterSpec) {

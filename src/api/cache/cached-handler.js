@@ -1,6 +1,6 @@
 import { 
     $isNothing, $isFunction, $isPromise,
-    assignID, createKey
+    $classOf, assignID, createKey
 } from "miruken-core";
 
 import { Handler } from "../../handler";
@@ -78,6 +78,6 @@ function refreshResponse(cache, cacheKey, request, composer) {
 function createCacheKey(request) {
     const cacheKey = request.getCacheKey?.();
     if (!$isNothing(cacheKey)) {
-        return `${assignID(request.constructor)}#${cacheKey}`;
+        return `${assignID($classOf(request))}#${cacheKey}`;
     }
 }

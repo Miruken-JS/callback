@@ -1,5 +1,6 @@
 import { 
-    $isNothing, $isFunction, $isPromise
+    $isNothing, $isFunction, $isPromise,
+    $classOf
 } from "miruken-core";
 import { Handler } from "../handler";
 import { NotHandledError } from "../errors";
@@ -14,7 +15,7 @@ Handler.implement({
         return get.value;
     },
     stashPut(value, key) {
-        const actualKey = key || value?.constructor;
+        const actualKey = key || $classOf(value);
         if ($isNothing(actualKey)) {
             throw new Error("The key could not be inferred.");
         }

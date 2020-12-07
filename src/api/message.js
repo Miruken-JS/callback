@@ -1,5 +1,5 @@
 import {
-    Base, $isNothing, assignID 
+    Base, $isNothing, $classOf, assignID 
 } from "miruken-core";
 
 export class Message extends Base {}
@@ -16,10 +16,14 @@ export class MessageWrapper extends Base {
     message;
 
     getCacheKey() { 
-        const message  = this.message,
-              cacheKey = message?.getCacheKey?.();
-        if (!$isNothing(cacheKey)) {
-            return `${assignID(message.constructor)}|${cacheKey}`;
+        const message    = this.message,
+              messageKey = message?.getCacheKey?.();
+        if (!$isNothing(messageKey)) {
+            return JSON.stringify(this, (name, value) =>
+                name === "message"
+                ? `${assignID($classOf(message))}#${messageKey}`
+                : value
+            );
         }
     }
 }

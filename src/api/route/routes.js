@@ -25,13 +25,13 @@ class RoutesFilter {
     next(routed, { composer, rawCallback, next }) {
         const matches = _(this).schemes.includes(getScheme(routed));
         if (matches) {
-            const batcher = composer.getBatcher(BatchRouter);
+            const batcher = composer.$getBatcher(BatchRouter);
             if (!$isNothing(batcher)) {
-                return composer.enableFilters().command(
+                return composer.$enableFilters().command(
                     new BatchRouted(routed, rawCallback));
             }
         }
-        return next(composer.enableFilters(), matches);
+        return next(composer.$enableFilters(), matches);
     }
 }
 
@@ -54,7 +54,7 @@ export class RoutesProvider {
 
 export const routes = createFilterDecorator(
     (target, key, descriptor, schemes) =>
-        new RoutesProvider($flatten(schemes, true)));
+        new RoutesProvider($flatten(schemes, true)), true);
 
 function getScheme(routed) {
     const { route } = routed;

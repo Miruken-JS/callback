@@ -356,7 +356,7 @@ describe("Filter", () => {
 
     it("shouldfilters", () => {
         const bar = new Bar();
-        expect(handler.skipFilters().handle(bar)).to.be.true;
+        expect(handler.$skipFilters().handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);
         expect(bar.filters.length).to.equal(2);
         const filters = bar.filters;

@@ -59,9 +59,21 @@ describe("routes", () => {
         expect(id).to.equal("Miruken.Api.Route.Routed`1[[StockQuote]], Miruken");
     });
 
+    it("should generate cache key with response", () => {
+        const getQuote = new GetStockQuote("APPL").routeTo("http://server/api"),
+              cacheKey = getQuote.getCacheKey();
+        expect(cacheKey).to.equal('{"message":"b2_11#{\\"symbol\\":\\"APPL\\"}","route":"http://server/api"}');
+    }); 
+
     it("should generate type identifier without response", () => {
         const sellStock = new SellStock("APPL", 5).routeTo("http://server/api"),
               id        = typeId.get(sellStock);
         expect(id).to.equal("Miruken.Api.Route.Routed, Miruken");
-    });     
+    }); 
+
+    it("should not generate cache key without response", () => {
+        const sellStock = new SellStock("APPL", 5).routeTo("http://server/api"),
+              cacheKey  = sellStock.getCacheKey();
+        expect(cacheKey).to.be.undefined;
+    });       
 });

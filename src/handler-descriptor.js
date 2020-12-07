@@ -285,7 +285,7 @@ function resolveFilters(policy, target, callback, binding, composer) {
     const targetFilter = Filtering.isAdoptedBy(target)
                        ? new FilterInstanceProvider([target], true)
                        : null;
-    return composer.getOrderedFilters(binding, callback, [
+    return composer.$getOrderedFilters(binding, callback, [
         binding.getMetadata(filter), this, policy, targetFilter
     ]);
 }

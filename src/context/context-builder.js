@@ -1,9 +1,6 @@
 import { $isNothing } from "miruken-core";
-
-import { 
-    HandlerBuilder, InferenceHandler
-} from "miruken-callback";
-
+import { InferenceHandler } from "../inference-handler";
+import { HandlerBuilder } from "../handler-builder";
 import { Context } from "./context";
 
 export class ContextBuilder extends HandlerBuilder {

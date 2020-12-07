@@ -3,6 +3,7 @@ import { Handler } from "../../src/handler";
 import { handles } from "../../src/callback-policy";
 import { Request } from "../../src/api/request";
 import { Message } from "../../src/api/message";
+import { ignore } from "../../src/map/mapping";
 import { typeId } from "../../src/map/type-mapping";
 import { response } from "../../src/api/response";
 
@@ -21,9 +22,6 @@ export class GetStockQuote extends Request {
     }
 
     symbol;
-    called = 0;
-
-    getCacheKey() { return this.symbol; }
 }
 
 @typeId("SellStock")
@@ -41,7 +39,7 @@ export class SellStock extends Message {
 export class StockQuoteHandler extends Handler {
     @handles(GetStockQuote)
     getQuote(getQuote) {
-        ++getQuote.called;
+        ++StockQuoteHandler.called;
         
         if (getQuote.symbol == "EX")
             throw new Error("Stock Exchange is down");
@@ -57,4 +55,6 @@ export class StockQuoteHandler extends Handler {
         if (sellStock.Symbol == "EX")
             throw new Error("Stock Exchange is down");
     }
+
+    static called = 0;
 }

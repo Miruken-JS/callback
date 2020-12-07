@@ -62,7 +62,7 @@ Handler.implement({
             }
         });            
     },
-    noBatch() {
+    $noBatch() {
         return this.decorate({
             handleCallback(callback, greedy, composer) {
                 let inquiry;
@@ -76,14 +76,14 @@ Handler.implement({
             }
         });
     },
-    getBatch(tag) {
+    $getBatch(tag) {
         const batch = this.resolve(Batch);
         if (!$isNothing(batch) && 
             ($isNothing(tag) || batch.shouldBatch(tag))) {
             return batch;
         }
     },
-    getBatcher(batcherType, tag) {
+    $getBatcher(batcherType, tag) {
         if (!Batching.isAdoptedBy(batcherType)) {
             throw new TypeError(`Batcher ${batcherType.name} does not conform to Batching protocol.`);
         }

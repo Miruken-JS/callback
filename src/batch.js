@@ -61,4 +61,3 @@ export class Batch extends CompositeHandler {
 export class NoBatch extends Trampoline {
     get canBatch() { return false; }
 };
-

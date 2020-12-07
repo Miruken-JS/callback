@@ -23,7 +23,7 @@ export class BatchRouter extends Handler {
 
     @handles(BatchRouted)
     routeBatch(batched, { rawCallback }) {
-        return route(batched.routed, 
+        return this.route(batched.routed, 
             { rawCallback: batched.rawCallback || rawCallback });
     }
 
@@ -32,7 +32,7 @@ export class BatchRouter extends Handler {
         if (!rawCallback instanceof Command) {
             return $unhandled;
         }
-        const groups = _(this).groups,
+        const { groups } = _(this),
               { route, message } = routed;         
         let group = groups.get(route);
         if ($isNothing(group)) {
@@ -67,7 +67,7 @@ export class BatchRouter extends Handler {
                         }))
                 };
             }).catch(reason => {
-                // Cancel requests when Promise.cancel
+                // Cancel requests when available on Promise
                 //requests.forEach(r => r.Promise.cancel());
                 return Promise.reject(reason);
             });

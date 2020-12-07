@@ -1,8 +1,12 @@
 import {
-    Base, $isNothing, assignID 
+    Base, $isNothing, $classOf, assignID
 } from "miruken-core";
 
-export class Request extends Base {}
+export class Request extends Base {
+    getCacheKey() {
+        return JSON.stringify(this);
+    }
+}
 
 export class RequestWrapper extends Request {
     constructor(request) {
@@ -15,11 +19,15 @@ export class RequestWrapper extends Request {
 
     request;
 
-    getCacheKey() { 
-        const request  = this.request,
-              cacheKey = request?.getCacheKey?.();
-        if (!$isNothing(cacheKey)) {
-            return `${assignID(request.constructor)}|${cacheKey}`;
+    getCacheKey() {
+        const request    = this.request,
+              requestKey = request?.getCacheKey?.();
+        if (!$isNothing(requestKey)) {
+            return JSON.stringify(this, (name, value) =>
+                name === "request"
+                ? `${assignID($classOf(request))}#${requestKey}`
+                : value
+            );
         }
     }
 }

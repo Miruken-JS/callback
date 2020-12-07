@@ -93,7 +93,7 @@ export class HandleMethod extends Base {
         if (!$isNothing(composer)) {
             const owner = HandlerDescriptor.get(target, true);
             binding = Binding.create(HandleMethod, target, null, methodName);
-            filters = composer.getOrderedFilters(binding, this, [
+            filters = composer.$getOrderedFilters(binding, this, [
                 binding.getMetadata(filter), owner, HandleMethod.globalFilters
             ]);
             if ($isNothing(filters)) return false;   
