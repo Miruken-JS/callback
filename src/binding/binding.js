@@ -29,8 +29,23 @@ export class Binding {
         const key = this.key;
         if ($isNothing(key)) return;
         const owner = this.owner;
-         if ($isNothing(owner)) return;
+        if ($isNothing(owner)) return;
         return get.call(metadata, owner, key);
+    }
+
+    getParentMetadata(metadata) {
+        if ($isNothing(metadata)) {
+            throw new Error("The metadata is required.");
+        }
+        const get = metadata.get;
+        if (!$isFunction(get)) {
+            throw new Error("The metadata.get method is missing.");
+        }
+        const key = this.key;
+        if ($isNothing(key)) return;
+        const owner  = this.owner,
+              parent = $isFunction(owner) ? owner : $classOf(owner);
+        return get.call(metadata, parent); 
     }
 
     static create(constraint, owner, handler, key, removed) {

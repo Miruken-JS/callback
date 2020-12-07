@@ -82,7 +82,7 @@ const Logging = Protocol.extend({
     }
 }
 
-const logs = createFilterSpecDecorator(new FilterSpec(LogFilter));
+const logs = createFilterSpecDecorator(new FilterSpec(LogFilter), true);
 
 @conformsTo(Filtering)
 @provides() class ExceptionFilter {
@@ -107,7 +107,7 @@ const logs = createFilterSpecDecorator(new FilterSpec(LogFilter));
 }
 
 const exceptions = createFilterSpecDecorator(
-    new FilterSpec(ExceptionFilter, { required: true }));
+    new FilterSpec(ExceptionFilter, { required: true }), true);
 
 @conformsTo(Filtering)
 @provides() class AbortFilter {
@@ -175,6 +175,25 @@ const aborting = createFilterSpecDecorator(
     @handles(Boo)
     @exceptions
     remove(boo) {
+    }
+}
+
+@logs.all() @exceptions.all()
+@provides() class AllFilteringHandler extends Handler {
+    @handles(Bar)
+    handleBar(bar) {
+        bar.handled++;
+    }
+
+    @handles(Bee)
+    handleBee(bee) {
+    }
+
+    @handles()
+    handleStuff(callback) {
+        if (callback instanceof Bar) {
+            callback.handled = -99;
+        }
     }
 }
 
@@ -304,6 +323,19 @@ describe("Filter", () => {
         expect(filters[3]).to.be.instanceOf(NullFilter);
     });
 
+    it("should apply all filters", () => {
+        const bar = new Bar(),
+              h   = new InferenceHandler(
+            AllFilteringHandler, LogFilter, ConsoleLogger,
+            ExceptionFilter);
+        expect(h.handle(bar)).to.be.true;
+        expect(bar.handled).to.equal(1);
+        expect(bar.filters.length).to.equal(2);
+        const filters = bar.filters;
+        expect(filters[0]).to.be.instanceOf(LogFilter);
+        expect(filters[1]).to.be.instanceOf(ExceptionFilter);
+    });
+
     it("should create filters for base2 class", () => {
         const bar                   = new Bar(),
               FilteringBase2Handler = Handler.extend(Filtering, {
@@ -354,7 +386,7 @@ describe("Filter", () => {
         expect(bee.filters.length).to.equal(0);
     });
 
-    it("shouldfilters", () => {
+    it("should skip filters", () => {
         const bar = new Bar();
         expect(handler.$skipFilters().handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);

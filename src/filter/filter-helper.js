@@ -54,7 +54,9 @@ Handler.implement({
                 handler = this;
                 break;
             case null:
-                if (binding.skipFilters || binding.getMetadata(skipFilters)) {
+                if (binding.skipFilters || 
+                    binding.getMetadata(skipFilters) ||
+                    binding.getParentMetadata(skipFilters)) {
                     allProviders = allProviders.filter(p => p.required);
                 }
                 handler = this.$skipFilters();

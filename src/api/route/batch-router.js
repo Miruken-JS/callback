@@ -49,23 +49,25 @@ export class BatchRouter extends Handler {
         const groups   = [..._(this).groups.entries()],
               complete = Promise.all(groups.map(([uri, requests]) => {
             const messages = requests.map(r => r.message);
-            return composer.send(new Concurrent(messages).routeTo(uri)).then(result => {
-                const responses = result.responses;
-                // Cancel when available on Promise
-                // for (let i = responses.length; i < requests.length; ++i) {
-                //    requests[i].promise.cancel();
-                //}
-                return { uri, responses: responses
-                    .map((response, i) => response.fold(
-                        failure => {
-                            requests[i].reject(failure);
-                            return failure;
-                        },
-                        success => {
-                            requests[i].resolve(success);
-                            return success;
-                        }))
-                };
+            return Promise.resolve(
+                composer.send(new Concurrent(messages).routeTo(uri)))
+                .then(result => {
+                    const responses = result.responses;
+                    // Cancel when available on Promise
+                    // for (let i = responses.length; i < requests.length; ++i) {
+                    //    requests[i].promise.cancel();
+                    //}
+                    return { uri, responses: responses
+                        .map((response, i) => response.fold(
+                            failure => {
+                                requests[i].reject(failure);
+                                return failure;
+                            },
+                            success => {
+                                requests[i].resolve(success);
+                                return success;
+                            }))
+                    };
             }).catch(reason => {
                 // Cancel requests when available on Promise
                 //requests.forEach(r => r.Promise.cancel());

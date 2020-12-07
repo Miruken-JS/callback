@@ -28,7 +28,7 @@ Handler.implement({
                 if (!$isNothing(_batch)) {
                     let batcher = _batch.resolve(inquiry.key);
                     if ($isNothing(batcher)) {
-                        batcher = Reflect.construct(inquiry.key);
+                        batcher = Reflect.construct(inquiry.key, []);
                         _batch.addHandlers(batcher);
                     }
                     return batcher;
@@ -91,7 +91,7 @@ Handler.implement({
         if ($isNothing(batch)) return;
         let batcher = batch.resolve(batcherType);
         if ($isNothing(batcher)) {
-            batcher = Reflect.construct(inquiry.key);
+            batcher = Reflect.construct(batcherType, []);
             batch.addHandlers(batcher);
         }
         return batcher;

@@ -5,7 +5,7 @@ export class BindingConstraint {
      * @param  {BindingMetadata} metadata  -  binding metadata
      */       
     require(metadata) {
-        throw new Error(`${this.constructor} did not implement BindingConstraint.require.`);
+        throw new Error(`${this.constructor.name} did not implement BindingConstraint.require.`);
     }
 
     /**
@@ -15,7 +15,7 @@ export class BindingConstraint {
      * @returns {Boolean} true if the metadata is satified.
      */     
     matches(metadata) {
-        throw new Error(`${this.constructor} did not implement BindingConstraint.matches.`);
+        throw new Error(`${this.constructor.name} did not implement BindingConstraint.matches.`);
     }
 }
 

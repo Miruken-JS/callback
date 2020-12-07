@@ -1,10 +1,13 @@
+import { $using } from "miruken-core";
 import { handles } from "../../src/callback-policy";
 import { HandlerBuilder } from "../../src/handler-builder";
+import { Concurrent } from "../../src/api/schedule/scheduled";
 import { PassThroughRouter } from "../../src/api/route/pass-through-router";
 import { Routed } from "../../src/api/route/routed";
 import { routes } from "../../src/api/route/routes";
 import { typeId } from "../../src/map/type-mapping";
 import { NotHandledError } from "../../src/errors";
+import "../../src/handler-batch";
 
 import { 
     StockQuote, GetStockQuote, SellStock,
@@ -13,22 +16,24 @@ import {
 
 import { expect } from "chai";
 
-class TrashRouter {
-    @routes("trash")
-    @handles(Routed)
-    route(routed) {
-        const { message } = routed;
-        console.log(`Throw ${message.constructor.name} ${JSON.stringify(message)} in the trash`);
-    }
-}
-
 describe("routes", () => {
-    let handler;
+    let handler, recycleBin;
     beforeEach(async () => {
+        recycleBin = [];
         handler = new HandlerBuilder()
             .addTypes(from => from.types(StockQuoteHandler, TrashRouter))
             .build();
     });
+
+    class TrashRouter {
+        @routes("trash")
+        @handles(Routed)
+        route(routed) {
+            const { message } = routed;
+            console.log(`Throw ${message.constructor.name} ${JSON.stringify(message)} in the trash`);
+            recycleBin.push(message);
+        }
+    }
 
     it("should pass through request", async () => {
         const quote = await handler.$chain(new PassThroughRouter()).send(
@@ -37,9 +42,25 @@ describe("routes", () => {
     });
 
     it("should route requests", async () => {
-        const quote = await handler.send(
-            new GetStockQuote("GOOGL").routeTo("trash"));
-        expect(quote).to.be.undefined;
+        const getQuote1 = new GetStockQuote("GOOGL"),
+              getQuote2 = new GetStockQuote("APPL"),
+              quote1    = await handler.send(getQuote1.routeTo("trash")),
+              quote2    = await handler.send(getQuote2.routeTo("trash"));
+        expect(quote1).to.be.undefined;
+        expect(quote2).to.be.undefined;
+        expect(recycleBin).to.include(getQuote1, getQuote2);
+    });
+
+    it("should batch route requests", () => {
+        const getQuote1 = new GetStockQuote("GOOGL"),
+              getQuote2 = new GetStockQuote("APPL");
+        $using(handler.$batch(), batch => {
+            batch.send(getQuote1.routeTo("trash"));
+            batch.send(getQuote2.routeTo("trash"));
+        });
+        const trash = recycleBin[0];
+        expect(trash).to.be.instanceOf(Concurrent);
+        expect(trash.requests).to.include(getQuote1, getQuote2);
     });
 
     it("should fail if missing route", async () => {

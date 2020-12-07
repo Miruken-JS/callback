@@ -286,7 +286,8 @@ function resolveFilters(policy, target, callback, binding, composer) {
                        ? new FilterInstanceProvider([target], true)
                        : null;
     return composer.$getOrderedFilters(binding, callback, [
-        binding.getMetadata(filter), this, policy, targetFilter
+        binding.getMetadata(filter), binding.getParentMetadata(filter),
+        this, policy, targetFilter
     ]);
 }
 

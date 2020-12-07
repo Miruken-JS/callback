@@ -42,9 +42,10 @@ function addInstanceBindings(type, inferDescriptor, owners) {
         for (const [policy, bindings] of descriptor.bindings) {
             for (const binding of bindings) {
                 const instanceBinding = pcopy(binding);
-                instanceBinding.handler     = infer;
-                instanceBinding.getMetadata = Undefined;
-                instanceBinding.skipFilters = true;
+                instanceBinding.handler           = infer;
+                instanceBinding.getMetadata       = Undefined;
+                instanceBinding.getParentMetadata = Undefined;
+                instanceBinding.skipFilters       = true;
                 inferDescriptor.addBinding(policy, instanceBinding);
             }
         }

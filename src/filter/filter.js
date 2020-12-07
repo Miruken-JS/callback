@@ -41,9 +41,9 @@ export function createFilterDecorator(createFilterProvider, addAll) {
     return decorator;
 }
 
-export function createFilterSpecDecorator(filterSpec) {
+export function createFilterSpecDecorator(filterSpec, addAll) {
     if (filterSpec instanceof FilterSpec) {
-        return createFilterDecorator(_ => new FilterSpecProvider(filterSpec));
+        return createFilterDecorator(_ => new FilterSpecProvider(filterSpec), addAll);
     }
     if ($isFunction(filterSpec)) {
         return createFilterDecorator((target, key, descriptor, args) => {
@@ -52,19 +52,24 @@ export function createFilterSpecDecorator(filterSpec) {
                 throw new TypeError("The filterSpec function did not return a FilterSpec.");
             }
             return new FilterSpecProvider(spec);
-        });
+        }, addAll);
     }
     throw new TypeError("The filterSpec argument must be a FilterSpec or a function that return one.");
 }
 
-export const filter = createFilterDecorator(
-    (target, key, descriptor, [filterType, options]) => {
-        if ($isNothing(filterType)) {
-            throw new Error("@filter requires a filterType.")
-        }
-        const filterSpec = new FilterSpec(filterType, options);
-        return new FilterSpecProvider(filterSpec);
-    });
+export const filter = createExplicitFilterDecorator();
+filter.all = createExplicitFilterDecorator(true);
+
+function createExplicitFilterDecorator(addAll) {
+    return createFilterDecorator(
+        (target, key, descriptor, [filterType, options]) => {
+            if ($isNothing(filterType)) {
+                throw new Error("@filter requires a filterType.")
+            }
+            const filterSpec = new FilterSpec(filterType, options);
+            return new FilterSpecProvider(filterSpec);
+    }, addAll);
+}
 
 export const skipFilters = Metadata.decorator(skipFilterMetadataKey,
     (target, key, descriptor, args) => {
@@ -76,6 +81,17 @@ export const skipFilters = Metadata.decorator(skipFilterMetadataKey,
             skipFilters.getOrCreateOwn(target.prototype, "constructor", () => true);
         } else {
             skipFilters.getOrCreateOwn(target, key, () => true);
+        }
+    });
+skipFilters.all = Metadata.decorator(skipFilterMetadataKey,
+    (target, key, descriptor, args) => {
+        if (args.length > 0) {
+            throw new SyntaxError("@skipFilters.all expects no arguments.");
+        }
+        if ($isNothing(descriptor)) {
+            skipFilters.getOrCreateOwn(target, () => true);
+        } else {
+            throw new SyntaxError("skipFilters.all can only be applied to classes.");
         }
     });
 

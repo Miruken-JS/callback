@@ -1,4 +1,5 @@
 import { typeId } from "../../map/type-mapping";
+import { Request } from "../request";
 import { response } from "../response";
 import { MessageWrapper } from "../message";
 
@@ -12,8 +13,9 @@ export class ScheduledResult {
 
 @response(ScheduledResult)
 @typeId("Miruken.Api.Schedule.Scheduled, Miruken")
-export class Scheduled {
+export class Scheduled extends Request {
     constructor(requests) {
+        super();
         if (new.target === Scheduled) {
             throw new TypeError("Scheduled cannot be instantiated.");
         }
