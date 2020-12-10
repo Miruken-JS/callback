@@ -1,4 +1,4 @@
-import { $isFunction, $isNothing } from "miruken-core";
+import { $isNothing, $isFunction } from "miruken-core";
 import { Handler } from "./handler";
 import { Options } from "./options";
 import { handles } from "./callback-policy";
@@ -16,15 +16,18 @@ Handler.registerOptions = function (optionsType, optionsKey) {
     validateOptionsType(optionsType);
 
     if ($isNothing(optionsKey)) {
-        throw new TypeError("No Options key specified.");
+        throw new TypeError("The Options key is required.");
     }
 
-    if (Handler.prototype.hasOwnProperty(optionsKey)) {
-        return false;
+    const actualKey = optionsKey.startsWith("$") ? optionsKey
+                    : `$${optionsKey}`;
+
+    if (Handler.prototype.hasOwnProperty(actualKey)) {
+        throw new Error(`Options key '${optionsKey}' is already defined.`);
     }
 
     Handler.implement({
-        [optionsKey](options) {
+        [actualKey](options) {
             if ($isNothing(options)) return this;
             if (!(options instanceof optionsType)) {
                 options = Reflect.construct(optionsType, [])
@@ -42,12 +45,25 @@ Handler.registerOptions = function (optionsType, optionsKey) {
 }
 
 Handler.implement({
-    getOptions(optionsType) {
+    $getOptions(optionsType) {
         validateOptionsType(optionsType);
         const options = new optionsType();
         return this.handle(options, true) ? options : null;
     }
 });
+
+export function handlesOptions(optionsKey) {
+    if ($isFunction(optionsKey)) {
+        throw new SyntaxError("@handlesOptions requires an options key argument");
+    }
+    return (target, key, descriptor) => {
+        if ($isNothing(descriptor)) {
+            Handler.registerOptions(target, optionsKey);
+        } else {
+            throw new SyntaxError("@handlesOptions can only be applied to classes.");
+        }
+    };
+}
 
 function validateOptionsType(optionsType) {
     if ($isNothing(optionsType)) {

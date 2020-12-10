@@ -1,8 +1,20 @@
 import { 
-    decorate, $isNothing, $isFunction
+    Base, decorate, $isNothing, $isFunction
 } from "miruken-core";
 
 const ResponseTypeResolver = Symbol("response-type");
+
+export class ResponseWrapper extends Base {
+    constructor(response) {
+        if (new.target === ResponseWrapper) {
+            throw new TypeError("ResponseWrapper cannot be instantiated.");
+        }
+        super();
+        this.response = response;
+    }
+
+    response;
+}
 
 export function response(...args) {
     return decorate((target, key, descriptor, args) => {

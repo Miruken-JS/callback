@@ -9,33 +9,30 @@ import { provides } from "../callback-policy";
 import { FilterInstanceProvider } from "./filter-instance-provider";
 import { FilterOptions } from "./filter-options";
 import { skipFilters, allowMultiple } from "./filter";
-import "../handler-options";
-
-Handler.registerOptions(FilterOptions, "filterOptions");
 
 Handler.implement({
     $skipFilters(skip = true) {
-        return this.filterOptions({
+        return this.$filterOptions({
             skipFilters: skip
         });
     },
     $enableFilters(enable = true) {
-        return this.filterOptions({
+        return this.$filterOptions({
             skipFilters: !enable
         });
     },
     $withFilters(filters) {
-        return filters ? this.filterOptions({
+        return filters ? this.$filterOptions({
             providers: [new FilterInstanceProvider(filters.flat())]
         }) : this;
     },
     $withFilterProviders(providers) {
-        return providers ? this.filterOptions({
+        return providers ? this.$filterOptions({
             providers: providers.flat()
         }) : this;
     },
     $getOrderedFilters(binding, callback, providers) {
-        const options        = this.getOptions(FilterOptions),
+        const options        = this.$getOptions(FilterOptions),
               extraProviders = options && options.providers;
 
         let  handler,

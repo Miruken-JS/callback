@@ -13,7 +13,7 @@ import { CompositeHandler } from "../src/composite-handler";
 import { InferenceHandler } from "../src/inference-handler";
 import { HandleMethod } from "../src/handle-method";
 import { Batching } from "../src/batch";
-import { Options } from "../src/options";
+import { Options, options } from "../src/options";
 import { Binding } from "../src/binding/binding";
 
 import {
@@ -30,9 +30,9 @@ import {
 import { KeyResolver } from "../src/key-resolver";
 import { proxy } from "../src/proxy";
 import { unmanaged } from "../src/unmanaged";
+import { handlesOptions } from "../src/handler-options";
 
 import "../src/handler-helper";
-import "../src/handler-options";
 import "../src/handler-protocol";
 import "../src/handler-batch";
 
@@ -2050,28 +2050,41 @@ describe("Handler", () => {
     });
    
     describe("Options", () => {
+        @handlesOptions("serverOptions")
         class ServerOptions extends Options {
             url;
             timeout;
         }
 
-        Handler.registerOptions(ServerOptions, "serverOptions");
-
         it("should register options", () => {
             const handler = new Handler(),
-                  options = handler.getOptions(ServerOptions);
+                  options = handler.$getOptions(ServerOptions);
             expect(options).to.be.null;
         });
 
         it("should retrieve options", () => {
-            const handler = new Handler().serverOptions({
+            const handler = new Handler().$serverOptions({
                                url:     "http://localhost:3001/api",
                                timeout: 3000
                             }),
-                  options = handler.getOptions(ServerOptions);
+                  options = handler.$getOptions(ServerOptions);
             expect(options).to.be.an.instanceof(ServerOptions);
             expect(options.url).to.equal("http://localhost:3001/api");
             expect(options.timeout).to.equal(3000);
+        });
+
+        it("should resolve options dependency", () => {
+            @provides() class BankApi {
+                @handles(WireMoney)
+                wire(wireMoney, @options(ServerOptions) options) {
+                    return options;
+                }
+            }
+            const handler = new InferenceHandler(BankApi)
+                    .$serverOptions({ url: "http://localhost:3001/api" });
+                  confirm = handler.command(new WireMoney(15000));
+            expect(confirm).to.be.instanceOf(ServerOptions);
+            expect(confirm.url).to.equal("http://localhost:3001/api");
         });
 
         it("should reject register if not an Options type", () => {
@@ -2082,9 +2095,15 @@ describe("Handler", () => {
 
         it("should reject get if not an Options type", () => {
             expect(() => {
-                (new Handler).getOptions("abc");
+                (new Handler).$getOptions("abc");
             }).to.throw(TypeError, "Options type 'abc' does not extend Options.");
         });
+
+        it("should reject if already registered", () => {
+            expect(() => {
+                Handler.registerOptions(ServerOptions, "serverOptions");
+            }).to.throw(Error, "Options key 'serverOptions' is already defined.");                 
+        });        
     });
 });
 

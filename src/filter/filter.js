@@ -91,7 +91,7 @@ skipFilters.all = Metadata.decorator(skipFilterMetadataKey,
         if ($isNothing(descriptor)) {
             skipFilters.getOrCreateOwn(target, () => true);
         } else {
-            throw new SyntaxError("skipFilters.all can only be applied to classes.");
+            throw new SyntaxError("@skipFilters.all can only be applied to classes.");
         }
     });
 

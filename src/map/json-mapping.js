@@ -46,16 +46,18 @@ export class JsonMapping extends AbstractMapping {
     }
     
     mapsFrom(mapFrom, { composer }) {
-        const object = mapFrom.object;
+        const { object, fields } = mapFrom;
+
         if (!canMapJson(object)) return;
         if (this.isPrimitiveValue(object)) {
             return object?.valueOf();
         }
 
-        const fields    = mapFrom.fields,
-              raw       = $isPlainObject(object),
+        const raw       = $isPlainObject(object),
               allFields = $isNothing(fields) || fields === true;  
-        if (!(allFields || $isPlainObject(fields))) return {};
+        if (!(allFields || $isPlainObject(fields))) {
+            throw new Error(`Invalid map fields specifier ${fields}.`);
+        }
 
         if (raw || $isFunction(object.toJSON)) {
             const json = raw ? object : object.toJSON();
@@ -160,7 +162,7 @@ export class JsonMapping extends AbstractMapping {
             if (this.canSetProperty(descriptor)) {
                 const map = mapping.get(object, key);
                 if (map?.root) {
-                    object[key] = mapFromJson(object, key, value, composer, format, copyOptions);
+                    mapKey(object, key, value, composer, format, copyOptions);
                 }
             }
         });
@@ -175,7 +177,7 @@ export class JsonMapping extends AbstractMapping {
             if (keyValue === undefined) continue;
             if (descriptor) {
                 if (this.canSetProperty(descriptor)) {
-                    object[key] = mapFromJson(object, key, keyValue, composer, format, copyOptions);
+                    mapKey(object, key, keyValue, composer, format, copyOptions);
                 }
             } else {
                 const lkey  = key.toLowerCase();
@@ -183,7 +185,7 @@ export class JsonMapping extends AbstractMapping {
                 for (let k in descriptors) {
                     if (k.toLowerCase() === lkey) {
                         if (this.canSetProperty(descriptors[k])) {                        
-                            object[k] = mapFromJson(object, k, keyValue, composer, format, copyOptions);
+                            mapKey(object, k, keyValue, composer, format, copyOptions);
                         }
                         found = true;
                         break;
@@ -227,7 +229,7 @@ function createInstance(value, classOrInstance, composer) {
     return classOrInstance;
 }
 
-function mapFromJson(target, key, value, composer, format, configure) {
+function mapKey(target, key, value, composer, format, configure) {
     const type = design.get(target, key)?.propertyType?.type;
-    return composer.mapTo(value, format, type, configure);
+    target[key] = composer.mapTo(value, format, type, configure);
 }

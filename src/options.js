@@ -1,7 +1,12 @@
 import { 
-    Base, emptyArray, $isNothing,
-    $isFunction, getPropertyDescriptors
+    Base, emptyArray, conformsTo,
+    $isNothing, $isFunction, getPropertyDescriptors,
+    createTypeInfoDecorator, createKey
 } from "miruken-core";
+
+import { KeyResolving } from "./key-resolving";
+
+const _ = createKey();
 
 export class Options extends Base {
     get canBatch()  { return false; }
@@ -38,6 +43,10 @@ export class Options extends Base {
     }
 
     mergeKeyInto(options, key, keyValue, optionsValue) {
+        if (Array.isArray(keyValue)) {
+            options[key] = options[key].concat(copyOptionsValue(keyValue));
+            return;
+        }
         const mergeInto = keyValue.mergeInto;
         if ($isFunction(mergeInto)) {
             mergeInto.call(keyValue, optionsValue);
@@ -64,3 +73,18 @@ function copyOptionsValue(optionsValue) {
     return optionsValue;
 }
 
+@conformsTo(KeyResolving)
+export class OptionsResolver {
+    constructor(optionsType) {
+        _(this).optionsType = optionsType;
+    }
+
+    resolve(typeInfo, handler) {
+        const optionsType = _(this).optionsType || typeInfo.type;
+        return handler.$getOptions(optionsType);
+    }
+}
+
+export const options = createTypeInfoDecorator((key, typeInfo, [optionsType]) => {
+    typeInfo.keyResolver = new OptionsResolver(optionsType);
+});
