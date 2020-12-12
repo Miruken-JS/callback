@@ -1,4 +1,7 @@
-import { $isNothing, $isFunction } from "miruken-core";
+import { 
+    emptyArray, $isNothing, $isFunction, $classOf
+} from "miruken-core";
+
 import { Handler } from "./handler";
 import { Options } from "./options";
 import { handles } from "./callback-policy";
@@ -30,21 +33,27 @@ Handler.registerOptions = function (optionsType, optionsKey) {
         [actualKey](options) {
             if ($isNothing(options)) return this;
             if (!(options instanceof optionsType)) {
-                options = Reflect.construct(optionsType, [])
+                options = Reflect.construct(optionsType, emptyArray)
                     .extend(options);
             }
-            return this.decorate({
-                @handles(optionsType)
-                mergePolicy(receiver) {
-                    options.mergeInto(receiver)                
-                }
-            });
+            return this.$withOptions(options);
         }
     });
     return true;
 }
 
 Handler.implement({
+    $withOptions(options) {
+        if ($isNothing(options)) return this;
+        const optionsType = $classOf(options);
+        validateOptionsType(optionsType);
+        return this.decorate({
+            @handles(optionsType)
+            mergePolicy(receiver) {
+                options.mergeInto(receiver)                
+            }
+        });
+    },
     $getOptions(optionsType) {
         validateOptionsType(optionsType);
         const options = new optionsType();
@@ -67,9 +76,9 @@ export function handlesOptions(optionsKey) {
 
 function validateOptionsType(optionsType) {
     if ($isNothing(optionsType)) {
-        throw new TypeError("No Options type specified.");
+        throw new Error("The options type is required.");
     }
     if (!$isFunction(optionsType) || !(optionsType.prototype instanceof Options)) {
-        throw new TypeError(`Options type '${optionsType}' does not extend Options.`);
+        throw new TypeError(`The options type '${optionsType}' does not extend Options.`);
     }
 }

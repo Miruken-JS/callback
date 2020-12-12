@@ -2090,20 +2090,50 @@ describe("Handler", () => {
         it("should reject register if not an Options type", () => {
             expect(() => {
                 Handler.registerOptions(11, "foo");
-            }).to.throw(TypeError, "Options type '11' does not extend Options.");
+            }).to.throw(TypeError, "The options type '11' does not extend Options.");
         });
 
         it("should reject get if not an Options type", () => {
             expect(() => {
                 (new Handler).$getOptions("abc");
-            }).to.throw(TypeError, "Options type 'abc' does not extend Options.");
+            }).to.throw(TypeError, "The options type 'abc' does not extend Options.");
         });
 
         it("should reject if already registered", () => {
             expect(() => {
                 Handler.registerOptions(ServerOptions, "serverOptions");
             }).to.throw(Error, "Options key 'serverOptions' is already defined.");                 
-        });        
+        });
+
+        it("should reject OptionsResolver if no Options type", () => {
+            @provides() class BankApi {
+                @handles(WireMoney)
+                wire(wireMoney, @options options) {
+                    return options;
+                }
+            }
+            const handler = new InferenceHandler(BankApi)
+                    .$serverOptions({ url: "http://localhost:3001/api" });
+
+            expect(() => {
+                handler.command(new WireMoney(15000));
+            }).to.throw(TypeError, "Unable to determine @options argument type.");
+        });
+
+        it("should reject OptionsResolver if not Options dependency", () => {
+            @provides() class BankApi {
+                @handles(WireMoney)
+                wire(wireMoney, @options(Casino) options) {
+                    return options;
+                }
+            }
+            const handler = new InferenceHandler(BankApi)
+                    .$serverOptions({ url: "http://localhost:3001/api" });
+
+            expect(() => {
+                handler.command(new WireMoney(15000));
+            }).to.throw(TypeError, "@options requires an Options argument, but found 'Casino'.");
+        });
     });
 });
 
@@ -2609,12 +2639,12 @@ describe("Handler", () => {
         });
 
         it("should reject promise with custom error class", done => {
-            function BankError(callback) {
-                this.callback = callback;
-                Error.call(this);
+            class BankError extends Error {
+                constructor(callback) {
+                    super();
+                    this.callback = callback;
+                }
             }
-            BankError.prototype             = new Error();
-            BankError.prototype.constructor = BankError;
             const bank = new (class extends Handler {
                       @handles(WireMoney)
                       wireMoney(wireMoney) {

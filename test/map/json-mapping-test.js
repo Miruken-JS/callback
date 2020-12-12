@@ -1,5 +1,6 @@
 import {
-    Base, Enum, design, createKeyChain 
+    Base, Enum, design, $isPlainObject,
+    createKeyChain 
 } from "miruken-core";
 
 import { HandlerBuilder } from "../../src/handler-builder";
@@ -19,10 +20,8 @@ import {
 } from "../../src/map/maps";
 
 import { 
-    TypeIdHandling, TypeMapping, typeId, typeInfo
-} from "../../src/map/type-mapping";
-
-import "../../src/map/handler-builder-map";
+    TypeIdHandling, typeId, typeInfo
+} from "../../src/api/type-id";
 
 import { expect } from "chai";
 
@@ -65,7 +64,6 @@ describe("JsonMapping", () => {
     let handler;
     beforeEach(() => {
         handler = new HandlerBuilder()
-            .withJsonMapping()
             .build();
     });
     
@@ -77,6 +75,20 @@ describe("JsonMapping", () => {
                 eyeColor:   2,
                 occupation: "soccer"
             }, JsonFormat, Person);
+            expect(person).to.be.instanceOf(Person);
+            expect(person.firstName).to.equal("David");
+            expect(person.lastName).to.equal("Beckham");
+            expect(person.eyeColor).to.equal(Color.blue);
+            expect(person.occupation).to.be.undefined;
+        });
+
+        it("should map from json using content-type", () => {
+            const person = handler.mapTo({
+                firstName:  "David",
+                lastName:   "Beckham",
+                eyeColor:   2,
+                occupation: "soccer"
+            }, "application/json; charset=utf-8", Person);
             expect(person).to.be.instanceOf(Person);
             expect(person.firstName).to.equal("David");
             expect(person.lastName).to.equal("Beckham");
@@ -272,6 +284,24 @@ describe("JsonMapping", () => {
             expect(+date).to.equal(+(new Date(2016,11,10)));
         });
         */
+
+        it("should use raw json if no type info", () => {
+            class Message {
+                payload;
+            }
+            const message = handler.mapTo({
+                payload: {
+                    upc: "197212",
+                    quantity: 4
+                }
+            }, JsonFormat, Message);
+            expect(message).to.be.instanceOf(Message);
+            expect($isPlainObject(message.payload)).to.be.true;
+            expect(message.payload).to.eql({
+                upc: "197212",
+                quantity: 4
+            })
+        });
 
         it("should fail if type id mismatch", () => {
             expect(() => {

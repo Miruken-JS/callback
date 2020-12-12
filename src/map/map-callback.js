@@ -103,8 +103,10 @@ export class MapFrom extends MapCallback {
         const target = this.object,
               source = $classOf(target);
         if ($isNothing(source)) return false;
+        const count = _(this).results.length;
         return mapsFrom.dispatch(handler, this, this, source,
-            composer, false, this.addResult.bind(this)); 
+            composer, false, this.addResult.bind(this)) ||
+            _(this).results.length > count; 
     }
 
     toString() {
@@ -157,9 +159,11 @@ export class MapTo extends MapCallback {
     }
 
     dispatch(handler, greedy, composer) {
-        const source = this.classOrInstance || this.value;
+        const count  = _(this).results.length,
+              source = this.classOrInstance || this.value;
         return mapsTo.dispatch(handler, this, this, source,
-            composer, false, this.addResult.bind(this));
+            composer, false, this.addResult.bind(this)) || 
+            _(this).results.length > count;
     }
     toString() {
         return `MapTo | ${String(this.format)} ${this.value}`;

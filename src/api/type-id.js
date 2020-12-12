@@ -1,18 +1,16 @@
 import {
     Enum, Metadata, decorate,
-    $isNothing, $isFunction, $isString
+    $isNothing, $isFunction, $isString,
+    $classOf
 } from "miruken-core";
 
 import { Handler } from "../handler";
-import { ignore } from  "./mapping";
-import { mapsTo, format } from "./maps";
+import { mapsTo, format } from "../map/maps";
+import { ignore } from  "../map/mapping";
 
-export const TypeIdFormat = Symbol("type");
-
-@format(TypeIdFormat)
-export class TypeMapping extends Handler {}
-
-const TypeIdResolver      = Symbol("type-id"),
+const idToType            = new Map(),
+      typeToId            = new WeakMap(),
+      typeIdResolver      = Symbol("type-id"),
       typeInfoMetadataKey = Symbol("type-info-metadata");
 
 export const TypeIdHandling = Enum({
@@ -35,30 +33,20 @@ export function typeId(...args) {
             } else {
                 id = id.replace(/\s+/g, '')
             }
-            function getter() { return id; }
-            Object.defineProperty(target, TypeIdResolver, {
-                configurable: false,
-                enumerable:   false,
-                value:        getter
-            });
-            Object.defineProperty(target.prototype, TypeIdResolver, {
-                configurable: false,
-                enumerable:   false,
-                value:        getter
-            });
-            addTypeMapping(target, id);
+            idToType.set(id, new WeakRef(target));
+            typeToId.set(target, id);
         } else {
             let getter;
             const { get, value } = descriptor;
-            if ($isFunction(get)) {
-                getter = get;
+            if ($isFunction(get)) { // late binding
+                getter = function () { return this[key]; };
                 ignore(target, key, descriptor);
-            } else if ($isFunction(value)) {
-                getter = value;
+            } else if ($isFunction(value)) {  // late binding
+                getter = function () { return this[key]?.call(this); };
             } else {
                 throw new SyntaxError("@typeId can only be applied to classes, getters or methods.");
-            } 
-            Object.defineProperty(target, TypeIdResolver, {
+            }
+            Object.defineProperty(target, typeIdResolver, {
                 configurable: false,
                 enumerable:   false,
                 value:        function () { 
@@ -73,14 +61,36 @@ export function typeId(...args) {
     }, args);
 }
 
-typeId.get = function (target) {
-    return target?.[TypeIdResolver]?.();
+typeId.getId = function (target) {
+    if ($isNothing(target)) {
+        throw new Error("The target is required.")
+    }
+    const resolver = target[typeIdResolver];
+    if ($isFunction(resolver)) {
+        return resolver.call(target);
+    }
+    const type = $isFunction(target) ? target : $classOf(target),
+          id   = typeToId.get(type);
+    return $isFunction(id) ? id.call(target) : id;
+}
+
+typeId.getType = function (id) {
+    if (!$isString(id)) {
+        throw new Error(`Invalid type id '${id}'.`);
+    }
+    const stripped = id.replace(/\s+/g, ''),
+          weakType = idToType.get(stripped);
+    if (!$isNothing(weakType)) {
+        const type = weakType.deref();
+        if (!$isNothing(type)) return type;
+        idToType.delete(stripped);
+    }
 }
 
 /**
  * Maintains type information for a class.
  * @method typeInfo
- * @param  {String}  property  -  member mapping
+ * @param  {String} typeIdProperty  -  member mapping
  */  
 export const typeInfo = Metadata.decorator(typeInfoMetadataKey,
     (target, key, descriptor, [typeIdProperty]) => {
@@ -92,22 +102,3 @@ export const typeInfo = Metadata.decorator(typeInfoMetadataKey,
         }
         typeInfo.getOrCreateOwn(target, () => ({})).typeIdProperty = typeIdProperty;
     });
-
-Handler.implement({
-    getTypeFromId(typeId) {
-        if (!$isString(typeId)) {
-            throw new Error(`Invalid type id '${typeId}'.`);
-        }
-        const stripped = typeId.replace(/\s+/g, '');
-        return this.mapTo(stripped, TypeIdFormat);
-    }
-});
-
-function addTypeMapping(type, id) {
-    const method   = Symbol(),
-          handler  = { [method] () { return type; } };
-    Object.defineProperty(handler, method,
-        Reflect.decorate([mapsTo(id)], handler, method,
-            Object.getOwnPropertyDescriptor(handler, method)));
-    TypeMapping.implement(handler);
-}

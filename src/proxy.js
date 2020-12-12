@@ -1,6 +1,7 @@
 import { 
     TypeInfo, TypeFlags, conformsTo,
-    createTypeInfoDecorator, $createQualifier
+    $isNothing, createTypeInfoDecorator,
+    $createQualifier
 } from "miruken-core";
 
 import { KeyResolving } from "./key-resolving";
@@ -10,6 +11,9 @@ export const $proxy = $createQualifier();
 @conformsTo(KeyResolving)
 export class ProxyResolver {
     validate(typeInfo) {
+        if ($isNothing(typeInfo.type)) {
+            throw new TypeError("Unable to determine @proxy argument type.");
+        }
         if (!typeInfo.flags.hasFlag(TypeFlags.Protocol)) {
             throw new TypeError("@proxy requires a Protocol argument.");
         }

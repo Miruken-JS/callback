@@ -1,7 +1,7 @@
 import { Enum, $isNothing } from "miruken-core";
 import { Request, RequestWrapper } from "../request";
-import { typeId } from "../../map/type-mapping";
 import { response } from "../response";
+import { typeId } from "../type-id";
 
 export const CacheAction = Enum({
     Refresh:    0,
@@ -20,7 +20,7 @@ export class Cached extends RequestWrapper {
     get typeId() {
         const responseType = response.get(this.request);
         if ($isNothing(responseType)) return;
-        const responseTypeId = typeId.get(responseType);
+        const responseTypeId = typeId.getId(responseType);
         if ($isNothing(responseTypeId)) return;
         return `Miruken.Api.Cache.Cached\`1[[${responseTypeId}]], Miruken`;
     }

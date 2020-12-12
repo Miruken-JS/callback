@@ -1,11 +1,11 @@
-import { $using } from "miruken-core";
+import { $using, assignID } from "miruken-core";
 import { handles } from "../../src/callback-policy";
 import { HandlerBuilder } from "../../src/handler-builder";
 import { Concurrent } from "../../src/api/schedule/scheduled";
 import { PassThroughRouter } from "../../src/api/route/pass-through-router";
 import { Routed } from "../../src/api/route/routed";
 import { routes } from "../../src/api/route/routes";
-import { typeId } from "../../src/map/type-mapping";
+import { typeId } from "../../src/api/type-id";
 import { NotHandledError } from "../../src/errors";
 import "../../src/handler-batch";
 
@@ -76,19 +76,19 @@ describe("routes", () => {
 
     it("should generate type identifier with response", () => {
         const getQuote = new GetStockQuote("APPL").routeTo("http://server/api"),
-              id       = typeId.get(getQuote);
+              id       = typeId.getId(getQuote);
         expect(id).to.equal("Miruken.Api.Route.Routed`1[[StockQuote]], Miruken");
     });
 
     it("should generate cache key with response", () => {
         const getQuote = new GetStockQuote("APPL").routeTo("http://server/api"),
               cacheKey = getQuote.getCacheKey();
-        expect(cacheKey).to.equal('{"message":"b2_11#{\\"symbol\\":\\"APPL\\"}","route":"http://server/api"}');
+        expect(cacheKey).to.equal(`{"message":"${assignID(GetStockQuote)}#{\\"symbol\\":\\"APPL\\"}","route":"http://server/api"}`);
     }); 
 
     it("should generate type identifier without response", () => {
         const sellStock = new SellStock("APPL", 5).routeTo("http://server/api"),
-              id        = typeId.get(sellStock);
+              id        = typeId.getId(sellStock);
         expect(id).to.equal("Miruken.Api.Route.Routed, Miruken");
     }); 
 

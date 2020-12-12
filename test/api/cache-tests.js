@@ -1,7 +1,7 @@
+import { HandlerBuilder } from "../../src/handler-builder";
 import { Cached } from "../../src/api/cache/cached";
 import { CachedHandler } from "../../src/api/cache/cached-handler";
-import { typeId } from "../../src/map/type-mapping";
-import { HandlerBuilder } from "../../src/handler-builder";
+import { typeId } from "../../src/api/type-id";
 import "../../src/api/handler-api";
 
 import { 
@@ -94,7 +94,7 @@ describe("Cached", () => {
 
     it("should generate type identifier", () => {
         const getQuote = new GetStockQuote("APPL").cached(),
-              id       = typeId.get(getQuote);
+              id       = typeId.getId(getQuote);
         expect(id).to.equal("Miruken.Api.Cache.Cached`1[[StockQuote]], Miruken");
     });     
 });

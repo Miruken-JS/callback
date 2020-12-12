@@ -51,6 +51,7 @@ Handler.implement({
                 handler = this;
                 break;
             case null:
+            case undefined:
                 if (binding.skipFilters || 
                     binding.getMetadata(skipFilters) ||
                     binding.getParentMetadata(skipFilters)) {

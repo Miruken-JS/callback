@@ -15,15 +15,21 @@ import { unmanaged } from "./unmanaged";
 import { ErrorHandler } from "./handler-errors";
 import { CachedHandler } from "./api/cache/cached-handler";
 import { Scheduler } from "./api/schedule/scheduler";
+import { JsonMapping } from "./map/json-mapping";
 
 const _ = createKey(),
       defaultDecorators = [singleton];
+
+const standardHandlers = [
+    ErrorHandler, CachedHandler, Scheduler,
+    JsonMapping
+];
 
 export class SourceBuilder extends Base {
     constructor() {
         super();
         _(this).sources = [];
-        this.types(ErrorHandler, CachedHandler, Scheduler);
+        this.types(standardHandlers);
     }
 
     getTypes() {

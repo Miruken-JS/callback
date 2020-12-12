@@ -1,7 +1,8 @@
 import { 
     Base, emptyArray, conformsTo,
-    $isNothing, $isFunction, getPropertyDescriptors,
-    createTypeInfoDecorator, createKey
+    $isNothing, $isFunction, $optional,
+    getPropertyDescriptors, createTypeInfoDecorator,
+    createKey
 } from "miruken-core";
 
 import { KeyResolving } from "./key-resolving";
@@ -79,9 +80,20 @@ export class OptionsResolver {
         _(this).optionsType = optionsType;
     }
 
-    resolve(typeInfo, handler) {
+    validate(typeInfo) {
         const optionsType = _(this).optionsType || typeInfo.type;
-        return handler.$getOptions(optionsType);
+        if ($isNothing(optionsType)) {
+            throw new TypeError("Unable to determine @options argument type.");
+        }
+        if (!(optionsType.prototype instanceof Options)) {
+            throw new TypeError(`@options requires an Options argument, but found '${optionsType.name}'.`);
+        }
+    }
+
+    resolve(typeInfo, handler) {
+        const optionsType = _(this).optionsType || typeInfo.type,
+              options     = handler.$getOptions(optionsType);
+        return $isNothing(options) ? $optional(options) : options;
     }
 }
 

@@ -1,8 +1,8 @@
 import { $isNothing } from "miruken-core";
 import { Request } from "../request";
 import { Message, MessageWrapper } from "../message";
-import { typeId } from "../../map/type-mapping";
 import { response } from "../response";
+import { typeId } from "../type-id";
 
 export class Routed extends MessageWrapper {
     route;
@@ -14,7 +14,7 @@ export class Routed extends MessageWrapper {
         if ($isNothing(responseType)) {
             return `Miruken.Api.Route.Routed, Miruken`;
         }
-        const responseTypeId = typeId.get(responseType);
+        const responseTypeId = typeId.getId(responseType);
         if ($isNothing(responseTypeId)) return;
         return `Miruken.Api.Route.Routed\`1[[${responseTypeId}]], Miruken`;
     }

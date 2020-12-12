@@ -112,6 +112,7 @@ export class Inquiry extends Base {
     }
 
     dispatch(handler, greedy, composer) {
+        let resolved = false;
         if (_(this).metadata.isEmpty) {
             // check if handler implicitly satisfies key
             const implied = Binding.create(this.key);
@@ -124,7 +125,7 @@ export class Inquiry extends Base {
               promises    = _(this).promises,
               count       = resolutions.length + promises.length;
 
-        let   resolved = provides.dispatch(handler, this, this, this.key,
+        resolved = provides.dispatch(handler, this, this, this.key,
             composer, this.isMany, (r, s, c) => this.resolve(r, s, greedy, c))
             || resolved;
 

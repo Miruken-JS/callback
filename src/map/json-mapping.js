@@ -9,15 +9,10 @@ import { AbstractMapping } from "./abstract-mapping";
 import { mapsFrom, mapsTo, format } from "./maps";
 
 import { 
-    TypeIdHandling, TypeIdFormat, typeInfo, typeId
-} from "./type-mapping";
+    TypeIdHandling, typeInfo, typeId
+} from "../api/type-id";
 
-/**
- * Javascript Object Notation
- * @property {Any} JsonFormat
- */
 export const JsonFormat            = Symbol("json"),
-             JsonContentType       = "application/json",
              DefaultTypeIdProperty = "$type";
 
 /**
@@ -25,7 +20,7 @@ export const JsonFormat            = Symbol("json"),
  * @class JsonMapping
  * @extends AbstractMapping
  */
-@format(JsonFormat, JsonContentType)
+@format(JsonFormat, /application[/]json/)
 export class JsonMapping extends AbstractMapping {
     @mapsFrom(Date)
     mapFromDate(mapFrom) {
@@ -74,7 +69,7 @@ export class JsonMapping extends AbstractMapping {
               json = {};
 
         if (shouldEmitTypeId(object, type, typeIdHandling)) {
-            const id = typeId.get(object);
+            const id = typeId.getId(object);
             if (!$isNothing(id)) {
                 const type = $classOf(object),
                 typeIdProp = typeInfo.get(type)?.typeIdProperty 
@@ -153,7 +148,7 @@ export class JsonMapping extends AbstractMapping {
         if ($isNothing(classOrInstance)) return;
 
         const { format, dynamic, ignoreCase } = mapTo,
-              object      = createInstance(value, classOrInstance, composer),
+              object      = createInstance(value, classOrInstance),
               descriptors = getPropertyDescriptors(object),
               copyOptions = mapTo.copyOptions.bind(mapTo);
 
@@ -162,7 +157,7 @@ export class JsonMapping extends AbstractMapping {
             if (this.canSetProperty(descriptor)) {
                 const map = mapping.get(object, key);
                 if (map?.root) {
-                    mapKey(object, key, value, composer, format, copyOptions);
+                    mapKey.call(this, object, key, value, composer, format, copyOptions);
                 }
             }
         });
@@ -177,7 +172,7 @@ export class JsonMapping extends AbstractMapping {
             if (keyValue === undefined) continue;
             if (descriptor) {
                 if (this.canSetProperty(descriptor)) {
-                    mapKey(object, key, keyValue, composer, format, copyOptions);
+                    mapKey.call(this, object, key, keyValue, composer, format, copyOptions);
                 }
             } else {
                 const lkey  = key.toLowerCase();
@@ -185,7 +180,7 @@ export class JsonMapping extends AbstractMapping {
                 for (let k in descriptors) {
                     if (k.toLowerCase() === lkey) {
                         if (this.canSetProperty(descriptors[k])) {                        
-                            mapKey(object, k, keyValue, composer, format, copyOptions);
+                            mapKey.call(this, object, k, keyValue, composer, format, copyOptions);
                         }
                         found = true;
                         break;
@@ -211,15 +206,18 @@ function shouldEmitTypeId(object, type, typeIdHandling) {
             $classOf(object) !== type);
 }
 
-function createInstance(value, classOrInstance, composer) {
+function createInstance(value, classOrInstance) {
     const isClass        = $isFunction(classOrInstance),
           type           = isClass ? classOrInstance : $classOf(classOrInstance),
           typeIdProperty = typeInfo.get(type) || DefaultTypeIdProperty,
-          typeId         = value[typeIdProperty];
-    if ($isNothing(typeId)) {
+          id             = value[typeIdProperty];
+    if ($isNothing(id)) {
         return isClass ? Reflect.construct(type, emptyArray) : classOrInstance;
     }
-    const desiredType = composer.mapTo(typeId, TypeIdFormat);
+    const desiredType = typeId.getType(id);
+    if ($isNothing(desiredType)) {
+        throw new Error(`The type with id '${id}' could not be resolved.`);
+    }
     if (isClass) {
         return Reflect.construct(desiredType, emptyArray)
     }
@@ -231,5 +229,9 @@ function createInstance(value, classOrInstance, composer) {
 
 function mapKey(target, key, value, composer, format, configure) {
     const type = design.get(target, key)?.propertyType?.type;
-    target[key] = composer.mapTo(value, format, type, configure);
+    if ($isNothing(type)) {
+        target[key] = this.isPrimitiveValue(value) ? value?.valueOf() : value;
+    } else {
+        target[key] = composer.mapTo(value, format, type, configure);
+    }
 }

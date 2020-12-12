@@ -1,28 +1,27 @@
 import {
-    Metadata, $isNothing, $equals
+    Metadata, $isNothing, $isFunction,
+    $isString, $equals
 } from "miruken-core";
 
 import { 
     CovariantPolicy, ContravariantPolicy
 } from "../callback-policy";
 
-const formatMetadataKey = Symbol();
+const formatMetadataKey = Symbol("map-format");
 
 /**
  * Policy for mapping a value to a format.
  * @property {Function} mapsFrom
  */   
-export const mapsFrom = ContravariantPolicy.createDecorator("mapsFrom", {
-    filter: filterFormat
-});
+export const mapsFrom = ContravariantPolicy.createDecorator(
+    "mapsFrom", { filter: filterFormat });
 
 /**
  * Policy for mapping from a formatted value.
  * @property {Function} mapsTo
  */   
-export const mapsTo = CovariantPolicy.createDecorator("mapsTo", {
-    filter: filterFormat
-});
+export const mapsTo = CovariantPolicy.createDecorator(
+    "mapsTo", { filter: filterFormat });
 
 /**
  * Mapping formats.
@@ -42,9 +41,18 @@ export const format = Metadata.decorator(formatMetadataKey,
 function filterFormat(key, mapCallback) {
     const prototype = Object.getPrototypeOf(this);
     let formats = format.get(prototype, key);
-    if (!formats || formats.size === 0) {
+    if ($isNothing(formats) || formats.size === 0) {
         formats = format.get(prototype);        
     }
     return !formats || formats.size === 0 ||
-        [...formats].some(f => $equals(mapCallback.format, f));
+        [...formats].some(f => {
+            const format = mapCallback.format;
+            if ($isFunction(f)) {
+                return f(format);
+            }
+            if (f instanceof RegExp) {
+                return $isString(format) && f.test(format)
+            }
+            return $equals(format, f);
+        });
 }

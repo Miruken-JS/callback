@@ -37,12 +37,15 @@ function addStaticBindings(type, inferDescriptor) {
 function addInstanceBindings(type, inferDescriptor, owners) {
     const prototype = type.prototype;
     if ($isNothing(prototype) || owners.has(prototype)) return;
+    function inferShim(...args) {
+        return infer.call(this, type, ...args);
+    }
     for (const descriptor of HandlerDescriptor.getChain(prototype)) {
         if (!owners.add(descriptor.owner)) break;
         for (const [policy, bindings] of descriptor.bindings) {
             for (const binding of bindings) {
                 const instanceBinding = pcopy(binding);
-                instanceBinding.handler           = infer;
+                instanceBinding.handler           = inferShim;
                 instanceBinding.getMetadata       = Undefined;
                 instanceBinding.getParentMetadata = Undefined;
                 instanceBinding.skipFilters       = true;
@@ -52,12 +55,11 @@ function addInstanceBindings(type, inferDescriptor, owners) {
     }
 }
 
-function infer(callback, { binding, rawCallback, composer, results }) {
+function infer(type, callback, { rawCallback, composer, results }) {
     if (rawCallback.canInfer === false) {
         return $unhandled;
     }
-    const type      = $classOf(binding.owner),
-          resolving = new Resolving(type, rawCallback);
+    const resolving = new Resolving(type, rawCallback);
     if (!composer.handle(resolving, false, composer)) {
         return $unhandled;
     }

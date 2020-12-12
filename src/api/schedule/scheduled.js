@@ -1,7 +1,7 @@
-import { typeId } from "../../map/type-mapping";
 import { Request } from "../request";
 import { response } from "../response";
 import { MessageWrapper } from "../message";
+import { typeId } from "../type-id";
 
 export class ScheduledResult {
     constructor(responses) {

@@ -4,7 +4,7 @@ import { handles } from "../../src/callback-policy";
 import { Request } from "../../src/api/request";
 import { Message } from "../../src/api/message";
 import { ignore } from "../../src/map/mapping";
-import { typeId } from "../../src/map/type-mapping";
+import { typeId } from "../../src/api/type-id";
 import { response } from "../../src/api/response";
 
 @typeId("StockQuote")
