@@ -41,7 +41,7 @@ export class JsonMapping extends AbstractMapping {
     }
     
     mapsFrom(mapFrom, { composer }) {
-        const { object, fields } = mapFrom;
+        const object = mapFrom.object;
 
         if (!canMapJson(object)) return;
         if (this.isPrimitiveValue(object)) {
@@ -49,23 +49,18 @@ export class JsonMapping extends AbstractMapping {
         }
 
         const raw       = $isPlainObject(object),
+              fields    = mapFrom.fields,
               allFields = $isNothing(fields) || fields === true;  
         if (!(allFields || $isPlainObject(fields))) {
             throw new Error(`Invalid map fields specifier ${fields}.`);
         }
 
         if (raw || $isFunction(object.toJSON)) {
-            const json = raw ? object : object.toJSON();
-            if (!allFields) {
-                const j = {};
-                for (let k in fields) j[k] = json[k];
-                return j;
-            }
-            return json;
+            return raw ? object : object.toJSON();
         }
 
         const descriptors = getPropertyDescriptors(object),
-              { format, type, typeIdHandling } = mapFrom,
+              { format, strategy, type, typeIdHandling } = mapFrom,
               json = {};
 
         if (shouldEmitTypeId(object, type, typeIdHandling)) {
@@ -80,12 +75,13 @@ export class JsonMapping extends AbstractMapping {
 
         Reflect.ownKeys(descriptors).forEach(key => {
             if (allFields || (key in fields)) {
-                let keyValue = object[key];
+                const map      = mapping.get(object, key),
+                      property = getProperty(object, key, map, strategy),
+                      keyValue = object[key];
                 if (!canMapJson(keyValue)) return;
-                const map = mapping.get(object, key);
                 if (map?.ignore) return;
                 if (this.isPrimitiveValue(keyValue)) {
-                    json[key] = keyValue?.valueOf();
+                    json[property] = keyValue?.valueOf();
                     return;
                 }
                 let keyFields;
@@ -106,7 +102,7 @@ export class JsonMapping extends AbstractMapping {
                 if (map?.root) {
                     Object.assign(json, keyJson);
                 } else {                 
-                    json[key] = keyJson;
+                    json[property] = keyJson;
                 }
             }
         });
@@ -147,50 +143,26 @@ export class JsonMapping extends AbstractMapping {
         }
         if ($isNothing(classOrInstance)) return;
 
-        const { format, dynamic, ignoreCase } = mapTo,
-              object      = createInstance(value, classOrInstance),
+        const object = createInstance(value, classOrInstance),
+            { format, strategy } = mapTo,
               descriptors = getPropertyDescriptors(object),
               copyOptions = mapTo.copyOptions.bind(mapTo);
 
         Reflect.ownKeys(descriptors).forEach(key => {
             const descriptor = descriptors[key];
             if (this.canSetProperty(descriptor)) {
-                const map = mapping.get(object, key);
+                const map      = mapping.get(object, key),
+                      property = getProperty(classOrInstance, key, map, strategy);
                 if (map?.root) {
                     mapKey.call(this, object, key, value, composer, format, copyOptions);
+                } else if (!map?.ignore) {
+                    const keyValue = value[property];
+                    if (keyValue !== undefined) {
+                        mapKey.call(this, object, key, keyValue, composer, format, copyOptions);
+                    }
                 }
             }
         });
-
-        for (let key in value) {
-            const descriptor = descriptors[key];
-            let   map        = mapping.get(object, key);
-            if (map?.root || map?.ignore) {
-                continue;  // ignore or already rooted
-            }
-            const keyValue = value[key];
-            if (keyValue === undefined) continue;
-            if (descriptor) {
-                if (this.canSetProperty(descriptor)) {
-                    mapKey.call(this, object, key, keyValue, composer, format, copyOptions);
-                }
-            } else {
-                const lkey  = key.toLowerCase();
-                let   found = false;
-                for (let k in descriptors) {
-                    if (k.toLowerCase() === lkey) {
-                        if (this.canSetProperty(descriptors[k])) {                        
-                            mapKey.call(this, object, k, keyValue, composer, format, copyOptions);
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found && dynamic) {
-                    object[key] = keyValue;
-                }
-            }
-        }
 
         return object;
     }
@@ -198,6 +170,12 @@ export class JsonMapping extends AbstractMapping {
 
 function canMapJson(value) {
     return value !== undefined && !$isFunction(value) && !$isSymbol(value);
+}
+
+function getProperty(target, key, map, strategy, reading) {
+    return map?.property || 
+           strategy?.getPropertyName(target, key, reading) ||
+           key;
 }
 
 function shouldEmitTypeId(object, type, typeIdHandling) {

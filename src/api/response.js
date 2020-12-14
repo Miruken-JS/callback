@@ -1,5 +1,5 @@
 import { 
-    Base, decorate, $isNothing, $isFunction
+    Base, decorate, $isNothing, $isFunction, $classOf
 } from "miruken-core";
 
 const ResponseTypeResolver = Symbol("response-type");
@@ -14,6 +14,10 @@ export class ResponseWrapper extends Base {
     }
 
     response;
+
+    toString() {
+        return `${$classOf(this).name} ${JSON.stringify(this)}`;
+    }  
 }
 
 export function response(...args) {

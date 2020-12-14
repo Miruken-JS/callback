@@ -28,6 +28,12 @@ export class MapCallback extends Base {
         _this.promises = [];
     }
 
+    /**
+     * The mapping strategy.
+     * @property {Mapping} strategy
+     */   
+    strategy;
+
     get format() { return _(this).format; }
     get callbackResult() {
         if (_(this).result === undefined) {
@@ -52,7 +58,11 @@ export class MapCallback extends Base {
             _(this).results.push(result);
         }
         _(this).result = undefined;
-    }    
+    }
+
+    copyOptions(mapCallback) {
+        mapCallback.strategy = this.strategy;
+    }
 }
 
 /**
@@ -94,6 +104,7 @@ export class MapFrom extends MapCallback {
     get callbackPolicy() { return mapsFrom.policy; }
     
     copyOptions(mapFrom) {
+        super.copyOptions(mapFrom);
         mapFrom.type           = this.type;
         mapFrom.fields         = this.fields;
         mapFrom.typeIdHandling = this.typeIdHandling;
@@ -137,26 +148,9 @@ export class MapTo extends MapCallback {
         _this.classOrInstance = classOrInstance;
     }
 
-    /**
-     * True if all properties are mapped.
-     * @property {Boolean} dynamic
-     */   
-    dynamic;
-
-    /**
-     * True if propery names ignore case.
-     * @property {Boolean} ignoreCase
-     */  
-    ignoreCase;
-
     get value() { return _(this).value; }                                     
     get classOrInstance() { return _(this).classOrInstance; }
     get callbackPolicy() { return mapsTo.policy; }
-
-    copyOptions(mapTo) {
-        mapTo.dynamic    = this.dynamic;
-        mapTo.ignoreCase = this.ignoreCase;
-    }
 
     dispatch(handler, greedy, composer) {
         const count  = _(this).results.length,
@@ -168,8 +162,4 @@ export class MapTo extends MapCallback {
     toString() {
         return `MapTo | ${String(this.format)} ${this.value}`;
     }
-
-    static dynamic(mapTo) {
-        mapTo.dynamic = true;
-    } 
 }

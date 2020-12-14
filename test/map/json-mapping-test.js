@@ -24,6 +24,8 @@ import {
 } from "../../src/api/type-id";
 
 import { expect } from "chai";
+import { HypenMapping } from "../../src/map/hypen-mapping";
+import { unmanaged } from "../../src/unmanaged";
 
 const _ = createKeyChain();
 
@@ -64,6 +66,7 @@ describe("JsonMapping", () => {
     let handler;
     beforeEach(() => {
         handler = new HandlerBuilder()
+            .addTypes(from => from.types(JsonMapping))
             .build();
     });
     
@@ -127,11 +130,11 @@ describe("JsonMapping", () => {
                 firstName:  "David",
                 lastName:   "Beckham",
                 occupation: "soccer"
-            }, JsonFormat, Person, MapTo.dynamic);
+            }, JsonFormat, Person);
             expect(person).to.be.instanceOf(Person);
             expect(person.firstName).to.equal("David");
             expect(person.lastName).to.equal("Beckham");
-            expect(person.occupation).to.equal("soccer");
+            expect(person.occupation).to.be.undefined;
         });
 
         it("should use type id to parse json", () => {
@@ -140,11 +143,11 @@ describe("JsonMapping", () => {
                 firstName:  "Daniel",
                 lastName:   "Worrell",
                 occupation: "Orthopedic"
-            }, JsonFormat, Person, MapTo.dynamic);
+            }, JsonFormat, Person);
             expect(person).to.be.instanceOf(Doctor);
             expect(person.firstName).to.equal("Daniel");
             expect(person.lastName).to.equal("Worrell");
-            expect(person.occupation).to.equal("Orthopedic");
+            expect(person.occupation).to.be.undefined;
         });
 
         it("should map all related from json", () => {
@@ -163,7 +166,7 @@ describe("JsonMapping", () => {
                     occupation: "soccer",
                     age:         24
                 }]
-            }, JsonFormat, Doctor, MapTo.dynamic);
+            }, JsonFormat, Doctor);
             expect(doctor).to.be.instanceOf(Doctor);
             expect(doctor.firstName).to.equal("Mitchell");
             expect(doctor.lastName).to.equal("Moskowitz");
@@ -197,7 +200,7 @@ describe("JsonMapping", () => {
                     occupation: "Biologist",
                     age:         75
                 }]
-            }, JsonFormat, Doctor, MapTo.dynamic);
+            }, JsonFormat, Doctor);
             expect(doctor).to.be.instanceOf(Doctor);
             expect(doctor.firstName).to.equal("Mitchell");
             expect(doctor.lastName).to.equal("Moskowitz");
@@ -205,30 +208,13 @@ describe("JsonMapping", () => {
             expect(doctor.nurse).to.be.instanceOf(Doctor);
             expect(doctor.nurse.firstName).to.equal("Clara");
             expect(doctor.nurse.lastName).to.equal("Barton");
-            expect(doctor.nurse.occupation).to.equal("Red Cross");
+            expect(doctor.nurse.occupation).to.be.undefined;
             expect(doctor.nurse.age).to.equal(36);
             expect(doctor.patients[0]).to.be.instanceOf(Doctor);
             expect(doctor.patients[0].firstName).to.equal("Louis");
             expect(doctor.patients[0].lastName).to.equal("Pasteur");
-            expect(doctor.patients[0].occupation).to.equal("Biologist");
+            expect(doctor.patients[0].occupation).to.be.undefined;
             expect(doctor.patients[0].age).to.equal(75);
-        });
-
-        it("should map all related from json ignoring case", () => {
-            const doctor = handler.mapTo({
-                FirstNAME: "Mitchell",
-                LASTName:  "Moskowitz",
-                nurse: {
-                    FIRSTName:  "Clara",
-                    lastNAME:   "Barton"
-                }
-            }, JsonFormat, Doctor);
-            expect(doctor).to.be.instanceOf(Doctor);
-            expect(doctor.nurse).to.be.instanceOf(Person);
-            expect(doctor.firstName).to.equal("Mitchell");
-            expect(doctor.lastName).to.equal("Moskowitz");            
-            expect(doctor.nurse.firstName).to.equal("Clara");
-            expect(doctor.nurse.lastName).to.equal("Barton");
         });
 
         it("should map arrays", () => {
@@ -236,12 +222,12 @@ describe("JsonMapping", () => {
                      firstName:  "David",
                      lastName:   "Beckham",
                      occupation: "soccer"
-                  }], JsonFormat, [Person], MapTo.dynamic),
+                  }], JsonFormat, [Person]),
                   person = people[0];
             expect(person).to.be.instanceOf(Person);
             expect(person.firstName).to.equal("David");
             expect(person.lastName).to.equal("Beckham");
-            expect(person.occupation).to.equal("soccer");
+            expect(person.occupation).to.be.undefined;
         });
 
         it("should infer arrays", () => {
@@ -249,12 +235,12 @@ describe("JsonMapping", () => {
                      firstName:  "David",
                      lastName:   "Beckham",
                      occupation: "soccer"
-                  }], JsonFormat, Person, MapTo.dynamic),
+                  }], JsonFormat, Person),
                   person = people[0];
             expect(person).to.be.instanceOf(Person);
             expect(person.firstName).to.equal("David");
             expect(person.lastName).to.equal("Beckham");
-            expect(person.occupation).to.equal("soccer");
+            expect(person.occupation).to.be.undefined;
         });
         
         it("should map rooted json", () => {
@@ -262,12 +248,12 @@ describe("JsonMapping", () => {
                     firstName:  "David",
                     lastName:   "Beckham",
                     occupation: "soccer"
-                  }, JsonFormat, PersonWrapper, MapTo.dynamic),
+                  }, JsonFormat, PersonWrapper),
                   person = wrapper.person;
             expect(person).to.be.instanceOf(Person);
             expect(person.firstName).to.equal("David");
             expect(person.lastName).to.equal("Beckham");
-            expect(person.occupation).to.equal("soccer");            
+            expect(person.occupation).to.be.undefined;           
         });
 
         /*
@@ -284,6 +270,18 @@ describe("JsonMapping", () => {
             expect(+date).to.equal(+(new Date(2016,11,10)));
         });
         */
+
+        it("should map all from json using strategy", () => {
+            const person = handler.mapTo({
+                "first-name":  "David",
+                "last-name":   "Beckham",
+                "occupation": "soccer"
+            }, JsonFormat, Person, o => o.strategy = new HypenMapping());
+            expect(person).to.be.instanceOf(Person);
+            expect(person.firstName).to.equal("David");
+            expect(person.lastName).to.equal("Beckham");
+            expect(person.occupation).to.be.undefined;
+        });
 
         it("should use raw json if no type info", () => {
             class Message {
@@ -307,7 +305,7 @@ describe("JsonMapping", () => {
             expect(() => {
                 handler.mapTo({
                     $type: "Doctor"
-                }, JsonFormat, new Person(), MapTo.dynamic);                         
+                }, JsonFormat, new Person());                         
             }).to.throw(TypeError, "Expected instance of type Doctor, but received Person.");
         });
     });
@@ -579,6 +577,26 @@ describe("JsonMapping", () => {
             expect(json).to.equal(1481349600000);
         });
         */
+
+        it("should map all properties using strategy", () => {
+            const person = new Person().extend({
+                      firstName: "Christiano",
+                      lastName:  "Ronaldo",
+                      age:       23,
+                      eyeColor:  Color.blue
+                  }),
+                  json = handler.mapFrom(person, JsonFormat, o => {
+                      o.strategy       = new HypenMapping(),
+                      o.typeIdHandling = TypeIdHandling.Auto;
+                  });
+            expect(json).to.eql({
+                "$type":      "Person",
+                "first-name": "Christiano",
+                "last-name":  "Ronaldo",
+                "age":        23,
+                "eye-color":  2
+            });
+        });
 
         describe("@typeInfo", () => {
             it("should specify type id property", () => {

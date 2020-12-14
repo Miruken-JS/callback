@@ -6,6 +6,10 @@ export class Request extends Base {
     getCacheKey() {
         return JSON.stringify(this);
     }
+
+    toString() {
+        return `${$classOf(this).name} ${JSON.stringify(this)}`;
+    }  
 }
 
 export class RequestWrapper extends Request {
