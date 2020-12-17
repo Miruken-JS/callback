@@ -4,6 +4,7 @@ import {
 
 import { Handler } from "./handler";
 import { Options } from "./options";
+import { Composition } from "./composition";
 import { handles } from "./callback-policy";
 
 /**
@@ -47,6 +48,24 @@ Handler.implement({
         if ($isNothing(options)) return this;
         const optionsType = $classOf(options);
         validateOptionsType(optionsType);
+        return this.decorate({
+            handleCallback(callback, greedy, composer) {
+                let fillOpttions = callback;
+                if (callback instanceof Composition) {
+                    fillOpttions = callback.callback;
+                }
+                if (fillOpttions instanceof optionsType) {
+                    options.mergeInto(fillOpttions);
+                    if (greedy) {
+                        this.base(callback, greedy, composer);
+                    }
+                    return true;
+                }     
+                return this.base(callback, greedy, composer);
+            }
+        });
+        /* Alternatives
+        -- Explicit decoration for Babel Symbol bug
         const method  = Symbol(),
               handler = { [method] (receiver) { 
                   options.mergeInto(receiver);
@@ -55,7 +74,8 @@ Handler.implement({
             Reflect.decorate([handles(optionsType)], handler, method,
                 Object.getOwnPropertyDescriptor(handler, method)));
         return this.decorate(handler);
-        /* Babel bug with decorators on Symbol methods
+
+        -- Babel decorator bug for Symbol defined methods
         return this.decorate({
             @handles(optionsType)
             [Symbol()](receiver) {

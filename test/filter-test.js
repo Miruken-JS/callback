@@ -380,13 +380,13 @@ describe("Filter", () => {
         expect(bar.handled).to.equal(-99);
     });
 
-    it("should skip filters", () => {
+    it("should skip filters implicitly", () => {
         const bee = new Bee();
         expect(handler.handle(bee)).to.be.true;
         expect(bee.filters.length).to.equal(0);
     });
 
-    it("should skip filters", () => {
+    it("should skip filters explicitly", () => {
         const bar = new Bar();
         expect(handler.$skipFilters().handle(bar)).to.be.true;
         expect(bar.handled).to.equal(2);
