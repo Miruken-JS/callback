@@ -28,7 +28,7 @@ export class AbstractMapping extends Handler {
             case "null":
             case "number":
             case "string":
-            case "boolean":        
+            case "boolean":   
             return true;
         }
         return false;        

@@ -23,13 +23,13 @@ export const JsonFormat            = Symbol("json"),
 @format(JsonFormat, /application[/]json/)
 export class JsonMapping extends AbstractMapping {
     @mapsFrom(Date)
-    mapFromDate(mapFrom) {
-        return mapFrom.object.toJSON();
+    mapFromDate({object}) {
+        return object.toJSON();
     }
 
     @mapsFrom(RegExp)
-    mapFromRegExp(mapFrom) {
-        return mapFrom.object.toString();
+    mapFromRegExp({object}) {
+        return object.toString();
     }
 
     @mapsFrom(Array)
@@ -48,15 +48,14 @@ export class JsonMapping extends AbstractMapping {
             return object?.valueOf();
         }
 
-        const raw       = $isPlainObject(object),
-              fields    = mapFrom.fields,
+        if ($isFunction(object.toJSON)) {
+            return object.toJSON();
+        }
+
+        const fields    = mapFrom.fields,
               allFields = $isNothing(fields) || fields === true;  
         if (!(allFields || $isPlainObject(fields))) {
             throw new Error(`Invalid map fields specifier ${fields}.`);
-        }
-
-        if (raw || $isFunction(object.toJSON)) {
-            return raw ? object : object.toJSON();
         }
 
         const descriptors = getPropertyDescriptors(object),
@@ -111,15 +110,13 @@ export class JsonMapping extends AbstractMapping {
     }
 
     @mapsTo(Date)
-    mapToDate(mapTo) {
-        const date = mapTo.value;
-        return instanceOf(date, Date) ? date : Date.parse(date);
+    mapToDate({value}) {
+        return instanceOf(value, Date) ? date : Date.parse(date);
     }
 
     @mapsTo(RegExp)
-    mapToRegExp(mapTo) {
-        const pattern   = mapTo.value,
-              fragments = pattern.match(/\/(.*?)\/([gimy])?$/);              
+    mapToRegExp({value}) {
+        const fragments = value.match(/\/(.*?)\/([gimy])?$/);              
         return new RegExp(fragments[1], fragments[2] || "")
     }
 
@@ -209,7 +206,9 @@ function mapKey(target, key, value, composer, format, configure) {
     const type = design.get(target, key)?.propertyType?.type;
     if ($isNothing(type)) {
         target[key] = this.isPrimitiveValue(value) ? value?.valueOf() : value;
-    } else {
+    } else if (!$isNothing(value)) {
         target[key] = composer.mapTo(value, format, type, configure);
+    } else if (value === null) {
+        target[key] = null;
     }
 }

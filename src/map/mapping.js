@@ -7,6 +7,7 @@ const mappingMetadataKey  = Symbol("mapping-metadata");
 
 export const Mapping = Protocol.extend({
     shouldIgnore(target, key) {},
+    shouldUseEnumName(target, key) {},
     getPropertyName(target, key) {}
 });
 

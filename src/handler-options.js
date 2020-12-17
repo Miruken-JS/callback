@@ -47,12 +47,22 @@ Handler.implement({
         if ($isNothing(options)) return this;
         const optionsType = $classOf(options);
         validateOptionsType(optionsType);
+        const method  = Symbol(),
+              handler = { [method] (receiver) { 
+                  options.mergeInto(receiver);
+              } };
+        Object.defineProperty(handler, method,
+            Reflect.decorate([handles(optionsType)], handler, method,
+                Object.getOwnPropertyDescriptor(handler, method)));
+        return this.decorate(handler);
+        /* Babel bug with decorators on Symbol methods
         return this.decorate({
             @handles(optionsType)
-            mergePolicy(receiver) {
-                options.mergeInto(receiver)                
+            [Symbol()](receiver) {
+                options.mergeInto(receiver);         
             }
         });
+        */
     },
     $getOptions(optionsType) {
         validateOptionsType(optionsType);

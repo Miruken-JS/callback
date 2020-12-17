@@ -578,6 +578,22 @@ describe("JsonMapping", () => {
         });
         */
 
+        it("should map anonymous object", () => {
+            const person = {
+                firstName: "Christiano",
+                lastName:  "Ronaldo",
+                age:       23,
+                eyeColor:  Color.blue
+            };
+            const json = handler.mapFrom(person, JsonFormat);
+            expect(json).to.eql({
+                firstName: "Christiano",
+                lastName:  "Ronaldo",
+                age:       23,
+                eyeColor:  2
+            });
+        });
+
         it("should map all properties using strategy", () => {
             const person = new Person().extend({
                       firstName: "Christiano",
