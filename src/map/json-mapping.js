@@ -235,22 +235,28 @@ function getOrCreateObject(value, classOrInstance, strategy) {
                         || strategy?.getTypeIdProperty?.(type)
                         || DefaultTypeIdProperty,
           id             = value[typeIdProperty];
+
     if ($isNothing(id)) {
         if ($isNothing(type) || type === AnyObject) {
             throw new TypeError(`The type was not specified and could not be inferred from '${typeIdProperty}'.`);
         }
         return isClass ? Reflect.construct(type, emptyArray) : classOrInstance;
     }
-    const desiredType = typeId.getType(id);
+
+    const desiredType = strategy?.resolveTypeWithId?.(id) || typeId.getType(id);
+   
     if ($isNothing(desiredType)) {
         throw new TypeError(`The type with id '${id}' could not be resolved.`);
     }
+
     if (isClass) {
         return Reflect.construct(desiredType, emptyArray)
     }
+
     if (!(classOrInstance instanceof desiredType)) {
         throw new TypeError(`Expected instance of type '${desiredType.name}', but received '${type.name}'.`);
     }
+    
     return classOrInstance;
 }
 

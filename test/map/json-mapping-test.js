@@ -24,7 +24,7 @@ import {
 } from "../../src/api/type-id";
 
 import { expect } from "chai";
-import { HypenMapping } from "../../src/map/hypen-mapping";
+import { hyphenNaming } from "../../src/map/hyphen-naming";
 import { unmanaged } from "../../src/unmanaged";
 
 const _ = createKeyChain();
@@ -63,11 +63,13 @@ class PersonWrapper extends Base {
 }
 
 describe("JsonMapping", () => {
-    let handler;
+    let handler, hyphenMapping;
+    
     beforeEach(() => {
         handler = new HandlerBuilder()
             .addTypes(from => from.types(JsonMapping))
             .build();
+        hyphenMapping = new (@hyphenNaming class {});
     });
     
     describe("#mapTo", () => {
@@ -299,7 +301,7 @@ describe("JsonMapping", () => {
                 "first-name":  "David",
                 "last-name":   "Beckham",
                 "occupation": "soccer"
-            }, JsonFormat, Person, o => o.strategy = new HypenMapping());
+            }, JsonFormat, Person, o => o.strategy = hyphenMapping);
             expect(person).to.be.instanceOf(Person);
             expect(person.firstName).to.equal("David");
             expect(person.lastName).to.equal("Beckham");
@@ -770,7 +772,7 @@ describe("JsonMapping", () => {
                       eyeColor:  Color.blue
                   }),
                   json = handler.mapFrom(person, JsonFormat, o => {
-                      o.strategy       = new HypenMapping(),
+                      o.strategy       = hyphenMapping,
                       o.typeIdHandling = TypeIdHandling.Auto;
                   });
             expect(json).to.eql({

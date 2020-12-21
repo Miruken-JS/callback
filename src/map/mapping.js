@@ -9,7 +9,8 @@ export const Mapping = Protocol.extend({
     shouldIgnore(target, key) {},
     shouldUseEnumName(target, key) {},
     getPropertyName(target, key) {},
-    getTypeIdProperty(target) {}
+    getTypeIdProperty(target) {},
+    resolveTypeWithId(typeId) {}
 });
 
 /**
