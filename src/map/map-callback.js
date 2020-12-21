@@ -5,6 +5,7 @@ import {
 
 import { CallbackControl } from "../callback-control";
 import { mapsFrom, mapsTo } from "./maps";
+import { AnyObject } from "./any-object";
 
 const _ = createKeyChain();
 
@@ -142,6 +143,9 @@ export class MapTo extends MapCallback {
         super(format);
         if ($isNothing(classOrInstance) && !$isString(value)) {
             classOrInstance = $classOf(value);
+            if (classOrInstance === Object) {
+                classOrInstance = AnyObject;
+            }
         }
         const _this = _(this);
         _this.value           = value;

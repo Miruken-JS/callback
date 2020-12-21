@@ -1,12 +1,13 @@
 import {
-    Enum, design, instanceOf, $isNothing,
-    $isFunction, $isSymbol, $isPlainObject,
-    $classOf, getPropertyDescriptors, emptyArray
+    Enum, Either, design, instanceOf,
+    emptyArray, $isNothing, $isFunction, $isSymbol,
+    $isPlainObject, $classOf, getPropertyDescriptors
 } from "miruken-core";
 
 import { mapping } from "./mapping";
 import { AbstractMapping } from "./abstract-mapping";
 import { mapsFrom, mapsTo, format } from "./maps";
+import { AnyObject } from "./any-object";
 
 import { 
     TypeIdHandling, typeInfo, typeId
@@ -23,13 +24,36 @@ export const JsonFormat            = Symbol("json"),
 @format(JsonFormat, /application[/]json/)
 export class JsonMapping extends AbstractMapping {
     @mapsFrom(Date)
-    mapFromDate({object}) {
+    mapFromDate({ object }) {
         return object.toJSON();
     }
 
     @mapsFrom(RegExp)
-    mapFromRegExp({object}) {
+    mapFromRegExp({ object }) {
         return object.toString();
+    }
+
+    @mapsFrom(Either)
+    mapFromEither(mapFrom, { composer }) {
+        const { object, format, strategy, typeIdHandling } = mapFrom;
+        function mapValue(value) {
+            return $isNothing(value) ? null
+                 : composer.mapFrom(value, format, m => {
+                       m.strategy       = strategy;
+                       m.typeIdHandling = typeIdHandling;
+                   });
+        }
+        const isLeftProperty = getProperty(object, "isLeft", null, strategy),
+              valueProperty  = getProperty(object, "value", null, strategy);
+        return object.fold(
+            left => ({
+                [isLeftProperty]: true,
+                [valueProperty]:  mapValue(left)
+            }),
+            right => ({
+                [isLeftProperty]: false,
+                [valueProperty]:  mapValue(right)
+            }));
     }
 
     @mapsFrom(Array)
@@ -66,7 +90,8 @@ export class JsonMapping extends AbstractMapping {
             const id = typeId.getId(object);
             if (!$isNothing(id)) {
                 const type = $classOf(object),
-                typeIdProp = typeInfo.get(type)?.typeIdProperty 
+                typeIdProp = typeInfo.get(type)?.typeIdProperty
+                          || strategy?.getTypeIdProperty?.(type)
                           || DefaultTypeIdProperty;
                 json[typeIdProp] = id;
             }
@@ -93,6 +118,7 @@ export class JsonMapping extends AbstractMapping {
                 }
                 const keyJson = composer.mapFrom(keyValue, format, m => {
                     m.fields         = keyFields;
+                    m.strategy       = strategy;
                     m.typeIdHandling = typeIdHandling;
                     if (typeIdHandling === TypeIdHandling.Auto) {
                         m.type = design.get(object, key)?.propertyType?.type;
@@ -110,14 +136,32 @@ export class JsonMapping extends AbstractMapping {
     }
 
     @mapsTo(Date)
-    mapToDate({value}) {
-        return instanceOf(value, Date) ? date : Date.parse(date);
+    mapToDate({ value }) {
+        return instanceOf(value, Date) ? value : Date.parse(value);
     }
 
     @mapsTo(RegExp)
-    mapToRegExp({value}) {
+    mapToRegExp({ value }) {
         const fragments = value.match(/\/(.*?)\/([gimy])?$/);              
         return new RegExp(fragments[1], fragments[2] || "")
+    }
+
+    @mapsTo(Either)
+    mapToEither(mapTo, { composer }) {
+        const { classOrInstance} = mapTo;
+        if (!$isFunction(classOrInstance)) {
+            throw new Error("Either is immutable and cannot be mapped onto.");
+        }
+        const { value, format, strategy } = mapTo,
+                configure      = mapTo.copyOptions.bind(mapTo),
+                isLeftProperty = getProperty(Either, "isLeft", null, strategy),
+                valueProperty  = getProperty(Either, "value", null, strategy),
+                eitherValue    = value[valueProperty];
+        const eitherObject = $isNothing(eitherValue) ? null
+              : composer.mapTo(eitherValue, format, null, configure);
+        return value[isLeftProperty] === true
+             ? Either.left(eitherObject)
+             : Either.right(eitherObject);
     }
 
     @mapsTo(Array)
@@ -134,22 +178,25 @@ export class JsonMapping extends AbstractMapping {
         const { value, classOrInstance } = mapTo;
         if (!canMapJson(value)) return;
         if (this.isPrimitiveValue(value)) {
+            if (classOrInstance instanceof Enum) {
+                throw new Error("Enum is immutable and cannot be mapped onto.");
+            }
             return classOrInstance?.prototype instanceof Enum
                  ? classOrInstance.fromValue(value)
                  : value;
         }
-        if ($isNothing(classOrInstance)) return;
 
-        const object = createInstance(value, classOrInstance),
-            { format, strategy } = mapTo,
-              descriptors = getPropertyDescriptors(object),
-              copyOptions = mapTo.copyOptions.bind(mapTo);
+        const { format, strategy } = mapTo,
+                object      = getOrCreateObject(value, classOrInstance, strategy),
+                type        = $classOf(object),
+                descriptors = getPropertyDescriptors(object),
+                copyOptions = mapTo.copyOptions.bind(mapTo);
 
         Reflect.ownKeys(descriptors).forEach(key => {
             const descriptor = descriptors[key];
             if (this.canSetProperty(descriptor)) {
                 const map      = mapping.get(object, key),
-                      property = getProperty(classOrInstance, key, map, strategy);
+                      property = getProperty(type, key, map, strategy);
                 if (map?.root) {
                     mapKey.call(this, object, key, value, composer, format, copyOptions);
                 } else if (!map?.ignore) {
@@ -181,23 +228,28 @@ function shouldEmitTypeId(object, type, typeIdHandling) {
             $classOf(object) !== type);
 }
 
-function createInstance(value, classOrInstance) {
+function getOrCreateObject(value, classOrInstance, strategy) {
     const isClass        = $isFunction(classOrInstance),
           type           = isClass ? classOrInstance : $classOf(classOrInstance),
-          typeIdProperty = typeInfo.get(type) || DefaultTypeIdProperty,
+          typeIdProperty = typeInfo.get(type)
+                        || strategy?.getTypeIdProperty?.(type)
+                        || DefaultTypeIdProperty,
           id             = value[typeIdProperty];
     if ($isNothing(id)) {
+        if ($isNothing(type) || type === AnyObject) {
+            throw new TypeError(`The type was not specified and could not be inferred from '${typeIdProperty}'.`);
+        }
         return isClass ? Reflect.construct(type, emptyArray) : classOrInstance;
     }
     const desiredType = typeId.getType(id);
     if ($isNothing(desiredType)) {
-        throw new Error(`The type with id '${id}' could not be resolved.`);
+        throw new TypeError(`The type with id '${id}' could not be resolved.`);
     }
     if (isClass) {
         return Reflect.construct(desiredType, emptyArray)
     }
     if (!(classOrInstance instanceof desiredType)) {
-        throw new TypeError(`Expected instance of type ${desiredType.name}, but received ${type.name}.`);
+        throw new TypeError(`Expected instance of type '${desiredType.name}', but received '${type.name}'.`);
     }
     return classOrInstance;
 }

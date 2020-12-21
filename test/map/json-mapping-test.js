@@ -1,6 +1,6 @@
 import {
-    Base, Enum, design, $isPlainObject,
-    createKeyChain 
+    Base, Enum, Either, design,
+    $isPlainObject, createKeyChain 
 } from "miruken-core";
 
 import { HandlerBuilder } from "../../src/handler-builder";
@@ -125,6 +125,29 @@ describe("JsonMapping", () => {
             }).to.throw(TypeError, "4 is not a valid value for this Enum");
         });
         
+        it("should map Either primitive value", () => {
+            const either1 = handler.mapTo({
+                isLeft: false,
+                value:  "Hello"
+            }, JsonFormat, Either);
+            expect(either1).to.be.instanceOf(Either.Right);
+            expect(either1.value).to.equal("Hello");
+
+            const either2 = handler.mapTo({
+                isLeft: false,
+                value:  null
+            }, JsonFormat, Either);
+            expect(either2).to.be.instanceOf(Either.Right);
+            expect(either2.value).to.be.null;
+
+            const either3 = handler.mapTo({
+                isLeft: true,
+                value:  22
+            }, JsonFormat, Either);
+            expect(either3).to.be.instanceOf(Either.Left);
+            expect(either3.value).to.equal(22);       
+        });
+
         it("should map all from json", () => {
             const person = handler.mapTo({
                 firstName:  "David",
@@ -301,13 +324,76 @@ describe("JsonMapping", () => {
             })
         });
 
+        it("should map Either complex value", () => {
+            const either1 = handler.mapTo({
+                isLeft: false,
+                value:  {
+                    $type:     "Person",
+                    firstName: "Christiano",
+                    lastName:  "Ronaldo",
+                    age:       23,
+                    eyeColor:  2
+                }
+            }, JsonFormat, Either);
+            expect(either1).to.be.instanceOf(Either.Right);
+            expect(either1.value).to.be.instanceOf(Person);
+         
+            const either2 = handler.mapTo({
+                isLeft: false,
+                value:  {
+                    $type:     "Doctor",
+                    firstName: "Mitchell",
+                    lastName:  "Moskowitz",
+                    nurse: {
+                        $type:     "Doctor",
+                        firstName: "Clara",
+                        lastName:  "Barton",
+                        age:       36
+                    },
+                    patients: [{
+                        $type:     "Doctor",
+                        firstName: "Louis",
+                        lastName:  "Pasteur",
+                        age:       24
+                    }]
+                }
+            }, JsonFormat, Either);
+            expect(either2).to.be.instanceOf(Either.Right);   
+            expect(either2.value).to.be.instanceOf(Doctor);  
+        });
+
+        it("should fail if Enum instance given", () => {
+            expect(() => {
+                handler.mapTo(3, JsonFormat, Color.red);                           
+            }).to.throw(Error, "Enum is immutable and cannot be mapped onto.");
+        });
+
+        it("should fail if type id could not be resolved", () => {
+            expect(() => {
+                handler.mapTo({
+                    $type: "Accountant"
+                }, JsonFormat, new Person());                         
+            }).to.throw(TypeError, "The type with id 'Accountant' could not be resolved.");
+        });
+
         it("should fail if type id mismatch", () => {
             expect(() => {
                 handler.mapTo({
                     $type: "Doctor"
                 }, JsonFormat, new Person());                         
-            }).to.throw(TypeError, "Expected instance of type Doctor, but received Person.");
+            }).to.throw(TypeError, "Expected instance of type 'Doctor', but received 'Person'.");
         });
+
+        it("should fail if no type information.", () => {
+            expect(() => {
+                handler.mapTo({
+                    firstName: "Christiano",
+                    lastName:  "Ronaldo",
+                    age:       23,
+                    eyeColor:  2
+                }, JsonFormat);
+             }).to.throw(TypeError, "The type was not specified and could not be inferred from '$type'.");    
+         });
     });
 
     describe("#mapFrom", () => {
@@ -336,6 +422,88 @@ describe("JsonMapping", () => {
             expect(handler.mapFrom(Color.green, JsonFormat)).to.equal(3);
         });
         
+        it("should map to Either primitive value", () => {
+            const json1 = handler.mapFrom(Either.right("Hello"), JsonFormat);
+            expect(json1).to.eql({
+                isLeft: false,
+                value:  "Hello"
+            });
+
+            const json2 = handler.mapFrom(Either.right(), JsonFormat);
+            expect(json2).to.eql({
+                isLeft: false,
+                value:  null
+            });
+
+            const json3 = handler.mapFrom(Either.left(22), JsonFormat);
+            expect(json3).to.eql({
+                isLeft: true,
+                value:  22
+            });            
+        });
+
+        it("should map to Either complex value", () => {
+            const person = new Person().extend({
+                firstName: "Christiano",
+                lastName:  "Ronaldo",
+                age:       23,
+                eyeColor:  Color.blue
+            });
+            const json1 = handler.mapFrom(
+                Either.right(person), JsonFormat, o =>
+                    o.typeIdHandling = TypeIdHandling.Auto);
+            expect(json1).to.eql({
+                isLeft: false,
+                value:  {
+                    $type:     "Person",
+                    firstName: "Christiano",
+                    lastName:  "Ronaldo",
+                    age:       23,
+                    eyeColor:  2
+                }
+            });
+            const doctor = new Doctor().extend({
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                nurse: new Doctor().extend({
+                    firstName: "Clara",
+                    lastName:  "Barton",
+                    age:       36
+                }),
+                patients: [
+                    new Doctor().extend({
+                        firstName: "Louis",
+                        lastName:  "Pasteur",
+                        age:       24
+                    })
+                ]
+            });
+
+            const json2 = handler.mapFrom(
+                Either.left(doctor), JsonFormat, o =>
+                    o.typeIdHandling = TypeIdHandling.Auto);
+            expect(json2).to.eql({
+                isLeft: true,
+                value:  {
+                    $type:     "Doctor",
+                    firstName: "Mitchell",
+                    lastName:  "Moskowitz",
+                    nurse: {
+                        $type:     "Doctor",
+                        firstName: "Clara",
+                        lastName:  "Barton",
+                        age:       36
+                    },
+                    patients: [{
+                        $type:     "Doctor",
+                        firstName: "Louis",
+                        lastName:  "Pasteur",
+                        age:       24
+                    }]
+                }
+            });        
+        });
+
         it("should map arrays of primitives", () => {
             expect(handler.mapFrom([1,2,3], JsonFormat)).to.eql([1,2,3]);
             expect(handler.mapFrom([false,true], JsonFormat)).to.eql([false,true]);
