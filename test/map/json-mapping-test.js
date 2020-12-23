@@ -295,9 +295,9 @@ describe("JsonMapping", () => {
         });
 
         it("should map all from json using strategy", () => {
-            const person = handler
-                .$mapStrategy(hyphenMapping)
-                .$mapTo({
+            const person = handler.$mapOptions({
+                    strategy: hyphenMapping
+                }).$mapTo({
                     "first-name":  "David",
                     "last-name":   "Beckham",
                     "occupation": "soccer"
@@ -396,6 +396,44 @@ describe("JsonMapping", () => {
                 }, JsonFormat);
              }).to.throw(TypeError, "The type was not specified and could not be inferred from '$type'.");    
          });
+
+        it("should detect circularities", () => {
+            const json = {
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                hobbies:   ["golf", "cooking", "reading"],               
+                patients: [{
+                    $type:      "Doctor",
+                    firstName:  "Louis",
+                    lastName:   "Pasteur",
+                    occupation: "Biologist",
+                    age:         75
+                }]
+            };
+            json.nurse = json;
+            expect(() => {
+                handler.$mapTo(json, JsonFormat, Doctor);                       
+            }).to.throw(Error, /Circularity detected: MapTo.*in progress./);
+        });
+
+        it("should detect array circularities", () => {
+            const json = {
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                hobbies:   ["golf", "cooking", "reading"],
+                nurse: {
+                    $type:      "Doctor",
+                    firstName:  "Clara",
+                    lastName:   "Barton",
+                    occupation: "Red Cross",
+                    age:         36
+                }
+            };
+            json.patients = [json];
+            expect(() => {
+                handler.$mapTo(json, JsonFormat, Doctor);                       
+            }).to.throw(Error, /Circularity detected: MapTo.*in progress./);
+        });             
     });
 
     describe("#mapFrom", () => {
@@ -451,9 +489,9 @@ describe("JsonMapping", () => {
                 age:       23,
                 eyeColor:  Color.blue
             });
-            const json1 = handler
-                .$mapTypeIdHandling(TypeIdHandling.Auto)
-                .$mapFrom(Either.right(person), JsonFormat);
+            const json1 = handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(Either.right(person), JsonFormat);
             expect(json1).to.eql({
                 isLeft: false,
                 value:  {
@@ -481,9 +519,9 @@ describe("JsonMapping", () => {
                 ]
             });
 
-            const json2 = handler
-                .$mapTypeIdHandling(TypeIdHandling.Auto)
-                .$mapFrom(Either.left(doctor), JsonFormat);
+            const json2 = handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(Either.left(doctor), JsonFormat);
             expect(json2).to.eql({
                 isLeft: true,
                 value:  {
@@ -521,9 +559,9 @@ describe("JsonMapping", () => {
                       age:       23,
                       eyeColor:  Color.blue
                   }),
-                  json = handler
-                    .$mapTypeIdHandling(TypeIdHandling.Auto)
-                    .$mapFrom(person, JsonFormat);
+                  json = handler.$mapOptions({
+                        typeIdHandling: TypeIdHandling.Auto
+                      }).$mapFrom(person, JsonFormat);
             expect(json).to.eql({
                 $type:     "Person",
                 firstName: "Christiano",
@@ -536,9 +574,9 @@ describe("JsonMapping", () => {
         it("should ignore some properties", () => {
             const person    = new Person();
             person.password = "1234";
-            const json      = handler
-                .$mapTypeIdHandling(TypeIdHandling.Auto)
-                .$mapFrom(person, JsonFormat);
+            const json      = handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(person, JsonFormat);
             expect(json).to.eql({$type: "Person"});
         });
         
@@ -548,12 +586,10 @@ describe("JsonMapping", () => {
                       lastName:  "Ronaldo",
                       age:       23
                   }),
-                  json = handler
-                    .$mapOptions({
+                  json = handler.$mapOptions({
                         fields: { lastName: true },
                         typeIdHandling: TypeIdHandling.Auto
-                    })
-                    .$mapFrom(person, JsonFormat);
+                    }).$mapFrom(person, JsonFormat);
             expect(json).to.eql({
                 $type:    "Person",
                 lastName: "Ronaldo"
@@ -562,24 +598,24 @@ describe("JsonMapping", () => {
         
         it("should map nested properties", () => {
             const doctor = new Doctor().extend({
-                      firstName: "Mitchell",
-                      lastName:  "Moskowitz",
-                      nurse: new Person().extend({
-                          firstName: "Clara",
-                          lastName:  "Barton",
-                          age:       36
-                      }),
-                      patients: [
-                          new Person().extend({
-                              firstName: "Lionel",
-                              lastName:  "Messi",
-                              age:       24
-                          })
-                      ]
-                  });
-            const json = handler
-                .$mapTypeIdHandling(TypeIdHandling.Auto)
-                .$mapFrom(doctor, JsonFormat);
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                nurse: new Person().extend({
+                    firstName: "Clara",
+                    lastName:  "Barton",
+                    age:       36
+                }),
+                patients: [
+                    new Person().extend({
+                        firstName: "Lionel",
+                        lastName:  "Messi",
+                        age:       24
+                    })
+                ]
+            });
+            const json = handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(doctor, JsonFormat);
             expect(json).to.eql({
                 $type:     "Doctor",
                 firstName: "Mitchell",
@@ -599,24 +635,24 @@ describe("JsonMapping", () => {
 
         it("should emit type id for TypeIdHandling.Auto", () => {
             const doctor = new Doctor().extend({
-                      firstName: "Mitchell",
-                      lastName:  "Moskowitz",
-                      nurse: new Doctor().extend({
-                          firstName: "Clara",
-                          lastName:  "Barton",
-                          age:       36
-                      }),
-                      patients: [
-                          new Doctor().extend({
-                              firstName: "Louis",
-                              lastName:  "Pasteur",
-                              age:       24
-                          })
-                      ]
-                  });
-            const json = handler
-                .$mapTypeIdHandling(TypeIdHandling.Auto)
-                .$mapFrom(doctor, JsonFormat);
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                nurse: new Doctor().extend({
+                    firstName: "Clara",
+                    lastName:  "Barton",
+                    age:       36
+                }),
+                patients: [
+                    new Doctor().extend({
+                        firstName: "Louis",
+                        lastName:  "Pasteur",
+                        age:       24
+                    })
+                ]
+            });
+            const json = handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(doctor, JsonFormat);
             expect(json).to.eql({
                 $type:     "Doctor",
                 firstName: "Mitchell",
@@ -638,23 +674,22 @@ describe("JsonMapping", () => {
 
         it("should map specific nested properties", () => {
             const doctor = new Doctor().extend({
-                      firstName: "Mitchell",
-                      lastName:  "Moskowitz",
-                      nurse: new Person().extend({
-                          firstName: "Clara",
-                          lastName:  "Barton",
-                          age:       36
-                      }),
-                      patients: [
-                          new Person().extend({
-                              firstName: "Lionel",
-                              lastName:  "Messi",
-                              age:       24
-                          })
-                      ]
-                  });            
-            const json = handler
-                .$mapOptions({
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                nurse: new Person().extend({
+                    firstName: "Clara",
+                    lastName:  "Barton",
+                    age:       36
+                }),
+                patients: [
+                    new Person().extend({
+                        firstName: "Lionel",
+                        lastName:  "Messi",
+                        age:       24
+                    })
+                ]
+            });            
+            const json = handler.$mapOptions({
                     fields: {
                         nurse: {
                             lastName:  true,
@@ -701,12 +736,10 @@ describe("JsonMapping", () => {
                           age:       32
                       })
                   }),
-                  json = handler
-                      .$mapOptions({
+                  json = handler.$mapOptions({
                           fields: { person: { age: true } },
                           typeIdHandling: TypeIdHandling.Auto
-                      })
-                      .$mapFrom(wrapper, JsonFormat);
+                      }).$mapFrom(wrapper, JsonFormat);
             expect(json).to.eql({
                 age: 32
             });
@@ -720,12 +753,10 @@ describe("JsonMapping", () => {
                           age:       55
                       })
                   }),
-                  json = handler
-                      .$mapOptions({
+                  json = handler.$mapOptions({
                           fields: { person: { age: true } },
                           typeIdHandling: TypeIdHandling.Auto
-                      })
-                      .$mapFrom(wrapper, JsonFormat);
+                      }).$mapFrom(wrapper, JsonFormat);
             expect(json).to.eql({
                 $type: "Doctor",
                 age:   55
@@ -781,12 +812,10 @@ describe("JsonMapping", () => {
                       age:       23,
                       eyeColor:  Color.blue
                   }),
-                  json = handler
-                      .$mapOptions({
-                          typeIdHandling: TypeIdHandling.Auto,
-                          strategy: hyphenMapping
-                      })
-                      .$mapFrom(person, JsonFormat);
+                  json = handler.$mapOptions({
+                      typeIdHandling: TypeIdHandling.Auto,
+                      strategy:       hyphenMapping
+                  }).$mapFrom(person, JsonFormat);
             expect(json).to.eql({
                 "$type":      "Person",
                 "first-name": "Christiano",
@@ -796,14 +825,53 @@ describe("JsonMapping", () => {
             });
         });
 
+        it("should detect circularities", () => {
+            const doctor = new Doctor().extend({
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                patients: [
+                    new Person().extend({
+                        firstName: "Lionel",
+                        lastName:  "Messi",
+                        age:       24
+                    })
+                ]
+            });
+            doctor.nurse = doctor;
+            expect(() => {
+                handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(doctor, JsonFormat);                         
+            }).to.throw(Error, /Circularity detected: MapFrom.*in progress./);
+
+        });
+
+        it("should array detect circularities", () => {
+            const doctor = new Doctor().extend({
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                nurse: new Person().extend({
+                    firstName: "Clara",
+                    lastName:  "Barton",
+                    age:       36
+                }),            
+            });
+            doctor.patients = [doctor];
+            expect(() => {
+                handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto,
+                }).$mapFrom(doctor, JsonFormat);                    
+            }).to.throw(Error, /Circularity detected: MapFrom.*in progress./);
+        });
+
         describe("@typeInfo", () => {
             it("should specify type id property", () => {
                 @typeId("Dog")
                 @typeInfo("@typeId")
                 class Dog {}
-                const json = handler
-                    .$mapTypeIdHandling(TypeIdHandling.Auto)
-                    .$mapFrom(new Dog(), JsonFormat);
+                const json = handler.$mapOptions({
+                        typeIdHandling: TypeIdHandling.Auto
+                    }).$mapFrom(new Dog(), JsonFormat);
                 expect(json).to.eql({"@typeId": "Dog"});
             });
 
@@ -812,9 +880,9 @@ describe("JsonMapping", () => {
                 class Animal {}
                 @typeId("Rabbit")
                 class Rabbit extends Animal {}
-                const json = handler
-                    .$mapTypeIdHandling(TypeIdHandling.Auto)
-                    .$mapFrom(new Rabbit(), JsonFormat);
+                const json = handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(new Rabbit(), JsonFormat);
                 expect(json).to.eql({"@typeId": "Rabbit"});
             });
 

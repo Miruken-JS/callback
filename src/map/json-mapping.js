@@ -37,11 +37,11 @@ export class JsonMapping extends AbstractMapping {
 
     @mapsFrom(Either)
     mapFromEither(mapFrom, @options(MapOptions) options, { composer }) {
-        const { object, format} = mapFrom,
-              { strategy }      = options || {};
+        const { object, format, seen } = mapFrom,
+              { strategy }             = options || {};
         function mapValue(value) {
             return $isNothing(value) ? null
-                 : composer.$mapFrom(value, format);
+                 : composer.$mapFrom(value, format, [...seen, object]);
         }
         const isLeftProperty = getProperty(object, "isLeft", null, strategy),
               valueProperty  = getProperty(object, "value", null, strategy);
@@ -58,12 +58,13 @@ export class JsonMapping extends AbstractMapping {
 
     @mapsFrom(Array)
     mapFromArray(mapFrom, { composer }) {
-        const { object, format } = mapFrom;
-        return object.map(elem => composer.$mapFrom(elem, format)); 
+        const { object, format, seen } = mapFrom,
+                seenArray = [...seen, object];
+        return object.map(elem => composer.$mapFrom(elem, format, seenArray)); 
     }
     
     mapsFrom(mapFrom, options, { composer }) {
-        const { object, format } = mapFrom;
+        const { object, format, seen } = mapFrom;
 
         if (!canMapJson(object)) return;
         if (this.isPrimitiveValue(object)) {
@@ -81,8 +82,7 @@ export class JsonMapping extends AbstractMapping {
             throw new Error(`Invalid map fields specifier ${fields}.`);
         }
 
-        const descriptors = getPropertyDescriptors(object),
-              json = {};
+        const json = {};
 
         if (shouldEmitTypeId(object, type, typeIdHandling)) {
             const id = typeId.getId(object);
@@ -94,6 +94,9 @@ export class JsonMapping extends AbstractMapping {
                 json[typeIdProp] = id;
             }
         }
+
+        const descriptors = getPropertyDescriptors(object),
+              seenObject  = [...seen, object];
 
         Reflect.ownKeys(descriptors).forEach(key => {
             if (allFields || (key in fields)) {
@@ -121,7 +124,7 @@ export class JsonMapping extends AbstractMapping {
                     type:   typeIdHandling === TypeIdHandling.Auto
                             ? design.get(object, key)?.propertyType?.type
                             : null
-                }).$mapFrom(keyValue, format);
+                }).$mapFrom(keyValue, format, seenObject);
 
                 if (map?.root) {
                     Object.assign(json, keyJson);
@@ -147,7 +150,7 @@ export class JsonMapping extends AbstractMapping {
 
     @mapsTo(Either)
     mapToEither(mapTo, @options(MapOptions) options, { composer }) {
-        const { classOrInstance} = mapTo;
+        const { classOrInstance, seen } = mapTo;
         if (!$isFunction(classOrInstance)) {
             throw new Error("Either is immutable and cannot be mapped onto.");
         }
@@ -157,7 +160,7 @@ export class JsonMapping extends AbstractMapping {
                 valueProperty   = getProperty(Either, "value", null, strategy),
                 eitherValue     = value[valueProperty];
         const eitherObject = $isNothing(eitherValue) ? null
-              : composer.$mapTo(eitherValue, format);
+              : composer.$mapTo(eitherValue, format, null, [...seen, value]);
         return value[isLeftProperty] === true
              ? Either.left(eitherObject)
              : Either.right(eitherObject);
@@ -165,14 +168,15 @@ export class JsonMapping extends AbstractMapping {
 
     @mapsTo(Array)
     mapToArray(mapTo, { composer }) {
-        const { value, format } = mapTo;
+        const { value, format, seen } = mapTo,
+                seenArray = [...seen, value];
         let type = mapTo.classOrInstance;
         type = Array.isArray(type) ? type[0] : undefined;
-        return value.map(elem => composer.$mapTo(elem, format, type)); 
+        return value.map(elem => composer.$mapTo(elem, format, type, seenArray)); 
     }
 
     mapsTo(mapTo, options, { composer }) {
-        const { value, format, classOrInstance } = mapTo;
+        const { value, format, classOrInstance, seen } = mapTo;
         if (!canMapJson(value)) return;
         if (this.isPrimitiveValue(value)) {
             if (classOrInstance instanceof Enum) {
@@ -186,6 +190,7 @@ export class JsonMapping extends AbstractMapping {
         const { strategy }  = options || {},
                 object      = getOrCreateObject(value, classOrInstance, strategy),
                 type        = $classOf(object),
+                seenValue   = [...seen, value],
                 descriptors = getPropertyDescriptors(object);
 
         Reflect.ownKeys(descriptors).forEach(key => {
@@ -194,11 +199,11 @@ export class JsonMapping extends AbstractMapping {
                 const map      = mapping.get(object, key),
                       property = getProperty(type, key, map, strategy);
                 if (map?.root) {
-                    mapKey.call(this, object, key, value, composer, format);
+                    mapKey.call(this, object, key, value, composer, format, seen);
                 } else if (!map?.ignore) {
                     const keyValue = value[property];
                     if (keyValue !== undefined) {
-                        mapKey.call(this, object, key, keyValue, composer, format);
+                        mapKey.call(this, object, key, keyValue, composer, format, seenValue);
                     }
                 }
             }
@@ -256,12 +261,12 @@ function getOrCreateObject(value, classOrInstance, strategy) {
     return classOrInstance;
 }
 
-function mapKey(target, key, value, composer, format) {
+function mapKey(target, key, value, composer, format, seen) {
     const type = design.get(target, key)?.propertyType?.type;
     if ($isNothing(type)) {
         target[key] = this.isPrimitiveValue(value) ? value?.valueOf() : value;
     } else if (!$isNothing(value)) {
-        target[key] = composer.$mapTo(value, format, type);
+        target[key] = composer.$mapTo(value, format, type, seen);
     } else if (value === null) {
         target[key] = null;
     }

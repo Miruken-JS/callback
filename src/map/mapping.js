@@ -5,6 +5,9 @@ import {
 
 const mappingMetadataKey  = Symbol("mapping-metadata");
 
+/**
+ * Defines the contract for mapping strategies.
+ */
 export const Mapping = Protocol.extend({
     shouldIgnore(target, key) {},
     shouldUseEnumName(target, key) {},

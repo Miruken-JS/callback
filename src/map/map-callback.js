@@ -1,6 +1,7 @@
 import {
-    Base, conformsTo, $isNothing, $isString,
-    $isPromise, $classOf, createKeyChain
+    Base, conformsTo, $isNothing,
+    $isObject, $isString, $isPromise,
+    $classOf, createKeyChain
 } from "miruken-core";
 
 import { CallbackControl } from "../callback-control";
@@ -13,12 +14,13 @@ const _ = createKeyChain();
  * Base callback for mapping.
  * @class MapCallback
  * @constructor
- * @param   {Any} ormat  -  format specifier
+ * @param   {Any}   format  -  format specifier
+ * @param   {Array} seen    -  array of seen objects
  * @extends Base
  */
 @conformsTo(CallbackControl)
 export class MapCallback extends Base {
-    constructor(format) {
+    constructor(format, seen) {
         if (new.target === MapCallback) {
             throw new Error("MapCallback is abstract and cannot be instantiated.");
         }
@@ -27,9 +29,12 @@ export class MapCallback extends Base {
         _this.format   = format;
         _this.results  = [];
         _this.promises = [];
+        _this.seen     = seen || [];
     }
 
     get format() { return _(this).format; }
+    get seen() { return _(this).seen; }
+
     get callbackResult() {
         if (_(this).result === undefined) {
             const { results, promises }  = _(this);
@@ -60,16 +65,20 @@ export class MapCallback extends Base {
  * Callback to map an `object` to `format`.
  * @class MapFrom
  * @constructor
- * @param   {Object}  object     -  object to map
- * @param   {Any}     format     -  format specifier
+ * @param   {Object}  object  -  object to map
+ * @param   {Any}     format  -  format specifier
+ * @param   {Array}   seen    -  array of seen objects
  * @extends MapCallback
  */
 export class MapFrom extends MapCallback {
-    constructor(object, format) {
+    constructor(object, format, seen) {
         if ($isNothing(object)) {
             throw new TypeError("Missing object to map.");
         }
-        super(format);
+        if (checkCircularity(object, seen)) {
+            throw new Error(`Circularity detected: MapFrom ${object} in progress.`);
+        }
+        super(format, seen);
         _(this).object = object;     
     }
 
@@ -77,13 +86,14 @@ export class MapFrom extends MapCallback {
     get callbackPolicy() { return mapsFrom.policy; }
 
     dispatch(handler, greedy, composer) {
-        const target = this.object,
-              source = $classOf(target);
+        const object = this.object,
+              source = $classOf(object);
         if ($isNothing(source)) return false;
-        const count = _(this).results.length;
+        const results = _(this).results,
+              count   = results.length;
         return mapsFrom.dispatch(handler, this, this, source,
             composer, false, this.addResult.bind(this)) ||
-            _(this).results.length > count; 
+                results.length > count; 
     }
 
     toString() {
@@ -98,14 +108,18 @@ export class MapFrom extends MapCallback {
  * @param   {Any}              value            -  formatted value
  * @param   {Any}              format           -  format specifier
  * @param   {Function|Object}  classOrInstance  -  instance or class to unmap
+ * @param   {Array}            seen             -  array of seen objects
  * @extends MapCallback
  */
 export class MapTo extends MapCallback {
-    constructor(value, format, classOrInstance) {
+    constructor(value, format, classOrInstance, seen) {
         if ($isNothing(value)) {
             throw new TypeError("Missing value to map.");
-        }        
-        super(format);
+        }     
+        if (checkCircularity(value, seen)) {
+            throw new Error(`Circularity detected: MapTo ${value} in progress.`);
+        }   
+        super(format, seen);
         if ($isNothing(classOrInstance) && !$isString(value)) {
             classOrInstance = $classOf(value);
             if (classOrInstance === Object) {
@@ -122,13 +136,19 @@ export class MapTo extends MapCallback {
     get callbackPolicy() { return mapsTo.policy; }
 
     dispatch(handler, greedy, composer) {
-        const count  = _(this).results.length,
-              source = this.classOrInstance || this.value;
+        const results = _(this).results,
+              count   = results.length,
+              source  = this.classOrInstance || this.value;
         return mapsTo.dispatch(handler, this, this, source,
             composer, false, this.addResult.bind(this)) || 
-            _(this).results.length > count;
+                results.length > count;
     }
+
     toString() {
         return `MapTo | ${String(this.format)} ${this.value}`;
     }
+}
+
+function checkCircularity(object, seen) {
+    return $isObject(object) && seen?.includes(object);
 }
