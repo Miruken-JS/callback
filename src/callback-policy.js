@@ -289,7 +289,7 @@ function registerHandlers(name, policy, members, { allowClasses, allowGets, filt
             if (signature) {
                 if (policy.variance === Variance.Contravariant) {
                     const args = signature.args;
-                    constraints = args && args.length > 0 ? args[0].type : null;
+                    constraints = args && args.length > 0 ? args[0]?.type : null;
                 } else if (policy.variance === Variance.Covariant ||
                            policy.variance === Variance.Invariant) {
                     const typeInfo = signature.returnType || signature.propertyType;

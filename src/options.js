@@ -27,10 +27,9 @@ export class Options extends Base {
         const descriptors = getPropertyDescriptors(this),
               keys        = Reflect.ownKeys(descriptors);
         keys.forEach(key => {
-            const keyValue = this[key];
-            if (Reflect.has(Options.prototype, key) || $isFunction(keyValue)) { 
-                return;
-            }
+            if (Reflect.has(Options.prototype, key)) return;
+            const keyValue   = this[key],
+                  descriptor = descriptors[key];
             if (keyValue !== undefined) {
                 const optionsValue = options[key];
                 if (optionsValue === undefined || !options.hasOwnProperty(key)) {

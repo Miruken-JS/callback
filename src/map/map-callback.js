@@ -1,5 +1,5 @@
 import {
-    Base, conformsTo, $isString, $isNothing,
+    Base, conformsTo, $isNothing, $isString,
     $isPromise, $classOf, createKeyChain
 } from "miruken-core";
 
@@ -29,12 +29,6 @@ export class MapCallback extends Base {
         _this.promises = [];
     }
 
-    /**
-     * The mapping strategy.
-     * @property {Mapping} strategy
-     */   
-    strategy;
-
     get format() { return _(this).format; }
     get callbackResult() {
         if (_(this).result === undefined) {
@@ -60,10 +54,6 @@ export class MapCallback extends Base {
         }
         _(this).result = undefined;
     }
-
-    copyOptions(mapCallback) {
-        mapCallback.strategy = this.strategy;
-    }
 }
 
 /**
@@ -83,33 +73,8 @@ export class MapFrom extends MapCallback {
         _(this).object = object;     
     }
 
-    /**
-     * The type of object.
-     * @property {Function} type
-     */   
-    type;
-
-    /**
-     * The fields to map.  Object literal or true.
-     * @property {Any} fields
-     */   
-    fields;
-
-    /**
-     * Determines how type identifiers are used.
-     * @property {Function} typeIdHandling
-     */   
-    typeIdHandling;
-
     get object() { return _(this).object; }   
     get callbackPolicy() { return mapsFrom.policy; }
-    
-    copyOptions(mapFrom) {
-        super.copyOptions(mapFrom);
-        mapFrom.type           = this.type;
-        mapFrom.fields         = this.fields;
-        mapFrom.typeIdHandling = this.typeIdHandling;
-    }
 
     dispatch(handler, greedy, composer) {
         const target = this.object,

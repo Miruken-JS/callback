@@ -74,7 +74,7 @@ describe("JsonMapping", () => {
     
     describe("#mapTo", () => {
         it("should map from json", () => {
-            const person = handler.mapTo({
+            const person = handler.$mapTo({
                 firstName:  "David",
                 lastName:   "Beckham",
                 eyeColor:   2,
@@ -88,7 +88,7 @@ describe("JsonMapping", () => {
         });
 
         it("should map from json using content-type", () => {
-            const person = handler.mapTo({
+            const person = handler.$mapTo({
                 firstName:  "David",
                 lastName:   "Beckham",
                 eyeColor:   2,
@@ -102,7 +102,7 @@ describe("JsonMapping", () => {
         });
 
         it("should ignore from json", () => {
-            const person = handler.mapTo({
+            const person = handler.$mapTo({
                 password: "1234"
             }, JsonFormat, Person);
             expect(person).to.be.instanceOf(Person);
@@ -110,39 +110,39 @@ describe("JsonMapping", () => {
         });
         
         it("should pass through primitives", () => {
-            expect(handler.mapTo(1, JsonFormat)).to.equal(1);
-            expect(handler.mapTo(2, JsonFormat)).to.equal(2);
-            expect(handler.mapTo(true, JsonFormat)).to.equal(true); 
-            expect(handler.mapTo(false, JsonFormat)).to.equal(false);           
-            expect(handler.mapTo("hello", JsonFormat)).to.equal("hello");
-            expect(handler.mapTo("goodbye", JsonFormat)).to.equal("goodbye");
+            expect(handler.$mapTo(1, JsonFormat)).to.equal(1);
+            expect(handler.$mapTo(2, JsonFormat)).to.equal(2);
+            expect(handler.$mapTo(true, JsonFormat)).to.equal(true); 
+            expect(handler.$mapTo(false, JsonFormat)).to.equal(false);           
+            expect(handler.$mapTo("hello", JsonFormat)).to.equal("hello");
+            expect(handler.$mapTo("goodbye", JsonFormat)).to.equal("goodbye");
         });
 
         it("should map enum value", () => {
-            expect(handler.mapTo(1, JsonFormat, Color)).to.equal(Color.red);
-            expect(handler.mapTo(2, JsonFormat, Color)).to.equal(Color.blue);
-            expect(handler.mapTo(3, JsonFormat, Color)).to.equal(Color.green);
+            expect(handler.$mapTo(1, JsonFormat, Color)).to.equal(Color.red);
+            expect(handler.$mapTo(2, JsonFormat, Color)).to.equal(Color.blue);
+            expect(handler.$mapTo(3, JsonFormat, Color)).to.equal(Color.green);
             expect(() => {
-                expect(handler.mapTo(4, JsonFormat, Color)).to.equal(Color.green);                            
+                expect(handler.$mapTo(4, JsonFormat, Color)).to.equal(Color.green);                            
             }).to.throw(TypeError, "4 is not a valid value for this Enum");
         });
         
         it("should map Either primitive value", () => {
-            const either1 = handler.mapTo({
+            const either1 = handler.$mapTo({
                 isLeft: false,
                 value:  "Hello"
             }, JsonFormat, Either);
             expect(either1).to.be.instanceOf(Either.Right);
             expect(either1.value).to.equal("Hello");
 
-            const either2 = handler.mapTo({
+            const either2 = handler.$mapTo({
                 isLeft: false,
                 value:  null
             }, JsonFormat, Either);
             expect(either2).to.be.instanceOf(Either.Right);
             expect(either2.value).to.be.null;
 
-            const either3 = handler.mapTo({
+            const either3 = handler.$mapTo({
                 isLeft: true,
                 value:  22
             }, JsonFormat, Either);
@@ -151,7 +151,7 @@ describe("JsonMapping", () => {
         });
 
         it("should map all from json", () => {
-            const person = handler.mapTo({
+            const person = handler.$mapTo({
                 firstName:  "David",
                 lastName:   "Beckham",
                 occupation: "soccer"
@@ -163,7 +163,7 @@ describe("JsonMapping", () => {
         });
 
         it("should use type id to parse json", () => {
-            const person = handler.mapTo({
+            const person = handler.$mapTo({
                 $type:      "Doctor",
                 firstName:  "Daniel",
                 lastName:   "Worrell",
@@ -176,7 +176,7 @@ describe("JsonMapping", () => {
         });
 
         it("should map all related from json", () => {
-            const doctor = handler.mapTo({
+            const doctor = handler.$mapTo({
                 firstName: "Mitchell",
                 lastName:  "Moskowitz",
                 hobbies:   ["golf", "cooking", "reading"],
@@ -207,7 +207,7 @@ describe("JsonMapping", () => {
         });
 
         it("should map all related from json using type id", () => {
-            const doctor = handler.mapTo({
+            const doctor = handler.$mapTo({
                 firstName: "Mitchell",
                 lastName:  "Moskowitz",
                 hobbies:   ["golf", "cooking", "reading"],
@@ -243,7 +243,7 @@ describe("JsonMapping", () => {
         });
 
         it("should map arrays", () => {
-            const people = handler.mapTo([{
+            const people = handler.$mapTo([{
                      firstName:  "David",
                      lastName:   "Beckham",
                      occupation: "soccer"
@@ -256,7 +256,7 @@ describe("JsonMapping", () => {
         });
 
         it("should infer arrays", () => {
-            const people = handler.mapTo([{
+            const people = handler.$mapTo([{
                      firstName:  "David",
                      lastName:   "Beckham",
                      occupation: "soccer"
@@ -269,7 +269,7 @@ describe("JsonMapping", () => {
         });
         
         it("should map rooted json", () => {
-            const wrapper = handler.mapTo({
+            const wrapper = handler.$mapTo({
                     firstName:  "David",
                     lastName:   "Beckham",
                     occupation: "soccer"
@@ -281,7 +281,6 @@ describe("JsonMapping", () => {
             expect(person.occupation).to.be.undefined;           
         });
 
-        /*
         it("should override mapping", () => {
             const override = handler.decorate({
                                  @mapsTo(Date)
@@ -290,18 +289,19 @@ describe("JsonMapping", () => {
                                      return new Date(mapTo.value);
                                  }
                              }),
-                  date = Mapping(override).mapTo(1481349600000, JsonFormat, Date);
+                  date = override.$mapTo(1481349600000, JsonFormat, Date);
             expect(date).to.be.instanceOf(Date);
             expect(+date).to.equal(+(new Date(2016,11,10)));
         });
-        */
 
         it("should map all from json using strategy", () => {
-            const person = handler.mapTo({
-                "first-name":  "David",
-                "last-name":   "Beckham",
-                "occupation": "soccer"
-            }, JsonFormat, Person, o => o.strategy = hyphenMapping);
+            const person = handler
+                .$mapStrategy(hyphenMapping)
+                .$mapTo({
+                    "first-name":  "David",
+                    "last-name":   "Beckham",
+                    "occupation": "soccer"
+                }, JsonFormat, Person);
             expect(person).to.be.instanceOf(Person);
             expect(person.firstName).to.equal("David");
             expect(person.lastName).to.equal("Beckham");
@@ -312,7 +312,7 @@ describe("JsonMapping", () => {
             class Message {
                 payload;
             }
-            const message = handler.mapTo({
+            const message = handler.$mapTo({
                 payload: {
                     upc: "197212",
                     quantity: 4
@@ -327,7 +327,7 @@ describe("JsonMapping", () => {
         });
 
         it("should map Either complex value", () => {
-            const either1 = handler.mapTo({
+            const either1 = handler.$mapTo({
                 isLeft: false,
                 value:  {
                     $type:     "Person",
@@ -340,7 +340,7 @@ describe("JsonMapping", () => {
             expect(either1).to.be.instanceOf(Either.Right);
             expect(either1.value).to.be.instanceOf(Person);
          
-            const either2 = handler.mapTo({
+            const either2 = handler.$mapTo({
                 isLeft: false,
                 value:  {
                     $type:     "Doctor",
@@ -366,13 +366,13 @@ describe("JsonMapping", () => {
 
         it("should fail if Enum instance given", () => {
             expect(() => {
-                handler.mapTo(3, JsonFormat, Color.red);                           
+                handler.$mapTo(3, JsonFormat, Color.red);                           
             }).to.throw(Error, "Enum is immutable and cannot be mapped onto.");
         });
 
         it("should fail if type id could not be resolved", () => {
             expect(() => {
-                handler.mapTo({
+                handler.$mapTo({
                     $type: "Accountant"
                 }, JsonFormat, new Person());                         
             }).to.throw(TypeError, "The type with id 'Accountant' could not be resolved.");
@@ -380,7 +380,7 @@ describe("JsonMapping", () => {
 
         it("should fail if type id mismatch", () => {
             expect(() => {
-                handler.mapTo({
+                handler.$mapTo({
                     $type: "Doctor"
                 }, JsonFormat, new Person());                         
             }).to.throw(TypeError, "Expected instance of type 'Doctor', but received 'Person'.");
@@ -388,7 +388,7 @@ describe("JsonMapping", () => {
 
         it("should fail if no type information.", () => {
             expect(() => {
-                handler.mapTo({
+                handler.$mapTo({
                     firstName: "Christiano",
                     lastName:  "Ronaldo",
                     age:       23,
@@ -400,44 +400,44 @@ describe("JsonMapping", () => {
 
     describe("#mapFrom", () => {
         it("should ignore symbols", () => {
-            expect(handler.mapFrom(Symbol(), JsonFormat)).to.be.undefined;
+            expect(handler.$mapFrom(Symbol(), JsonFormat)).to.be.undefined;
         });
 
         it("should ignore functions", () => {
-            expect(handler.mapFrom(function () {}, JsonFormat)).to.be.undefined;
+            expect(handler.$mapFrom(function () {}, JsonFormat)).to.be.undefined;
         });
         
         it("should pass through primitives", () => {
-            expect(handler.mapFrom(1, JsonFormat)).to.equal(1);
-            expect(handler.mapFrom(new Number(2), JsonFormat)).to.equal(2);
-            expect(handler.mapFrom(true, JsonFormat)).to.equal(true); 
-            expect(handler.mapFrom(new Boolean(false), JsonFormat)).to.equal(false);           
-            expect(handler.mapFrom("hello", JsonFormat)).to.equal("hello");
-            expect(handler.mapFrom(String("goodbye"), JsonFormat)).to.equal("goodbye");
-            // expect(handler.mapFrom(new Date(2016,11,6), JsonFormat)).to.equal("2016-12-06T06:00:00.000Z");
-            expect(handler.mapFrom(/abc/, JsonFormat)).to.eql("/abc/");
+            expect(handler.$mapFrom(1, JsonFormat)).to.equal(1);
+            expect(handler.$mapFrom(new Number(2), JsonFormat)).to.equal(2);
+            expect(handler.$mapFrom(true, JsonFormat)).to.equal(true); 
+            expect(handler.$mapFrom(new Boolean(false), JsonFormat)).to.equal(false);           
+            expect(handler.$mapFrom("hello", JsonFormat)).to.equal("hello");
+            expect(handler.$mapFrom(String("goodbye"), JsonFormat)).to.equal("goodbye");
+            // expect(handler.$mapFrom(new Date(2016,11,6), JsonFormat)).to.equal("2016-12-06T06:00:00.000Z");
+            expect(handler.$mapFrom(/abc/, JsonFormat)).to.eql("/abc/");
         });
 
         it("should map to enum value", () => {
-            expect(handler.mapFrom(Color.red, JsonFormat)).to.equal(1);
-            expect(handler.mapFrom(Color.blue, JsonFormat)).to.equal(2);
-            expect(handler.mapFrom(Color.green, JsonFormat)).to.equal(3);
+            expect(handler.$mapFrom(Color.red, JsonFormat)).to.equal(1);
+            expect(handler.$mapFrom(Color.blue, JsonFormat)).to.equal(2);
+            expect(handler.$mapFrom(Color.green, JsonFormat)).to.equal(3);
         });
         
         it("should map to Either primitive value", () => {
-            const json1 = handler.mapFrom(Either.right("Hello"), JsonFormat);
+            const json1 = handler.$mapFrom(Either.right("Hello"), JsonFormat);
             expect(json1).to.eql({
                 isLeft: false,
                 value:  "Hello"
             });
 
-            const json2 = handler.mapFrom(Either.right(), JsonFormat);
+            const json2 = handler.$mapFrom(Either.right(), JsonFormat);
             expect(json2).to.eql({
                 isLeft: false,
                 value:  null
             });
 
-            const json3 = handler.mapFrom(Either.left(22), JsonFormat);
+            const json3 = handler.$mapFrom(Either.left(22), JsonFormat);
             expect(json3).to.eql({
                 isLeft: true,
                 value:  22
@@ -451,9 +451,9 @@ describe("JsonMapping", () => {
                 age:       23,
                 eyeColor:  Color.blue
             });
-            const json1 = handler.mapFrom(
-                Either.right(person), JsonFormat, o =>
-                    o.typeIdHandling = TypeIdHandling.Auto);
+            const json1 = handler
+                .$mapTypeIdHandling(TypeIdHandling.Auto)
+                .$mapFrom(Either.right(person), JsonFormat);
             expect(json1).to.eql({
                 isLeft: false,
                 value:  {
@@ -481,9 +481,9 @@ describe("JsonMapping", () => {
                 ]
             });
 
-            const json2 = handler.mapFrom(
-                Either.left(doctor), JsonFormat, o =>
-                    o.typeIdHandling = TypeIdHandling.Auto);
+            const json2 = handler
+                .$mapTypeIdHandling(TypeIdHandling.Auto)
+                .$mapFrom(Either.left(doctor), JsonFormat);
             expect(json2).to.eql({
                 isLeft: true,
                 value:  {
@@ -507,11 +507,11 @@ describe("JsonMapping", () => {
         });
 
         it("should map arrays of primitives", () => {
-            expect(handler.mapFrom([1,2,3], JsonFormat)).to.eql([1,2,3]);
-            expect(handler.mapFrom([false,true], JsonFormat)).to.eql([false,true]);
-            expect(handler.mapFrom(["one","two"], JsonFormat)).to.eql(["one","two"]);
-            // expect(handler.mapFrom([new Date(2016,11,6)], JsonFormat)).to.eql(["2016-12-06T06:00:00.000Z"]);
-            expect(handler.mapFrom([/abc/], JsonFormat)).to.eql(["/abc/"]);
+            expect(handler.$mapFrom([1,2,3], JsonFormat)).to.eql([1,2,3]);
+            expect(handler.$mapFrom([false,true], JsonFormat)).to.eql([false,true]);
+            expect(handler.$mapFrom(["one","two"], JsonFormat)).to.eql(["one","two"]);
+            // expect(handler.$mapFrom([new Date(2016,11,6)], JsonFormat)).to.eql(["2016-12-06T06:00:00.000Z"]);
+            expect(handler.$mapFrom([/abc/], JsonFormat)).to.eql(["/abc/"]);
         });
         
         it("should map all properties", () => {
@@ -521,8 +521,9 @@ describe("JsonMapping", () => {
                       age:       23,
                       eyeColor:  Color.blue
                   }),
-                  json = handler.mapFrom(person, JsonFormat, o =>
-                      o.typeIdHandling = TypeIdHandling.Auto);
+                  json = handler
+                    .$mapTypeIdHandling(TypeIdHandling.Auto)
+                    .$mapFrom(person, JsonFormat);
             expect(json).to.eql({
                 $type:     "Person",
                 firstName: "Christiano",
@@ -535,8 +536,9 @@ describe("JsonMapping", () => {
         it("should ignore some properties", () => {
             const person    = new Person();
             person.password = "1234";
-            const json      = handler.mapFrom(person, JsonFormat, o =>
-                o.typeIdHandling = TypeIdHandling.Auto);
+            const json      = handler
+                .$mapTypeIdHandling(TypeIdHandling.Auto)
+                .$mapFrom(person, JsonFormat);
             expect(json).to.eql({$type: "Person"});
         });
         
@@ -546,10 +548,12 @@ describe("JsonMapping", () => {
                       lastName:  "Ronaldo",
                       age:       23
                   }),
-                  json = handler.mapFrom(person, JsonFormat, o => {
-                      o.fields         = { lastName: true };
-                      o.typeIdHandling = TypeIdHandling.Auto;
-                  });
+                  json = handler
+                    .$mapOptions({
+                        fields: { lastName: true },
+                        typeIdHandling: TypeIdHandling.Auto
+                    })
+                    .$mapFrom(person, JsonFormat);
             expect(json).to.eql({
                 $type:    "Person",
                 lastName: "Ronaldo"
@@ -573,8 +577,9 @@ describe("JsonMapping", () => {
                           })
                       ]
                   });
-            const json = handler.mapFrom(doctor, JsonFormat, o =>
-                o.typeIdHandling = TypeIdHandling.Auto);
+            const json = handler
+                .$mapTypeIdHandling(TypeIdHandling.Auto)
+                .$mapFrom(doctor, JsonFormat);
             expect(json).to.eql({
                 $type:     "Doctor",
                 firstName: "Mitchell",
@@ -609,8 +614,9 @@ describe("JsonMapping", () => {
                           })
                       ]
                   });
-            const json = handler.mapFrom(doctor, JsonFormat, o =>
-                o.typeIdHandling = TypeIdHandling.Auto);
+            const json = handler
+                .$mapTypeIdHandling(TypeIdHandling.Auto)
+                .$mapFrom(doctor, JsonFormat);
             expect(json).to.eql({
                 $type:     "Doctor",
                 firstName: "Mitchell",
@@ -647,18 +653,20 @@ describe("JsonMapping", () => {
                           })
                       ]
                   });            
-            const json = handler.mapFrom(doctor, JsonFormat, o => {
-                o.fields = {
-                    nurse: {
-                        lastName:  true,
-                        age:       true
+            const json = handler
+                .$mapOptions({
+                    fields: {
+                        nurse: {
+                            lastName:  true,
+                            age:       true
+                        },
+                        patients: {
+                            firstName: true
+                        }
                     },
-                    patients: {
-                        firstName: true
-                    }
-                };
-                o.typeIdHandling = TypeIdHandling.Auto
-            });
+                    typeIdHandling: TypeIdHandling.Auto
+                })
+                .$mapFrom(doctor, JsonFormat);
             expect(json).to.eql({
                 $type: "Doctor",
                 nurse: {
@@ -677,7 +685,7 @@ describe("JsonMapping", () => {
                       lastName:  "Ribery",
                       age:       32
                   }),
-                  json = handler.mapFrom(wrapper, JsonFormat);
+                  json = handler.$mapFrom(wrapper, JsonFormat);
             expect(json).to.eql({
                 firstName: "Franck",
                 lastName:  "Ribery",
@@ -693,16 +701,18 @@ describe("JsonMapping", () => {
                           age:       32
                       })
                   }),
-                  json = handler.mapFrom(wrapper, JsonFormat, o => {
-                      o.fields = { person: { age: true } };
-                      o.typeIdHandling = TypeIdHandling.Auto
-                  });
+                  json = handler
+                      .$mapOptions({
+                          fields: { person: { age: true } },
+                          typeIdHandling: TypeIdHandling.Auto
+                      })
+                      .$mapFrom(wrapper, JsonFormat);
             expect(json).to.eql({
                 age: 32
             });
         });
 
-        it("should emit type if for rooted properties", () => {
+        it("should emit type id for rooted properties", () => {
             const wrapper = new PersonWrapper().extend({
                       person: new Doctor().extend({
                           firstName: "William",
@@ -710,10 +720,12 @@ describe("JsonMapping", () => {
                           age:       55
                       })
                   }),
-                  json = handler.mapFrom(wrapper, JsonFormat, o => {
-                      o.fields = { person: { age: true } };
-                      o.typeIdHandling = TypeIdHandling.Auto
-                  });
+                  json = handler
+                      .$mapOptions({
+                          fields: { person: { age: true } },
+                          typeIdHandling: TypeIdHandling.Auto
+                      })
+                      .$mapFrom(wrapper, JsonFormat);
             expect(json).to.eql({
                 $type: "Doctor",
                 age:   55
@@ -726,7 +738,7 @@ describe("JsonMapping", () => {
                       lastName:  "Ribery",
                       age:       32
                   })],
-                  json = handler.mapFrom(wrappers, JsonFormat);
+                  json = handler.$mapFrom(wrappers, JsonFormat);
             expect(json).to.eql([{
                 firstName: "Franck",
                 lastName:  "Ribery",
@@ -734,19 +746,17 @@ describe("JsonMapping", () => {
             }]);
         });
 
-        /*
         it("should override mapping", () => {
-            const override = Mapping(handler.decorate({
-                                 @mapFrom(Date)
-                                 @format(JsonFormat)
-                                 mapDateToJson(mapFrom) {
-                                     return +mapFrom.object;
-                                 }
-                             })),
-                  json = override.mapFrom(new Date(2016,11,10), JsonFormat);
-            expect(json).to.equal(1481349600000);
+            const override = handler.decorate({
+                        @mapsFrom(Date)
+                        @format(JsonFormat)
+                        mapDateToJson(mapFrom) {
+                            return +mapFrom.object;
+                        }
+                    }),
+                  json = override.$mapFrom(new Date(2016,11,10), JsonFormat);
+            expect(json).to.be.a("number");
         });
-        */
 
         it("should map anonymous object", () => {
             const person = {
@@ -755,7 +765,7 @@ describe("JsonMapping", () => {
                 age:       23,
                 eyeColor:  Color.blue
             };
-            const json = handler.mapFrom(person, JsonFormat);
+            const json = handler.$mapFrom(person, JsonFormat);
             expect(json).to.eql({
                 firstName: "Christiano",
                 lastName:  "Ronaldo",
@@ -771,10 +781,12 @@ describe("JsonMapping", () => {
                       age:       23,
                       eyeColor:  Color.blue
                   }),
-                  json = handler.mapFrom(person, JsonFormat, o => {
-                      o.strategy       = hyphenMapping,
-                      o.typeIdHandling = TypeIdHandling.Auto;
-                  });
+                  json = handler
+                      .$mapOptions({
+                          typeIdHandling: TypeIdHandling.Auto,
+                          strategy: hyphenMapping
+                      })
+                      .$mapFrom(person, JsonFormat);
             expect(json).to.eql({
                 "$type":      "Person",
                 "first-name": "Christiano",
@@ -789,8 +801,9 @@ describe("JsonMapping", () => {
                 @typeId("Dog")
                 @typeInfo("@typeId")
                 class Dog {}
-                const json = handler.mapFrom(new Dog(), JsonFormat, o =>
-                    o.typeIdHandling = TypeIdHandling.Auto);
+                const json = handler
+                    .$mapTypeIdHandling(TypeIdHandling.Auto)
+                    .$mapFrom(new Dog(), JsonFormat);
                 expect(json).to.eql({"@typeId": "Dog"});
             });
 
@@ -799,8 +812,9 @@ describe("JsonMapping", () => {
                 class Animal {}
                 @typeId("Rabbit")
                 class Rabbit extends Animal {}
-                const json = handler.mapFrom(new Rabbit(), JsonFormat, o =>
-                    o.typeIdHandling = TypeIdHandling.Auto);
+                const json = handler
+                    .$mapTypeIdHandling(TypeIdHandling.Auto)
+                    .$mapFrom(new Rabbit(), JsonFormat);
                 expect(json).to.eql({"@typeId": "Rabbit"});
             });
 
