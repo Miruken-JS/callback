@@ -219,7 +219,7 @@ describe("JsonMapping", () => {
                     age:         36
                 },                
                 patients: [{
-                    $type:      "Doctor",
+                    $type:      "Person",
                     firstName:  "Louis",
                     lastName:   "Pasteur",
                     occupation: "Biologist",
@@ -235,7 +235,7 @@ describe("JsonMapping", () => {
             expect(doctor.nurse.lastName).to.equal("Barton");
             expect(doctor.nurse.occupation).to.be.undefined;
             expect(doctor.nurse.age).to.equal(36);
-            expect(doctor.patients[0]).to.be.instanceOf(Doctor);
+            expect(doctor.patients[0]).to.be.instanceOf(Person);
             expect(doctor.patients[0].firstName).to.equal("Louis");
             expect(doctor.patients[0].lastName).to.equal("Pasteur");
             expect(doctor.patients[0].occupation).to.be.undefined;
@@ -308,7 +308,7 @@ describe("JsonMapping", () => {
             expect(person.occupation).to.be.undefined;
         });
 
-        it("should use raw json if no type info", () => {
+        it("should use raw json if no property type info", () => {
             class Message {
                 payload;
             }
@@ -325,6 +325,42 @@ describe("JsonMapping", () => {
                 quantity: 4
             })
         });
+
+        it("should use raw json if no root type", () => {
+            const doctor = handler.$mapTo({
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                hobbies:   ["golf", "cooking", "reading"],
+                nurse: {
+                    $type:      "Doctor",
+                    firstName:  "Clara",
+                    lastName:   "Barton",
+                    occupation: "Red Cross",
+                    age:         36
+                },                
+                patients: [{
+                    $type:      "Person",
+                    firstName:  "Louis",
+                    lastName:   "Pasteur",
+                    occupation: "Biologist",
+                    age:         75
+                }]
+            }, JsonFormat);
+            expect(doctor.constructor).to.equal(Object);
+            expect(doctor.firstName).to.equal("Mitchell");
+            expect(doctor.lastName).to.equal("Moskowitz");
+            expect(doctor.hobbies).to.eql(["golf", "cooking", "reading"]);
+            expect(doctor.nurse).to.be.instanceOf(Doctor);
+            expect(doctor.nurse.firstName).to.equal("Clara");
+            expect(doctor.nurse.lastName).to.equal("Barton");
+            expect(doctor.nurse.occupation).to.be.undefined;
+            expect(doctor.nurse.age).to.equal(36);
+            expect(doctor.patients[0]).to.be.instanceOf(Person);
+            expect(doctor.patients[0].firstName).to.equal("Louis");
+            expect(doctor.patients[0].lastName).to.equal("Pasteur");
+            expect(doctor.patients[0].occupation).to.be.undefined;
+            expect(doctor.patients[0].age).to.equal(75);
+         });
 
         it("should map Either complex value", () => {
             const either1 = handler.$mapTo({
@@ -385,17 +421,6 @@ describe("JsonMapping", () => {
                 }, JsonFormat, new Person());                         
             }).to.throw(TypeError, "Expected instance of type 'Doctor', but received 'Person'.");
         });
-
-        it("should fail if no type information.", () => {
-            expect(() => {
-                handler.$mapTo({
-                    firstName: "Christiano",
-                    lastName:  "Ronaldo",
-                    age:       23,
-                    eyeColor:  2
-                }, JsonFormat);
-             }).to.throw(TypeError, "The type was not specified and could not be inferred from '$type'.");    
-         });
 
         it("should detect circularities", () => {
             const json = {
@@ -790,18 +815,40 @@ describe("JsonMapping", () => {
         });
 
         it("should map anonymous object", () => {
-            const person = {
-                firstName: "Christiano",
-                lastName:  "Ronaldo",
-                age:       23,
-                eyeColor:  Color.blue
+             const doctor = {
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                nurse: new Doctor().extend({
+                    firstName: "Clara",
+                    lastName:  "Barton",
+                    age:       36
+                }),
+                patients: [
+                    new Doctor().extend({
+                        firstName: "Louis",
+                        lastName:  "Pasteur",
+                        age:       24
+                    })
+                ]
             };
-            const json = handler.$mapFrom(person, JsonFormat);
+            const json = handler.$mapOptions({
+                    typeIdHandling: TypeIdHandling.Auto
+                }).$mapFrom(doctor, JsonFormat);
             expect(json).to.eql({
-                firstName: "Christiano",
-                lastName:  "Ronaldo",
-                age:       23,
-                eyeColor:  2
+                firstName: "Mitchell",
+                lastName:  "Moskowitz",
+                nurse: {
+                    $type:     "Doctor",
+                    firstName: "Clara",
+                    lastName:  "Barton",
+                    age:       36
+                },
+                patients: [{
+                    $type:     "Doctor",
+                    firstName: "Louis",
+                    lastName:  "Pasteur",
+                    age:       24
+                }]
             });
         });
 

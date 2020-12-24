@@ -60,7 +60,7 @@ function getScheme(routed) {
     const { route } = routed;
     try {
         const uri = new URL(route);
-        return uri.slice(0, -1);
+        return uri.protocol.slice(0, -1);
     } catch {
         return route;
     }

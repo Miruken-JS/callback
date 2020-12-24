@@ -1,9 +1,11 @@
 import {
-    Enum, Either, design, instanceOf,
-    emptyArray, $isNothing, $isFunction, $isSymbol,
-    $isPlainObject, $classOf, getPropertyDescriptors
+    Enum, Either, design, instanceOf, emptyArray,
+    $isNothing, $isFunction, $isSymbol, $isPlainObject,
+    $classOf, getPropertyDescriptors
 } from "miruken-core";
 
+import { provides } from "../callback-policy";
+import { singleton } from "../singleton-lifestyle";
 import { mapping } from "./mapping";
 import { AbstractMapping } from "./abstract-mapping";
 import { mapsFrom, mapsTo, format } from "./maps";
@@ -23,6 +25,7 @@ export const JsonFormat = Symbol("json"),
  * @class JsonMapping
  * @extends AbstractMapping
  */
+@provides() @singleton()
 @format(JsonFormat, /application[/]json/)
 export class JsonMapping extends AbstractMapping {
     @mapsFrom(Date)
@@ -38,7 +41,7 @@ export class JsonMapping extends AbstractMapping {
     @mapsFrom(Either)
     mapFromEither(mapFrom, @options(MapOptions) options, { composer }) {
         const { object, format, seen } = mapFrom,
-              { strategy }             = options || {};
+              { strategy } = options || {};
         function mapValue(value) {
             return $isNothing(value) ? null
                  : composer.$mapFrom(value, format, [...seen, object]);
@@ -82,9 +85,10 @@ export class JsonMapping extends AbstractMapping {
             throw new Error(`Invalid map fields specifier ${fields}.`);
         }
 
-        const json = {};
+        const json    = {},
+              isPlain = $isPlainObject(object);
 
-        if (shouldEmitTypeId(object, type, typeIdHandling)) {
+        if (!isPlain && shouldEmitTypeId(object, type, typeIdHandling)) {
             const id = typeId.getId(object);
             if (!$isNothing(id)) {
                 const type = $classOf(object),
@@ -100,7 +104,7 @@ export class JsonMapping extends AbstractMapping {
 
         Reflect.ownKeys(descriptors).forEach(key => {
             if (allFields || (key in fields)) {
-                const map      = mapping.get(object, key),
+                const map = !isPlain ? mapping.get(object, key) : null,
                       property = getProperty(object, key, map, strategy),
                       keyValue = object[key];
                 if (!canMapJson(keyValue)) return;
@@ -191,12 +195,14 @@ export class JsonMapping extends AbstractMapping {
                 object      = getOrCreateObject(value, classOrInstance, strategy),
                 type        = $classOf(object),
                 seenValue   = [...seen, value],
-                descriptors = getPropertyDescriptors(object);
+                descriptors = type === Object
+                            ? getPropertyDescriptors(value)
+                            : getPropertyDescriptors(object);
 
         Reflect.ownKeys(descriptors).forEach(key => {
             const descriptor = descriptors[key];
             if (this.canSetProperty(descriptor)) {
-                const map      = mapping.get(object, key),
+                const map = type !== Object ? mapping.get(object, key) : null,
                       property = getProperty(type, key, map, strategy);
                 if (map?.root) {
                     mapKey.call(this, object, key, value, composer, format, seen);
@@ -238,10 +244,8 @@ function getOrCreateObject(value, classOrInstance, strategy) {
           id             = value[typeIdProperty];
 
     if ($isNothing(id)) {
-        if ($isNothing(type) || type === AnyObject) {
-            throw new TypeError(`The type was not specified and could not be inferred from '${typeIdProperty}'.`);
-        }
-        return isClass ? Reflect.construct(type, emptyArray) : classOrInstance;
+        return $isNothing(type) || type === AnyObject ? {}
+             : isClass ? Reflect.construct(type, emptyArray) : classOrInstance;
     }
 
     const desiredType = strategy?.resolveTypeWithId?.(id) || typeId.getType(id);
@@ -263,11 +267,7 @@ function getOrCreateObject(value, classOrInstance, strategy) {
 
 function mapKey(target, key, value, composer, format, seen) {
     const type = design.get(target, key)?.propertyType?.type;
-    if ($isNothing(type)) {
-        target[key] = this.isPrimitiveValue(value) ? value?.valueOf() : value;
-    } else if (!$isNothing(value)) {
-        target[key] = composer.$mapTo(value, format, type, seen);
-    } else if (value === null) {
-        target[key] = null;
-    }
+    target[key] = $isNothing(type) && this.isPrimitiveValue(value)
+                ? value?.valueOf()
+                : composer.$mapTo(value, format, type, seen);
 }

@@ -4,6 +4,7 @@ import {
 
 import { Handler, $composer } from "./handler";
 import { provides } from "./callback-policy";
+import { singleton } from "./singleton-lifestyle";
 
 /**
  * Protocol for handling and reporting errors.
@@ -57,8 +58,8 @@ export const Errors = DuckTyping.extend({
  * @extends Handler
  * @uses Errors
  */
-@provides()
 @conformsTo(Errors)
+@provides() @singleton()
 export class ErrorHandler extends Handler {
     handleError(error, context) {
         const result = Errors($composer).reportError(error, context);

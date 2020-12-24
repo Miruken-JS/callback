@@ -1,5 +1,5 @@
 import { 
-    $isNothing, Either, $isPromise
+    $isNothing, Try, $isPromise
 } from "miruken-core";
 
 import { Handler } from "../../handler";
@@ -35,7 +35,7 @@ export class Scheduler extends Handler {
         for (const request of requests) {
             const response = await process.call(this, request, composer);
             responses.push(response);
-            if (response instanceof Either.Left) break;
+            if (response instanceof Try.Failure) break;
         }
         return new ScheduledResult(responses);    
     }
@@ -52,11 +52,11 @@ function process(request, composer) {
                      ? composer.publish(request.message)
                      : composer.send(request);
         if ($isPromise(result)) {
-            return result.then(res => Either.right(res))
-                .catch(reason => Either.left(reason));
+            return result.then(res => Try.success(res))
+                .catch(reason => Try.failure(reason));
         }
-        return Promise.resolve(Either.right(result))
-    } catch (exception) {
-        return Promise.resolve(Either.left(exception));
+        return Promise.resolve(Try.success(result))
+    } catch (error) {
+        return Promise.resolve(Try.failure(error));
     }
 }

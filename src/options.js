@@ -34,7 +34,7 @@ export class Options extends Base {
                 const optionsValue = options[key];
                 if (optionsValue === undefined || !options.hasOwnProperty(key)) {
                     options[key] = copyOptionsValue(keyValue);
-                } else {
+                } else if (!$isNothing(keyValue)) {
                     this.mergeKeyInto(options, key, keyValue, optionsValue);
                 }
             }
