@@ -10,8 +10,6 @@ import {
 
 import { expect } from "chai";
 
-mocha.timeout(10000);
-
 describe("Cached", () => {
     let handler;
     beforeEach(async () => {

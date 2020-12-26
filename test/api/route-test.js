@@ -1,4 +1,4 @@
-import { $using, assignID } from "miruken-core";
+import { assignID } from "miruken-core";
 import { handles } from "../../src/callback-policy";
 import { HandlerBuilder } from "../../src/handler-builder";
 import { Concurrent } from "../../src/api/schedule/scheduled";
@@ -54,7 +54,7 @@ describe("routes", () => {
     it("should batch route requests", () => {
         const getQuote1 = new GetStockQuote("GOOGL"),
               getQuote2 = new GetStockQuote("APPL");
-        $using(handler.$batch(), batch => {
+        handler.$batch(batch => {
             batch.send(getQuote1.routeTo("trash"));
             batch.send(getQuote2.routeTo("trash"));
         });

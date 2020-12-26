@@ -6,7 +6,7 @@ import {
 import { HandlerBuilder } from "../../src/handler-builder";
 
 import { 
-    root, ignore
+    root, ignore, useEnumName
 } from "../../src/map/mapping";
 
 import { MapTo } from "../../src/map/map-callback";
@@ -24,7 +24,8 @@ import {
 } from "../../src/api/type-id";
 
 import { expect } from "chai";
-import { hyphenNaming } from "../../src/map/hyphen-naming";
+import { hyphenNaming } from "../../src/map/strategy/hyphen-naming";
+import { useEnumNames } from "../../src/map/strategy/use-enum-names";
 import { unmanaged } from "../../src/unmanaged";
 
 const _ = createKeyChain();
@@ -127,6 +128,18 @@ describe("JsonMapping", () => {
             }).to.throw(TypeError, "4 is not a valid value for this Enum");
         });
         
+         it("should map enum name", () => {
+            const handlerEnum = handler.$mapOptions({
+                strategy: new (@useEnumNames() class {})
+            });
+            expect(handlerEnum.$mapTo("red", JsonFormat, Color)).to.equal(Color.red);
+            expect(handlerEnum.$mapTo("blue", JsonFormat, Color)).to.equal(Color.blue);
+            expect(handlerEnum.$mapTo("green", JsonFormat, Color)).to.equal(Color.green);
+            expect(() => {
+                expect(handlerEnum.$mapTo("purple", JsonFormat, Color)).to.equal(Color.purple);                            
+            }).to.throw(Error, "'purple' is not a valid choice for this Enum.");
+        });
+
         it("should map Either primitive value", () => {
             const either1 = handler.$mapTo({
                 isLeft: false,
@@ -410,8 +423,8 @@ describe("JsonMapping", () => {
             expect(() => {
                 handler.$mapTo({
                     $type: "Accountant"
-                }, JsonFormat, new Person());                         
-            }).to.throw(TypeError, "The type with id 'Accountant' could not be resolved.");
+                }, JsonFormat);                         
+            }).to.throw(TypeError, "The type with id 'Accountant' could not be resolved and no fallback type was provided.");
         });
 
         it("should fail if type id mismatch", () => {

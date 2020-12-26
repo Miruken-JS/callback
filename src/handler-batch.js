@@ -1,4 +1,8 @@
-import { $isNothing, $isPromise } from "miruken-core";
+import { 
+    $isNothing, $isFunction, $isPromise,
+    $flatten
+} from "miruken-core";
+
 import { Handler } from "./handler";
 import { Inquiry } from "./inquiry";
 import { Composition } from "./composition";
@@ -16,11 +20,18 @@ Handler.implement({
      * @returns {Handler}  batching callback handler.
      * @for Handler
      */
-    $batch(tags) {
-        let _batch    = new Batch(tags),
-            _complete = false,
-            _promises = [];
-        return this.decorate({
+    $batch(...args) {
+        args = $flatten(args);
+        if (args.length === 0) {
+            throw new Error("Missing $batch block function.");
+        }
+        const block = args.pop();
+        if (!$isFunction(block)) {
+            throw new TypeError("The $batch block must be a function.");
+        }
+        let _batch    = new Batch(...args),
+            _complete = false;
+        const batcher = this.decorate({
             //@provides(Batch)
             //get batch() { return _batch; },
             @provides(Batching)
@@ -42,25 +53,23 @@ Handler.implement({
                         _batch = null;
                     }
                     if ((handled = b.handleCallback(callback, greedy, composer)) && !greedy) {
-                        if (_batch) {
-                            const result = callback.callbackResult;
-                            if ($isPromise(result)) {
-                                _promises.push(result);
-                            }
-                        }
                         return true;
                     }
                 }
                 return this.base(callback, greedy, composer) || handled;
-            },
-            dispose() {
-                _complete = true;
-                const results = BatchingComplete(this).complete(this);
-                return _promises.length > 0
-                    ? Promise.all(_promises).then(() => results)
-                : results;
             }
-        });            
+        });
+
+        const promise = block(batcher);
+
+        _complete = true;
+        const results = BatchingComplete(batcher).complete(batcher);
+        if ($isPromise(promise)) {
+            return $isPromise(results)
+                 ? results.then(res => promise.then(() => res))
+                 : promise.then(() => results);
+        } 
+        return results;
     },
     $noBatch() {
         return this.decorate({
@@ -78,8 +87,7 @@ Handler.implement({
     },
     $getBatch(tag) {
         const batch = this.resolve(Batch);
-        if (!$isNothing(batch) && 
-            ($isNothing(tag) || batch.shouldBatch(tag))) {
+        if (!$isNothing(batch) && ($isNothing(tag) || batch.shouldBatch(tag))) {
             return batch;
         }
     },

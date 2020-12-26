@@ -8,7 +8,7 @@ System.config({
 
   map: {
     "chai": "npm:chai@4.2.0",
-    "miruken-core": "npm:miruken-core@0.0.5-alpha.42",
+    "miruken-core": "npm:miruken-core@0.0.5-alpha.43",
     "github:jspm/nodelibs-assert@0.1.0": {
       "assert": "npm:assert@1.5.0"
     },
@@ -51,7 +51,7 @@ System.config({
     "npm:inherits@2.0.1": {
       "util": "github:jspm/nodelibs-util@0.1.0"
     },
-    "npm:miruken-core@0.0.5-alpha.42": {
+    "npm:miruken-core@0.0.5-alpha.43": {
       "reflect-metadata": "npm:reflect-metadata@0.1.13"
     },
     "npm:process@0.11.10": {

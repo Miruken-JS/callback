@@ -9,8 +9,8 @@ const mappingMetadataKey  = Symbol("mapping-metadata");
  * Defines the contract for mapping strategies.
  */
 export const Mapping = Protocol.extend({
-    shouldIgnore(target, key) {},
-    shouldUseEnumName(target, key) {},
+    shouldIgnore(value, target, key) {},
+    shouldUseEnumName(enumType, target, key) {},
     getPropertyName(target, key) {},
     getTypeIdProperty(target) {},
     resolveTypeWithId(typeId) {}
@@ -58,6 +58,15 @@ export function property(name) {
     return (target, key, descriptor) =>
         validateProperty("property", key, descriptor);
         mapping.getOrCreateOwn(target, key, () => ({})).property = name;
+}
+
+/**
+ * Use the Enum name for the property value.
+ * @method useEnumName
+ */
+export function useEnumName(target, key, descriptor) {
+    validateProperty("useEnumName", key, descriptor);
+    mapping.getOrCreateOwn(target, key, () => ({})).useEnumName = true;
 }
 
 function validateProperty(option, key, descriptor) {

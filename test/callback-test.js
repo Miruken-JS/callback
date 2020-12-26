@@ -3,7 +3,7 @@ import {
     DuckTyping, Variance, MethodType,
     TypeInfo, assignID, design, returns, type,
     conformsTo, copy, $isPromise, $eq, $eval,
-    $optional, $instant, $lazy, $using, $flatten,
+    $optional, $instant, $lazy, $flatten,
     createKeyChain
 } from "miruken-core";
 
@@ -2341,7 +2341,7 @@ describe("InvocationHandler", () => {
                   id      = Game(handler.$broadcast()).open(5);
             expect(id).to.equal("poker5");
             expect(count).to.equal(2);
-        }).timeout(10000);
+        });
 
         it("should resolve all targets or invocation using promise", done => {
             let   count = 0;
@@ -2681,13 +2681,11 @@ describe("Handler", () => {
  
     describe("#$batch", () => {
         it("should batch callbacks", () => {
-            const handler = new EmailHandler(),
-                  batch   = handler.$batch();
+            const handler = new EmailHandler();
             expect(Emailing(handler).send("Hello")).to.equal("Hello");
-            expect($using(batch, () => {
+            expect(handler.$batch(batch => {
                 expect(Emailing(batch).send("Hello")).to.be.undefined;
             })).to.eql([["Hello batch"]]);
-            expect(Emailing(batch).send("Hello")).to.equal("Hello");
         });
 
         it("should batch async callbacks", done => {
@@ -2697,7 +2695,7 @@ describe("Handler", () => {
                 expect(result).to.equal("Hello");
                 ++count;
             });
-            $using(handler.$batch(), batch => {
+            handler.$batch(batch => {
                 Emailing(batch).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello batch");
                     ++count;
@@ -2715,7 +2713,7 @@ describe("Handler", () => {
         it("should reject batch async", done => {
             let   count   = 0;
             const handler = new EmailHandler();
-            $using(handler.$batch(), batch => {
+            handler.$batch(batch => {
                 Emailing(batch).failConfirm("Hello").catch(err => {
                     expect(err.message).to.equal("Can't send message");
                     ++count;
@@ -2732,7 +2730,7 @@ describe("Handler", () => {
 
         it("should batch requested protocols", () => {
             const handler = new EmailHandler();
-            expect($using(handler.$batch(Emailing), batch => {
+            expect(handler.$batch(Emailing, batch => {
                 expect(Emailing(batch).send("Hello")).to.be.undefined;
             })).to.eql([["Hello batch"]]);                
         });
@@ -2744,7 +2742,7 @@ describe("Handler", () => {
                 expect(result).to.equal("Hello");
                 ++count;
             });
-            $using(handler.$batch(Emailing), batch => {
+            handler.$batch(Emailing, batch => {
                 Emailing(batch).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello batch");
                     ++count;
@@ -2761,14 +2759,14 @@ describe("Handler", () => {
 
         it("should not batch unrequested protocols", () => {
             const handler = new EmailHandler();
-            expect($using(handler.$batch(Game), batch => {
-                expect(Emailing(batch.send("Hello"))).to.equal("Hello");
+            expect(handler.$batch(Game, batch => {
+                expect(Emailing(batch).send("Hello")).to.equal("Hello");
             })).to.eql([]);
         });
 
         it("should not batch unrequested protocols async", done => { 
             const handler = new EmailHandler();           
-            expect($using(handler.$batch(Game), batch => {
+            expect(handler.$batch(Game, batch => {
                 Emailing(batch).sendConfirm("Hello").then(result => {
                     expect(result).to.equal("Hello");
                     done();
@@ -2778,7 +2776,7 @@ describe("Handler", () => {
 
         it("should not batch async after completed", done => {
             const handler = new EmailHandler();
-            $using(handler.$batch(), batch => {
+            handler.$batch(batch => {
                 Emailing(batch).sendConfirm("Hello").then(result => {
                     Emailing(batch).sendConfirm("Hello").then(result => {
                         expect(result).to.equal("Hello");
@@ -2790,7 +2788,7 @@ describe("Handler", () => {
 
         it("should suppress batching", done => {
             const handler = new EmailHandler();
-            expect($using(handler.$batch(), batch => {
+            expect(handler.$batch(batch => {
                 expect(Emailing(batch.$noBatch()).send("Hello")).to.equal("Hello");
                 done();
             })).to.eql([]);
@@ -2799,14 +2797,14 @@ describe("Handler", () => {
         it("should work with filters", () => {
             let   count   = 0;
             const handler = new EmailHandler(),
-                  batch   = handler.$aspect(null, () => {
+                  results = handler.$aspect(null, () => {
                       ++count;
-                  }).$batch();
-            expect($using(batch, () => {
-                expect(Emailing(batch).send("Hello")).to.be.undefined;
-            })).to.eql([["Hello batch"]]);
+                  }).$batch(batch => {
+                      expect(Emailing(batch).send("Hello")).to.be.undefined;
+                  });
+            expect(results).to.eql([["Hello batch"]]);
             expect(count).to.equal(2);
-        });        
+        });      
     });
 
     describe("@unmanaged", () => {

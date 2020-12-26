@@ -180,24 +180,28 @@ export class JsonMapping extends AbstractMapping {
     }
 
     mapsTo(mapTo, options, { composer }) {
-        const { value, format, classOrInstance, seen } = mapTo;
+        const { value } = mapTo;
         if (!canMapJson(value)) return;
+        const { format, classOrInstance, seen } = mapTo,
+                strategy = options?.strategy;
         if (this.isPrimitiveValue(value)) {
             if (classOrInstance instanceof Enum) {
                 throw new Error("Enum is immutable and cannot be mapped onto.");
             }
-            return classOrInstance?.prototype instanceof Enum
-                 ? classOrInstance.fromValue(value)
-                 : value;
+            if (classOrInstance?.prototype instanceof Enum) {
+                return strategy?.shouldUseEnumName(classOrInstance)
+                     ? classOrInstance.fromName(value)
+                     : classOrInstance.fromValue(value);
+            }
+            return value;
         }
 
-        const { strategy }  = options || {},
-                object      = getOrCreateObject(value, classOrInstance, strategy),
-                type        = $classOf(object),
-                seenValue   = [...seen, value],
-                descriptors = type === Object
-                            ? getPropertyDescriptors(value)
-                            : getPropertyDescriptors(object);
+        const object      = getOrCreateObject(value, classOrInstance, strategy),
+              type        = $classOf(object),
+              seenValue   = [...seen, value],
+              descriptors = type === Object
+                          ? getPropertyDescriptors(value)
+                          : getPropertyDescriptors(object);
 
         Reflect.ownKeys(descriptors).forEach(key => {
             const descriptor = descriptors[key];
@@ -205,11 +209,11 @@ export class JsonMapping extends AbstractMapping {
                 const map = type !== Object ? mapping.get(object, key) : null,
                       property = getProperty(type, key, map, strategy);
                 if (map?.root) {
-                    mapKey.call(this, object, key, value, composer, format, seen);
+                    mapKey.call(this, object, key, value, format, map, strategy, seen, composer);
                 } else if (!map?.ignore) {
                     const keyValue = value[property];
                     if (keyValue !== undefined) {
-                        mapKey.call(this, object, key, keyValue, composer, format, seenValue);
+                        mapKey.call(this, object, key, keyValue, format, map, strategy, seenValue, composer);
                     }
                 }
             }
@@ -248,10 +252,12 @@ function getOrCreateObject(value, classOrInstance, strategy) {
              : isClass ? Reflect.construct(type, emptyArray) : classOrInstance;
     }
 
-    const desiredType = strategy?.resolveTypeWithId?.(id) || typeId.getType(id);
+    const desiredType = strategy?.resolveTypeWithId?.(id)
+                     || typeId.getType(id)
+                     || type;
    
-    if ($isNothing(desiredType)) {
-        throw new TypeError(`The type with id '${id}' could not be resolved.`);
+    if ($isNothing(desiredType) || desiredType === AnyObject) {
+        throw new TypeError(`The type with id '${id}' could not be resolved and no fallback type was provided.`);
     }
 
     if (isClass) {
@@ -265,9 +271,20 @@ function getOrCreateObject(value, classOrInstance, strategy) {
     return classOrInstance;
 }
 
-function mapKey(target, key, value, composer, format, seen) {
+function mapKey(target, key, value, format, map, strategy, seen, composer) {
     const type = design.get(target, key)?.propertyType?.type;
-    target[key] = $isNothing(type) && this.isPrimitiveValue(value)
-                ? value?.valueOf()
-                : composer.$mapTo(value, format, type, seen);
+    if ($isNothing(type)) {
+        if (this.isPrimitiveValue(value)) {
+            target[key] = value?.valueOf();
+            return;
+        }
+    } else if (type.prototype instanceof Enum) {
+        let useEnumName = map?.useEnumName;
+        if ($isNothing(useEnumName)) {
+            useEnumName = strategy?.shouldUseEnumName(type);
+        }
+        target[key] = useEnumName ? type.fromName(value) : type.fromValue(value);
+        return;
+    }
+    target[key] = composer.$mapTo(value, format, type, seen);
 }

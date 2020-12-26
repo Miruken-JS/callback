@@ -1,3 +1,4 @@
+import { Try, design } from "miruken-core";
 import { Request } from "../request";
 import { response } from "../response";
 import { MessageWrapper } from "../message";
@@ -8,11 +9,11 @@ export class ScheduledResult {
         this.responses = responses || [];
     }
 
+    @design([Try])
     responses;
 }
 
 @response(ScheduledResult)
-@typeId("Miruken.Api.Schedule.Scheduled, Miruken")
 export class Scheduled extends Request {
     constructor(requests) {
         super();
@@ -25,6 +26,11 @@ export class Scheduled extends Request {
     requests;
 }
 
+@typeId("Miruken.Api.Schedule.Concurrent, Miruken")
 export class Concurrent extends Scheduled {}
+
+@typeId("Miruken.Api.Schedule.Sequential, Miruken")
 export class Sequential extends Scheduled {}
+
+@typeId("Miruken.Api.Schedule.Publish, Miruken")
 export class Publish extends MessageWrapper {}

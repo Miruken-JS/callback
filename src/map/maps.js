@@ -20,7 +20,7 @@ export const mapsFrom = ContravariantPolicy.createDecorator(
  * Policy for mapping from a formatted value.
  * @property {Function} mapsTo
  */   
-export const mapsTo = CovariantPolicy.createDecorator(
+export const mapsTo = ContravariantPolicy.createDecorator(
     "mapsTo", { filter: filterFormat });
 
 /**

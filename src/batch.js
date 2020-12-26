@@ -45,16 +45,13 @@ export class Batch extends CompositeHandler {
     }
 
     complete(composer) {
-        let promise = false,
-            results = this.getHandlers().reduce((res, handler) => {
-                const result = Batching(handler).complete(composer);
-                if (result) {
-                    promise = promise || $isPromise(result);
-                    res.push(result);
-                    return res;
-                }
-            }, []);
-        return promise ? Promise.all(results) : results;
+        const results = this.getHandlers().reduce((res, handler) => {
+            const result = Batching(handler).complete(composer);
+            return result ? [...res, result] : res;
+        }, []);
+        return results.some($isPromise) 
+             ? Promise.all(results) 
+             : results;
     }
 }
 
