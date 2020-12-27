@@ -268,6 +268,12 @@ describe("JsonMapping", () => {
             expect(person.occupation).to.be.undefined;
         });
 
+        it("should map arrays of primitives", () => {
+            expect(handler.$mapTo([1,2,3], JsonFormat)).to.eql([1,2,3]);
+            expect(handler.$mapTo([false,true], JsonFormat)).to.eql([false,true]);
+            expect(handler.$mapTo(["one","two"], JsonFormat)).to.eql(["one","two"]);
+        });
+
         it("should infer arrays", () => {
             const people = handler.$mapTo([{
                      firstName:  "David",

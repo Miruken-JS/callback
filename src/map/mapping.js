@@ -73,8 +73,8 @@ function validateProperty(option, key, descriptor) {
     if ($isNothing(descriptor)) {
         throw new SyntaxError(`@${option} cannot be applied to classes.`);
     }
-    const { get, set, initializer } = descriptor;
-    if ($isNothing(get) && $isNothing(set) && $isNothing(initializer)) {
+    const { value } = descriptor;
+    if ($isFunction(value)) {
         throw new SyntaxError(`@${option} can only be applied to properties.`);
     }
 }
