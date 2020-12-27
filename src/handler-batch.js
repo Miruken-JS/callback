@@ -32,8 +32,6 @@ Handler.implement({
         let _batch    = new Batch(...args),
             _complete = false;
         const batcher = this.decorate({
-            //@provides(Batch)
-            //get batch() { return _batch; },
             @provides(Batching)
             getBatcher(inquiry) {
                 if (!$isNothing(_batch)) {
@@ -46,17 +44,16 @@ Handler.implement({
                 }
             },
             handleCallback(callback, greedy, composer) {
-                let handled = false;
                 if (_batch && callback.canBatch !== false) {
                     const b = _batch;
                     if (_complete && !(callback instanceof Composition)) {
                         _batch = null;
                     }
-                    if ((handled = b.handleCallback(callback, greedy, composer)) && !greedy) {
+                    if (b.handle(callback, greedy, composer)) {
                         return true;
                     }
                 }
-                return this.base(callback, greedy, composer) || handled;
+                return this.base(callback, greedy, composer);
             }
         });
 

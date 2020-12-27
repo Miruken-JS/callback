@@ -55,9 +55,10 @@ export function property(name) {
     if (!name) {
         throw new Error("@property requires a non-empty name.")
     }
-    return (target, key, descriptor) =>
+    return (target, key, descriptor) => {
         validateProperty("property", key, descriptor);
         mapping.getOrCreateOwn(target, key, () => ({})).property = name;
+    };
 }
 
 /**

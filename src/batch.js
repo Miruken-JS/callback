@@ -20,7 +20,7 @@ export const Batching = Protocol.extend({
      * @method complete
      * @param   {Handler}  composer  - composition handler
      * @returns {Any} the batching result.
-     */                
+     */      
     complete(composer) {}
 });
 
@@ -30,7 +30,15 @@ export const Batching = Protocol.extend({
  * @class BatchingComplete
  * @uses Batching
  */
-export const BatchingComplete = Batching.extend();
+export const BatchingComplete = Protocol.extend({
+    /**
+     * Completes the batching operation.
+     * @method complete
+     * @param   {Handler}  composer  - composition handler
+     * @returns {Array|Promise(Array)} an array or promise of array.
+     */     
+    complete(composer) {}
+});
 
 @conformsTo(BatchingComplete)
 export class Batch extends CompositeHandler {
