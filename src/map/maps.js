@@ -47,9 +47,6 @@ function filterFormat(key, mapCallback) {
     return !formats || formats.size === 0 ||
         [...formats].some(f => {
             const format = mapCallback.format;
-            if ($isFunction(f)) {
-                return f(format);
-            }
             if (f instanceof RegExp) {
                 return $isString(format) && f.test(format)
             }

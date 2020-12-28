@@ -67,8 +67,7 @@ export class JsonMapping extends AbstractMapping {
     }
     
     mapsFrom(mapFrom, options, { composer }) {
-        const { object, format, seen } = mapFrom;
-
+        let { object } = mapFrom;
         if (!canMapJson(object)) return;
         if (this.isPrimitiveValue(object)) {
             return object?.valueOf();
@@ -78,7 +77,10 @@ export class JsonMapping extends AbstractMapping {
             return object.toJSON();
         }
 
-        const { fields, strategy, type, typeIdHandling } = options || {},
+        object = this.mapSurrogate(object, composer) || object;
+
+        const { format, seen } = mapFrom,
+              { fields, strategy, type, typeIdHandling } = options || {},
                 allFields = $isNothing(fields) || fields === true;
 
         if (!(allFields || $isPlainObject(fields))) {
@@ -219,7 +221,7 @@ export class JsonMapping extends AbstractMapping {
             }
         });
 
-        return object;
+        return this.mapSurrogate(object, composer) || object;
     }
 }
 

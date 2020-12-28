@@ -1,9 +1,14 @@
-import { typeOf, $isFunction } from "miruken-core";
+import { 
+    typeOf, $isFunction, $isNothing,
+    $isObject, $classOf
+} from "miruken-core";
+
 import { Handler } from "../handler";
 import { $unhandled } from "../callback-policy";
 import { mapsFrom, mapsTo } from "./maps";
 import { MapOptions } from "./map-options";
 import { unmanaged } from "../unmanaged";
+import { surrogate } from "./surrogate";
 import { options } from "../options";
 
 /**
@@ -34,5 +39,14 @@ export class AbstractMapping extends Handler {
             return true;
         }
         return false;        
+    }
+
+    mapSurrogate(object, composer) {
+        if ($isObject(object)) {
+            const surrogateType = surrogate.get($classOf(object));
+            if (!$isNothing(surrogateType)) {
+                return composer.$bestEffort().$mapFrom(object, surrogateType)
+            }
+        }
     }
 }

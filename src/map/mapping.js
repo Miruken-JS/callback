@@ -24,7 +24,7 @@ export const Mapping = Protocol.extend({
 export const mapping = Metadata.decorator(mappingMetadataKey,
     (target, key, descriptor, [mapping]) => {
         if (!$isPlainObjet(mapping)) {
-            throw new TypeError("@mapping must be a simple object.");
+            throw new TypeError("@mapping requires a plain object.");
         }
         Metadata.define(mappingMetadataKey, mapping, target, key);
     });

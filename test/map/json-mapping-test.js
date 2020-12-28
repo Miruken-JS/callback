@@ -27,6 +27,7 @@ import { expect } from "chai";
 import { hyphenNaming } from "../../src/map/strategy/hyphen-naming";
 import { useEnumNames } from "../../src/map/strategy/use-enum-names";
 import { unmanaged } from "../../src/unmanaged";
+import { surrogate } from "../../src/map/surrogate";
 
 const _ = createKeyChain();
 
@@ -61,6 +62,32 @@ class PersonWrapper extends Base {
     @root                
     @design(Person)
     person = undefined
+}
+
+class SomeError extends Error {
+    constructor(message) {
+        super();
+        this.message = message;
+    }
+    message;
+}
+
+@surrogate(SomeError)
+class SomeErrorSurrogate {
+    constructor(message) {
+        this.message = message;
+    }
+    message;
+}
+
+@surrogate(Error)
+class ErrorSurrogate {
+    constructor(message, source) {
+        this.message = message;
+        this.source  = source;
+    }
+    message;
+    source;
 }
 
 describe("JsonMapping", () => {
@@ -417,6 +444,35 @@ describe("JsonMapping", () => {
             }, JsonFormat, Either);
             expect(either2).to.be.instanceOf(Either.Right);   
             expect(either2.value).to.be.instanceOf(Doctor);  
+        });
+
+        it("should map using surrogate", () => {
+            class ErrorMapping {
+                @format(SomeError)
+                @mapsFrom(SomeErrorSurrogate)
+                mapToError({ object }) {
+                    return new SomeError(object.message);
+                }
+            }
+            const error = (handler.$chain(new ErrorMapping())).$mapTo(
+                { message: "This is bad" }, JsonFormat, SomeErrorSurrogate);
+            expect(error).to.be.instanceOf(SomeError);
+            expect(error.message).to.equal("This is bad");
+        });
+
+        it("should map using surrogate hierarchy", () => {
+            class ErrorMapping {
+                @format(Error)
+                @mapsFrom(ErrorSurrogate)
+                mapToError({ object }) {
+                    return new Error(object.message, object.source);
+                }
+            }
+            const error = (handler.$chain(new ErrorMapping())).$mapTo(
+                { message: "This 'name' argument is required." },
+                 JsonFormat, ErrorSurrogate);
+            expect(error).to.be.instanceOf(Error);
+            expect(error.message).to.equal("This 'name' argument is required.");
         });
 
         it("should fail if Enum instance given", () => {
@@ -889,6 +945,33 @@ describe("JsonMapping", () => {
                 "age":        23,
                 "eye-color":  2
             });
+        });
+
+        it("should map using surrogate", () => {
+            class ErrorMapping {
+                @mapsFrom(SomeError)
+                @format(SomeErrorSurrogate)
+                mapToError({ object }) {
+                    return new SomeErrorSurrogate(object.message);
+                }
+            }
+            const json = (handler.$chain(new ErrorMapping())).$mapFrom(
+                new SomeError("This is bad"), JsonFormat);
+            expect(json).to.eql({ message: "This is bad"});
+        });
+
+        it("should map using surrogate hierarchy", () => {
+            class ArgumentError extends Error {}
+            class ErrorMapping {
+                @mapsFrom(Error)
+                @format(ErrorSurrogate)
+                mapToError({ object }) {
+                    return new ErrorSurrogate(object.message, object.source);
+                }
+            }
+            const json = (handler.$chain(new ErrorMapping())).$mapFrom(
+                new ArgumentError("The 'name' argument is required."), JsonFormat);
+            expect(json).to.eql({ message: "The 'name' argument is required."});
         });
 
         it("should detect circularities", () => {
